@@ -1,0 +1,85 @@
+{
+  "entities": {
+    "user": {
+      "title": "User",
+      "description": "User profile and role information",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "Firebase Auth UID" },
+        "email": { "type": "string", "format": "email", "description": "User email address" },
+        "displayName": { "type": "string", "description": "User display name" },
+        "photoURL": { "type": "string", "description": "User profile photo URL" },
+        "role": { "type": "string", "enum": ["admin", "user"], "description": "User role" },
+        "isTribeMember": { "type": "boolean", "description": "Whether the user is a member of the Namate Tribe" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Account creation timestamp" }
+      },
+      "required": ["uid", "email", "role"]
+    },
+    "order": {
+      "title": "Order",
+      "description": "Customer order information",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Order ID" },
+        "userId": { "type": "string", "description": "UID of the user who placed the order" },
+        "userEmail": { "type": "string", "description": "Email of the user" },
+        "userName": { "type": "string", "description": "Name of the user" },
+        "items": { 
+          "type": "array", 
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string" },
+              "name": { "type": "string" },
+              "price": { "type": "number" },
+              "quantity": { "type": "number" },
+              "size": { "type": "string" },
+              "image": { "type": "string" }
+            }
+          }
+        },
+        "total": { "type": "number" },
+        "status": { "type": "string", "enum": ["pending", "processing", "shipped", "delivered", "cancelled"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "items", "total", "status", "createdAt"]
+    },
+    "product": {
+      "title": "Product",
+      "description": "Store product information",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "price": { "type": "number" },
+        "category": { "type": "string" },
+        "subcategory": { "type": "string", "description": "Optional product subcategory" },
+        "description": { "type": "string" },
+        "images": { "type": "array", "items": { "type": "string" } },
+        "videoUrl": { "type": "string", "description": "Optional product showcase video URL" },
+        "sizes": { "type": "array", "items": { "type": "string" } },
+        "isNew": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "price", "category", "images", "description", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "user",
+      "description": "User profile documents"
+    },
+    "/orders/{orderId}": {
+      "schema": "order",
+      "description": "Customer orders"
+    },
+    "/products/{productId}": {
+      "schema": "product",
+      "description": "Store products"
+    },
+    "/deleted_products/{productId}": {
+      "schema": "product",
+      "description": "Archive of deleted products for recovery and auditing"
+    }
+  }
+}

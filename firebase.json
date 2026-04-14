@@ -1,0 +1,9 @@
+{
+  "firestore": {
+    "rules": "firestore.rules",
+    "database": "namate"
+  },
+  "storage": {
+    "rules": "storage.rules"
+  }
+}

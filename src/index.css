@@ -1,0 +1,219 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@100;200;300;400;500;600;700;800;900&family=Cinzel:wght@400;700;900&family=Dancing+Script:wght@400;700&family=Pinyon+Script&family=Space+Grotesk:wght@300..700&family=Inter:wght@100..900&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400;1,500;1,600;1,700&display=swap');
+
+@custom-variant dark (&:is(.dark *));
+
+@theme {
+    --font-heading: 'Space Grotesk', sans-serif;
+    --font-sans: 'Inter', sans-serif;
+    --font-serif: 'Cormorant Garamond', serif;
+    --font-cursive: 'Dancing Script', cursive;
+    --font-brand: 'Montserrat', sans-serif;
+    
+    --color-background: #ffffff;
+    --color-foreground: #000000;
+    --color-card: #f8f9fa;
+    --color-card-foreground: #000000;
+    --color-popover: #ffffff;
+    --color-popover-foreground: #000000;
+    --color-primary: #000000;
+    --color-primary-foreground: #ffffff;
+    --color-secondary: #f5f5f5;
+    --color-secondary-foreground: #000000;
+    --color-muted: #f5f5f5;
+    --color-muted-foreground: #737373;
+    --color-accent: #f5f5f5;
+    --color-accent-foreground: #000000;
+    --color-destructive: #ef4444;
+    --color-border: #e5e5e5;
+    --color-input: #e5e5e5;
+    --color-ring: #000000;
+    
+    --radius-sm: calc(var(--radius) * 0.6);
+    --radius-md: calc(var(--radius) * 0.8);
+    --radius-lg: var(--radius);
+    --radius-xl: calc(var(--radius) * 1.4);
+    --radius-2xl: calc(var(--radius) * 1.8);
+    --radius-3xl: calc(var(--radius) * 2.2);
+    --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+:root {
+    --background: #ffffff;
+    --foreground: #000000;
+    --card: #f8f9fa;
+    --card-foreground: #000000;
+    --popover: #ffffff;
+    --popover-foreground: #000000;
+    --primary: #000000;
+    --primary-foreground: #ffffff;
+    --secondary: #f5f5f5;
+    --secondary-foreground: #000000;
+    --muted: #f5f5f5;
+    --muted-foreground: #737373;
+    --accent: #f5f5f5;
+    --accent-foreground: #000000;
+    --destructive: #ef4444;
+    --border: #e5e5e5;
+    --input: #e5e5e5;
+    --ring: #000000;
+    --radius: 0.5rem;
+    --chart-1: #1a1a1a;
+    --chart-2: #404040;
+    --chart-3: #737373;
+    --chart-4: #a3a3a3;
+    --chart-5: #d4d4d4;
+    --radius: 0.5rem;
+    --sidebar: #ffffff;
+    --sidebar-foreground: #1a1a1a;
+    --sidebar-primary: #000000;
+    --sidebar-primary-foreground: #ffffff;
+    --sidebar-accent: #f5f5f5;
+    --sidebar-accent-foreground: #000000;
+    --sidebar-border: #e5e5e5;
+    --sidebar-ring: #000000;
+
+    /* Water Wave Shine Animation */
+    --animate-shine: wave-shine 8s ease-in-out infinite;
+    @keyframes wave-shine {
+        0% { transform: translateX(-150%) translateY(-20%) rotate(25deg) scaleY(1); }
+        50% { transform: translateX(0%) translateY(20%) rotate(25deg) scaleY(1.2); }
+        100% { transform: translateX(150%) translateY(-20%) rotate(25deg) scaleY(1); }
+    }
+}
+
+@layer utilities {
+  .shimmer-primary {
+    position: relative;
+    overflow: hidden;
+  }
+  .shimmer-primary::after {
+    content: "";
+    position: absolute;
+    top: -150%;
+    left: -150%;
+    width: 400%;
+    height: 400%;
+    background: repeating-linear-gradient(
+      to right,
+      rgba(255, 255, 255, 0) 0%,
+      rgba(255, 255, 255, 0.02) 5%,
+      rgba(255, 255, 255, 0.1) 10%,
+      rgba(255, 255, 255, 0.02) 15%,
+      rgba(255, 255, 255, 0) 20%
+    );
+    transform: rotate(25deg);
+    animation: var(--animate-shine);
+    pointer-events: none;
+    opacity: 0.5;
+  }
+
+  .liquid-gold-text {
+    color: #C5A059; /* Satin Gold Fallback */
+    background: linear-gradient(
+      to bottom,
+      #f7e08a 0%,
+      #c5a059 50%,
+      #8a6d3b 100%
+    );
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    display: inline-block;
+    letter-spacing: 0.15em;
+    font-weight: 500; /* Match the medium weight in image */
+  }
+
+  .liquid-gold-icon {
+    background: linear-gradient(
+      to bottom,
+      #f7e08a 0%,
+      #c5a059 50%,
+      #8a6d3b 100%
+    );
+    display: inline-block;
+  }
+
+  .bg-liquid-gold {
+    background-color: #FFD700; /* Fallback */
+    background-image: url('https://storage.googleapis.com/applet-attachments/67f7902d201127000109919f/67f7903520112700010991a0.png');
+    background-size: cover;
+    background-position: center;
+    position: relative;
+  }
+
+  .luxury-border {
+    border: 1px solid rgba(197, 160, 89, 0.3);
+  }
+
+  .luxury-text-gradient {
+    background: linear-gradient(135deg, #C5A059 0%, #F7E08A 50%, #8A6D3B 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .serif-italic {
+    font-family: 'Cormorant Garamond', serif;
+    font-style: italic;
+  }
+}
+
+.dark {
+    --background: #023a2f;
+    --foreground: #fafafa;
+    --card: #023020;
+    --card-foreground: #fafafa;
+    --popover: #023020;
+    --popover-foreground: #fafafa;
+    --primary: #023020;
+    --primary-foreground: #ffffff;
+    --secondary: #011511;
+    --secondary-foreground: #fafafa;
+    --muted: #454545;
+    --muted-foreground: #b3b3b3;
+    --accent: #454545;
+    --accent-foreground: #fafafa;
+    --destructive: #7f1d1d;
+    --border: rgba(255, 255, 255, 0.1);
+    --input: rgba(255, 255, 255, 0.15);
+    --ring: #8c8c8c;
+    --chart-1: #dedede;
+    --chart-2: #8c8c8c;
+    --chart-3: #707070;
+    --chart-4: #5e5e5e;
+    --chart-5: #454545;
+    --sidebar: #333333;
+    --sidebar-foreground: #fafafa;
+    --sidebar-primary: #7c3aed;
+    --sidebar-primary-foreground: #fafafa;
+    --sidebar-accent: #454545;
+    --sidebar-accent-foreground: #fafafa;
+    --sidebar-border: rgba(255, 255, 255, 0.1);
+    --sidebar-ring: #8c8c8c;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+    }
+  body {
+    background-color: #ffffff !important;
+    @apply text-foreground overflow-x-hidden selection:bg-primary selection:text-primary-foreground;
+    -webkit-tap-highlight-color: transparent;
+    overscroll-behavior-y: none;
+    }
+  html {
+    @apply font-sans;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    }
+  html::-webkit-scrollbar {
+    display: none;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-heading font-bold tracking-tight;
+  }
+}
