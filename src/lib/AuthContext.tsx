@@ -6,7 +6,7 @@ import {
   GoogleAuthProvider, 
   signOut 
 } from 'firebase/auth';
-import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, getDoc, setDoc, serverTimestamp, onSnapshot, collection, query, where, getDocs, runTransaction, increment } from 'firebase/firestore';
 import { auth, db } from './firebase';
 import { toast } from 'sonner';
 
@@ -68,6 +68,7 @@ interface AuthContextType {
   loading: boolean;
   loginWithGoogle: () => Promise<void>;
   logout: () => Promise<void>;
+  awardPoints: (amount: number, description: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -78,61 +79,123 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [role, setRole] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // Capture referral code from URL
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const refCode = params.get('ref');
+    if (refCode) {
+      sessionStorage.setItem('referral_source', refCode);
+    }
+  }, []);
+
+  const awardPoints = async (amount: number, description: string) => {
+    if (!user) return;
+    try {
+      const userRef = doc(db, 'users', user.uid);
+      const pointsRef = doc(collection(db, 'users', user.uid, 'points_history'));
+      
+      await runTransaction(db, async (transaction) => {
+        transaction.update(userRef, {
+          namatePoints: increment(amount)
+        });
+        transaction.set(pointsRef, {
+          points: amount,
+          type: 'earn',
+          description,
+          createdAt: serverTimestamp()
+        });
+      });
+      toast.success(`Earned ${amount} Namate Points!`);
+    } catch (error) {
+      console.error("Error awarding points:", error);
+    }
+  };
+
+  useEffect(() => {
+    let userUnsubscribe: (() => void) | null = null;
+
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       console.log("Auth State Changed:", firebaseUser?.email);
-      console.log("Using Firestore Database ID:", (db as any)._databaseId?.database || 'default');
+      
+      if (userUnsubscribe) {
+        userUnsubscribe();
+        userUnsubscribe = null;
+      }
+
       try {
         if (firebaseUser) {
-          try {
-            // Small delay to ensure auth token is propagated to Firestore rules
-            await new Promise(resolve => setTimeout(resolve, 500));
-            
-            // Sync user data to Firestore
-            const userRef = doc(db, 'users', firebaseUser.uid);
-            console.log("Fetching user doc for:", firebaseUser.uid);
-            const userSnap = await getDoc(userRef);
+          setUser(firebaseUser);
+          
+          const userRef = doc(db, 'users', firebaseUser.uid);
+          const userSnap = await getDoc(userRef);
 
-            if (!userSnap.exists()) {
-              console.log("User doc does not exist, creating...");
-              // Create new user profile
-              const newUser = {
-                uid: firebaseUser.uid,
-                email: firebaseUser.email,
-                displayName: firebaseUser.displayName,
-                photoURL: firebaseUser.photoURL,
-                role: firebaseUser.email?.toLowerCase().trim() === 'geoapparelspvtltd@gmail.com' ? 'admin' : 'user',
-                isTribeMember: false,
-                createdAt: serverTimestamp()
-              };
-              await setDoc(userRef, newUser);
-              setRole(newUser.role);
-              setUserData(newUser);
-            } else {
-              const data = userSnap.data();
-              console.log("User doc found:", data);
-              // Force admin role for the primary admin email if it's not already set
+          if (!userSnap.exists()) {
+            // New user registration
+            const referralSource = sessionStorage.getItem('referral_source');
+            let referrerId = '';
+            
+            if (referralSource) {
+              const q = query(collection(db, 'users'), where('referralCode', '==', referralSource));
+              const qSnap = await getDocs(q);
+              if (!qSnap.empty) {
+                referrerId = qSnap.docs[0].id;
+                // Award points to referrer for successful referral
+                const referrerRef = doc(db, 'users', referrerId);
+                const referrerPointsRef = doc(collection(db, 'users', referrerId, 'points_history'));
+                
+                await runTransaction(db, async (transaction) => {
+                  transaction.update(referrerRef, {
+                    walletBalance: increment(100) // "Refer and earn 100 coins"
+                  });
+                  transaction.set(referrerPointsRef, {
+                    points: 100,
+                    type: 'earn',
+                    description: `Referral of ${firebaseUser.email}`,
+                    createdAt: serverTimestamp()
+                  });
+                });
+                sessionStorage.removeItem('referral_source');
+              }
+            }
+
+            const newUser = {
+              uid: firebaseUser.uid,
+              email: firebaseUser.email,
+              displayName: firebaseUser.displayName,
+              photoURL: firebaseUser.photoURL,
+              role: firebaseUser.email?.toLowerCase().trim() === 'geoapparelspvtltd@gmail.com' ? 'admin' : 'user',
+              isTribeMember: false,
+              walletBalance: 0,
+              namatePoints: 0,
+              referralCode: Math.random().toString(36).substring(2, 8).toUpperCase(),
+              referredBy: referrerId,
+              createdAt: serverTimestamp()
+            };
+            await setDoc(userRef, newUser);
+          } else {
+            // Check if existing user has referral code, if not generate one
+            const data = userSnap.data();
+            if (!data.referralCode) {
+              await setDoc(userRef, { 
+                referralCode: Math.random().toString(36).substring(2, 8).toUpperCase()
+              }, { merge: true });
+            }
+          }
+
+          // Real-time listener for user data
+          userUnsubscribe = onSnapshot(userRef, (snapshot) => {
+            if (snapshot.exists()) {
+              const data = snapshot.data();
               if (firebaseUser.email?.toLowerCase().trim() === 'geoapparelspvtltd@gmail.com' && data.role !== 'admin') {
-                console.log("Forcing admin role for primary admin");
-                const updatedData = { ...data, role: 'admin' };
-                await setDoc(userRef, { role: 'admin' }, { merge: true });
+                setDoc(userRef, { role: 'admin' }, { merge: true });
                 setRole('admin');
-                setUserData(updatedData);
+                setUserData({ ...data, role: 'admin' });
               } else {
-                setRole(data.role);
+                setRole(data.role || 'user');
                 setUserData(data);
               }
             }
-            setUser(firebaseUser);
-          } catch (error) {
-            console.error("Error in Auth State Sync:", error);
-            handleFirestoreError(error, OperationType.GET, `users/${firebaseUser.uid}`);
-            // Still set the user and role even if firestore sync fails
-            setUser(firebaseUser);
-            if (firebaseUser.email?.toLowerCase().trim() === 'geoapparelspvtltd@gmail.com') {
-              setRole('admin');
-            }
-          }
+          });
         } else {
           setUser(null);
           setUserData(null);
@@ -143,7 +206,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     });
 
-    return () => unsubscribe();
+    return () => {
+      unsubscribe();
+      if (userUnsubscribe) userUnsubscribe();
+    };
   }, []);
 
   const loginWithGoogle = async () => {
@@ -170,7 +236,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, userData, role, loading, loginWithGoogle, logout }}>
+    <AuthContext.Provider value={{ user, userData, role, loading, loginWithGoogle, logout, awardPoints }}>
       {children}
     </AuthContext.Provider>
   );

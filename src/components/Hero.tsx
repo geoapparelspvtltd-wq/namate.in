@@ -53,8 +53,8 @@ export default function Hero() {
         transition={{ repeat: Infinity, duration: 4, ease: "easeInOut" }}
         className="absolute bottom-10 right-10 hidden lg:block"
       >
-        <div className="w-32 h-32 bg-[#C5A059] rounded-full flex items-center justify-center border-4 border-black rotate-12 shadow-2xl shimmer-primary">
-          <span className="text-black font-black text-center leading-tight text-sm">
+        <div className="w-32 h-32 bg-black rounded-full flex items-center justify-center border-4 border-black rotate-12 shadow-2xl shimmer-primary">
+          <span className="text-white font-black text-center leading-tight text-sm">
             100%<br />COTTON<br />GOODNESS
           </span>
         </div>

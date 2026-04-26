@@ -1,13 +1,13 @@
-import React, { useRef, useState, memo, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { Heart, ShoppingCart, Plus, Play, Trash2, Share2, Crown, ChevronLeft } from 'lucide-react';
+import React, { useRef, useState, memo, useEffect, useMemo } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { Heart, ShoppingCart, Plus, Play, Trash2, Share2, Crown, ChevronLeft, Star, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { motion, AnimatePresence } from 'motion/react';
 import { useCart } from '@/lib/CartContext';
 import { useWishlist } from '@/lib/WishlistContext';
 import { useAuth } from '@/lib/AuthContext';
-import { cn } from '@/lib/utils';
+import { cn, getYoutubeEmbedUrl } from '@/lib/utils';
 import QuickAddSheet from './QuickAddSheet';
 import FloatingHeart from './FloatingHeart';
 import { doc, deleteDoc } from 'firebase/firestore';
@@ -23,19 +23,25 @@ interface ProductCardProps {
   images?: string[];
   category: string;
   isNew?: boolean;
+  isUpcoming?: boolean;
+  isTribeExclusive?: boolean;
+  tribeReleaseDate?: string;
+  badge?: string;
   discount?: number;
   sizes?: string[];
   videoUrl?: string;
+  videoUrls?: string[];
   priority?: boolean;
   aspectRatio?: 'portrait' | 'square';
   variant?: 'default' | 'minimal';
   [key: string]: any;
 }
 
-const ProductCard = memo(({ id, name, price, originalPrice, image, images = [], category, isNew, discount, sizes = ['S', 'M', 'L', 'XL'], videoUrl, priority, aspectRatio = 'portrait', variant = 'default', ...props }: ProductCardProps) => {
+const ProductCard = memo(({ id, name, price, originalPrice, image, images = [], category, isNew, isUpcoming, isTribeExclusive, tribeReleaseDate, discount, sizes = ['S', 'M', 'L', 'XL'], videoUrl, videoUrls = [], priority, aspectRatio = 'portrait', variant = 'default', ...props }: ProductCardProps) => {
+  const navigate = useNavigate();
   const { addToCart } = useCart();
   const { toggleWishlist, isInWishlist } = useWishlist();
-  const { user, role } = useAuth();
+  const { user, userData, role } = useAuth();
   const isAdmin = role === 'admin' || user?.email?.toLowerCase().trim() === 'geoapparelspvtltd@gmail.com';
   
   const cardRef = useRef<HTMLDivElement>(null);
@@ -46,26 +52,51 @@ const ProductCard = memo(({ id, name, price, originalPrice, image, images = [], 
   const [showFloatingHeart, setShowFloatingHeart] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  const displayImages = images.length > 0 ? images : [image];
+  const displayMedia = useMemo(() => {
+    // If unified media exists, use it as is (respecting user order)
+    if (props.media && Array.isArray(props.media) && props.media.length > 0) {
+      return props.media.map((m: any) => {
+        const youtubeUrl = m.type === 'video' ? getYoutubeEmbedUrl(m.url) : null;
+        return {
+          type: youtubeUrl ? 'youtube' : m.type,
+          url: youtubeUrl || m.url
+        };
+      });
+    }
+
+    const items: { type: 'video' | 'youtube' | 'image', url: string }[] = [];
+    
+    // Add videos
+    const vUrls = videoUrls.length > 0 ? videoUrls : (videoUrl ? [videoUrl] : []);
+    vUrls.forEach(url => {
+      if (url && typeof url === 'string') {
+        const youtubeUrl = getYoutubeEmbedUrl(url);
+        if (youtubeUrl) {
+          items.push({ type: 'youtube', url: youtubeUrl });
+        } else {
+          items.push({ type: 'video', url });
+        }
+      }
+    });
+
+    // Add images
+    const imgs = images.length > 0 ? images : [image];
+    imgs.forEach(url => {
+      if (url && typeof url === 'string') {
+        items.push({ type: 'image', url });
+      }
+    });
+
+    if (items.length === 0) {
+      items.push({ type: 'image', url: 'https://picsum.photos/seed/fashion/600/800' });
+    }
+    
+    return items;
+  }, [props.media, videoUrls, videoUrl, images, image]);
 
   useEffect(() => {
-    if (displayImages.length <= 1) return;
-
-    // Autoscroll disabled per user request
-    /*
-    const interval = setInterval(() => {
-      if (scrollRef.current) {
-        const nextIndex = (currentImageIndex + 1) % displayImages.length;
-        scrollRef.current.scrollTo({
-          left: nextIndex * scrollRef.current.offsetWidth,
-          behavior: 'smooth'
-        });
-      }
-    }, 4000);
-
-    return () => clearInterval(interval);
-    */
-  }, [currentImageIndex, displayImages.length]);
+    if (displayMedia.length <= 1) return;
+  }, [currentImageIndex, displayMedia.length]);
 
   const handleWishlistToggle = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -111,6 +142,12 @@ const ProductCard = memo(({ id, name, price, originalPrice, image, images = [], 
     e.preventDefault();
     e.stopPropagation();
     
+    if (isTribeExclusive && !userData?.isTribeMember && !isAdmin) {
+      toast.error("Tribe Exclusive! Join the tribe to purchase.");
+      navigate('/tribe');
+      return;
+    }
+    
     if (cardRef.current) {
       const rect = cardRef.current.getBoundingClientRect();
       setAnimationStartPos({ x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 });
@@ -149,29 +186,47 @@ const ProductCard = memo(({ id, name, price, originalPrice, image, images = [], 
           className="flex h-full overflow-x-auto snap-x snap-mandatory no-scrollbar"
           onScroll={handleScroll}
         >
-          {displayImages.map((img, idx) => (
+          {displayMedia.map((item, idx) => (
             <Link 
               key={idx}
               to={`/product/${id}`} 
-              className="w-full h-full flex-shrink-0 snap-start"
+              className="w-full h-full flex-shrink-0 snap-start relative block"
             >
-              <img 
-                src={img} 
-                alt={`${name} - ${idx + 1}`} 
-                className="w-full h-full object-contain transition-transform duration-1000 group-hover:scale-105"
-                referrerPolicy="no-referrer"
-                loading={priority && idx === 0 ? "eager" : "lazy"}
-                {...(priority && idx === 0 ? { fetchPriority: "high" } : {})}
-              />
+              {item.type === 'youtube' ? (
+                <iframe 
+                  src={item.url}
+                  className="w-full h-full border-none pointer-events-none"
+                  allow="autoplay; encrypted-media"
+                  title="YouTube video player"
+                />
+              ) : item.type === 'video' ? (
+                <video 
+                  src={item.url} 
+                  autoPlay 
+                  loop 
+                  muted 
+                  playsInline
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <img 
+                  src={item.url} 
+                  alt={`${name} - ${idx + 1}`} 
+                  className="w-full h-full object-contain transition-transform duration-1000 group-hover:scale-105"
+                  referrerPolicy="no-referrer"
+                  loading={priority && idx === 0 ? "eager" : "lazy"}
+                  {...(priority && idx === 0 ? { fetchPriority: "high" } : {})}
+                />
+              )}
             </Link>
           ))}
         </div>
         
         {/* Pagination Dots */}
-        {displayImages.length > 1 && (
+        {displayMedia.length > 1 && (
           <>
             <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-1.5 z-20">
-              {displayImages.map((_, idx) => (
+              {displayMedia.map((_, idx) => (
                 <div 
                   key={idx} 
                   className={cn(
@@ -187,7 +242,7 @@ const ProductCard = memo(({ id, name, price, originalPrice, image, images = [], 
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                const prevIndex = (currentImageIndex - 1 + displayImages.length) % displayImages.length;
+                const prevIndex = (currentImageIndex - 1 + displayMedia.length) % displayMedia.length;
                 scrollRef.current?.scrollTo({ left: prevIndex * scrollRef.current.offsetWidth, behavior: 'smooth' });
               }}
               className="absolute left-2 top-1/2 -translate-y-1/2 z-20 w-8 h-8 rounded-full bg-black/20 backdrop-blur-sm flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity"
@@ -198,7 +253,7 @@ const ProductCard = memo(({ id, name, price, originalPrice, image, images = [], 
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                const nextIndex = (currentImageIndex + 1) % displayImages.length;
+                const nextIndex = (currentImageIndex + 1) % displayMedia.length;
                 scrollRef.current?.scrollTo({ left: nextIndex * scrollRef.current.offsetWidth, behavior: 'smooth' });
               }}
               className="absolute right-2 top-1/2 -translate-y-1/2 z-20 w-8 h-8 rounded-full bg-black/20 backdrop-blur-sm flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity"
@@ -210,9 +265,9 @@ const ProductCard = memo(({ id, name, price, originalPrice, image, images = [], 
         
         {/* Badges */}
         <div className="absolute top-4 left-4 flex flex-col gap-2">
-          {isNew && (
-            <div className="bg-black luxury-text-gradient font-bold text-[8px] px-3 py-1 rounded-full uppercase tracking-[0.2em] border border-white/5">
-              New Arrival
+          {props.badge && (
+            <div className="bg-black text-white font-bold text-[8px] px-3 py-1 rounded-full uppercase tracking-[0.2em] border border-white/5">
+              {props.badge}
             </div>
           )}
           {discount && (
@@ -220,16 +275,28 @@ const ProductCard = memo(({ id, name, price, originalPrice, image, images = [], 
               -{discount}%
             </div>
           )}
-          {videoUrl && (
+          {(videoUrl || videoUrls.length > 0) && (
             <div className="bg-white text-black font-bold text-[8px] px-3 py-1 rounded-full uppercase tracking-[0.2em] shadow-sm flex items-center gap-1 border border-black/5">
               <Play className="w-2 h-2 fill-current" />
               Video
             </div>
           )}
           {props.isPremium && (
-            <div className="bg-black luxury-text-gradient font-bold text-[8px] px-3 py-1 rounded-full uppercase tracking-[0.2em] shadow-lg flex items-center gap-1 border border-white/10">
-              <Crown className="w-2 h-2 fill-current text-[#C5A059]" />
+            <div className="bg-black text-white font-bold text-[8px] px-3 py-1 rounded-full uppercase tracking-[0.2em] shadow-lg flex items-center gap-1 border border-white/10">
+              <Crown className="w-2 h-2 fill-current text-white" />
               Regal
+            </div>
+          )}
+          {isUpcoming && (
+            <div className="bg-white/90 backdrop-blur-md text-black font-bold text-[8px] px-3 py-1 rounded-full uppercase tracking-[0.2em] border border-black/10 shadow-sm flex items-center gap-1">
+              <Play className="w-2 h-2 fill-current rotate-90" />
+              Upcoming
+            </div>
+          )}
+          {isTribeExclusive && (
+            <div className="bg-[#C5A059] text-white font-bold text-[8px] px-3 py-1 rounded-full uppercase tracking-[0.2em] shadow-lg flex items-center gap-1 border border-white/10">
+              <Sparkles className="w-2 h-2 fill-current text-white" />
+              Tribe
             </div>
           )}
         </div>
@@ -280,15 +347,25 @@ const ProductCard = memo(({ id, name, price, originalPrice, image, images = [], 
         </motion.button>
 
         {/* Quick Add Button - Mobile Friendly */}
-        <div className="absolute bottom-4 right-4 sm:translate-y-12 sm:group-hover:translate-y-0 transition-transform duration-500">
-          <Button 
-            onClick={handleQuickAdd}
-            size="icon" 
-            className="w-12 h-12 bg-black text-white rounded-full hover:bg-[#C5A059] transition-all shadow-xl border-none active:scale-90"
-          >
-            <Plus className="h-6 w-6" />
-          </Button>
-        </div>
+        {!isUpcoming && (
+          <div className="absolute bottom-4 right-4 sm:translate-y-12 sm:group-hover:translate-y-0 transition-transform duration-500">
+            <Button 
+              onClick={handleQuickAdd}
+              size="icon" 
+              className="w-12 h-12 bg-black text-white rounded-full hover:bg-[#C5A059] transition-all shadow-xl border-none active:scale-90"
+            >
+              <Plus className="h-6 w-6" />
+            </Button>
+          </div>
+        )}
+        
+        {isUpcoming && (
+          <div className="absolute bottom-4 right-4 sm:translate-y-12 sm:group-hover:translate-y-0 transition-transform duration-500">
+            <div className="w-12 h-12 bg-white/20 backdrop-blur-md text-white rounded-full flex items-center justify-center border border-white/20">
+              <Plus className="h-6 w-6 opacity-40 mx-auto" />
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Quick Add Sheet */}
@@ -317,6 +394,25 @@ const ProductCard = memo(({ id, name, price, originalPrice, image, images = [], 
             {name}
           </h3>
         </Link>
+        
+        {/* Rating Display */}
+        {props.averageRating > 0 && (
+          <div className="flex items-center gap-1 mb-2">
+            <div className="flex items-center">
+              {[1, 2, 3, 4, 5].map((star) => (
+                <Star 
+                  key={star} 
+                  className={cn(
+                    "w-2.5 h-2.5",
+                    star <= Math.round(props.averageRating) ? "fill-black text-black" : "text-black/10"
+                  )} 
+                />
+              ))}
+            </div>
+            <span className="text-[10px] font-black text-black/40">({props.reviewCount})</span>
+          </div>
+        )}
+
         <div className="mt-auto flex items-center justify-between">
           <div className="flex items-center gap-2">
             <span className={cn(

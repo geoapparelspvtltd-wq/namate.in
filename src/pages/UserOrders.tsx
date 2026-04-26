@@ -26,6 +26,7 @@ import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { auth } from '@/lib/firebase';
+import { Banknote, Sparkles } from 'lucide-react';
 
 enum OperationType {
   CREATE = 'create',
@@ -92,6 +93,8 @@ interface Order {
   items: OrderItem[];
   total: number;
   status: 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
+  paymentMethod: 'online' | 'cod';
+  pointsAwarded: boolean;
   createdAt: Timestamp;
 }
 
@@ -187,10 +190,24 @@ export default function UserOrders() {
                       <p className="text-[10px] font-black uppercase tracking-widest text-white/40 mb-1">Order #{order.id.slice(-8)}</p>
                       <p className="text-xs font-bold text-white/30">{format(order.createdAt.toDate(), 'MMM dd, yyyy')}</p>
                     </div>
-                    <Badge className={cn("px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border flex items-center gap-1.5", getStatusColor(order.status))}>
-                      {getStatusIcon(order.status)}
-                      {order.status}
-                    </Badge>
+                    <div className="flex flex-wrap gap-2">
+                      <Badge className={cn("px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border flex items-center gap-1.5", 
+                        order.paymentMethod === 'online' ? "bg-green-500/10 text-green-600 border-green-500/20" : "bg-black/10 text-black/40 border-black/10"
+                      )}>
+                        {order.paymentMethod === 'online' ? <CheckCircle2 className="w-3 h-3" /> : <Banknote className="w-3 h-3" />}
+                        {order.paymentMethod === 'online' ? 'Online Paid' : 'COD'}
+                      </Badge>
+                      <Badge className={cn("px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border flex items-center gap-1.5", getStatusColor(order.status))}>
+                        {getStatusIcon(order.status)}
+                        {order.status}
+                      </Badge>
+                      {order.pointsAwarded && (
+                        <Badge className="bg-[#C5A059]/10 text-[#C5A059] border-[#C5A059]/20 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5">
+                          <Sparkles className="w-3 h-3" />
+                          Coins Awarded
+                        </Badge>
+                      )}
+                    </div>
                   </div>
 
                   <div className="space-y-4 mb-6">

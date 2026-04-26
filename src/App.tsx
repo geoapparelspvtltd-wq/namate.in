@@ -17,13 +17,19 @@ const ManageAdmins = lazy(() => import('./pages/ManageAdmins'));
 const OrdersDashboard = lazy(() => import('./pages/OrdersDashboard'));
 const UserOrders = lazy(() => import('./pages/UserOrders'));
 const ManageProducts = lazy(() => import('./pages/ManageProducts'));
+const Gallery = lazy(() => import('./pages/Gallery'));
+const ManageGallery = lazy(() => import('./pages/ManageGallery'));
+const ManageWallets = lazy(() => import('./pages/ManageWallets'));
+const ManageCategories = lazy(() => import('./pages/ManageCategories'));
 
 import Navbar from './components/Navbar';
 import BottomNav from './components/BottomNav';
 import FloatingCart from './components/FloatingCart';
-import { CartProvider } from './lib/CartContext';
+import FloatingBag from './components/FloatingBag';
+import { CartProvider, useCart } from './lib/CartContext';
 import { WishlistProvider } from './lib/WishlistContext';
 import { AuthProvider } from './lib/AuthContext';
+import { SearchProvider } from './lib/SearchContext';
 import SplashScreen from './components/SplashScreen';
 import ErrorBoundary from './components/ErrorBoundary';
 import { cn } from './lib/utils';
@@ -49,10 +55,15 @@ function AnimatedRoutes() {
             <Route path="/sale" element={<PageWrapper><Sale /></PageWrapper>} />
             <Route path="/wishlist" element={<PageWrapper><Wishlist /></PageWrapper>} />
             <Route path="/add-product" element={<PageWrapper><AddProduct /></PageWrapper>} />
+            <Route path="/add-product/:id" element={<PageWrapper><AddProduct /></PageWrapper>} />
             <Route path="/manage-admins" element={<PageWrapper><ManageAdmins /></PageWrapper>} />
             <Route path="/orders-dashboard" element={<PageWrapper><OrdersDashboard /></PageWrapper>} />
             <Route path="/my-orders" element={<PageWrapper><UserOrders /></PageWrapper>} />
             <Route path="/manage-products" element={<PageWrapper><ManageProducts /></PageWrapper>} />
+            <Route path="/gallery" element={<PageWrapper><Gallery /></PageWrapper>} />
+            <Route path="/manage-gallery" element={<PageWrapper><ManageGallery /></PageWrapper>} />
+            <Route path="/manage-wallets" element={<PageWrapper><ManageWallets /></PageWrapper>} />
+            <Route path="/manage-categories" element={<PageWrapper><ManageCategories /></PageWrapper>} />
           </Routes>
         </Suspense>
       </motion.div>
@@ -112,6 +123,11 @@ export default function App() {
   );
 }
 
+function GlobalCartAnimation() {
+  const { isAnimating } = useCart();
+  return <FloatingBag isVisible={isAnimating} onComplete={() => {}} />;
+}
+
 function AppContent({ isLoading, setIsLoading }: { isLoading: boolean, setIsLoading: (val: boolean) => void }) {
   const location = useLocation();
   const isReelMode = location.pathname.startsWith('/product/');
@@ -119,35 +135,40 @@ function AppContent({ isLoading, setIsLoading }: { isLoading: boolean, setIsLoad
   return (
     <ErrorBoundary>
       <AuthProvider>
-        <WishlistProvider>
-          <CartProvider>
-            {isLoading && <SplashScreen onComplete={() => setIsLoading(false)} />}
-            <div 
-              className={cn(
-                "min-h-screen flex flex-col font-sans selection:bg-primary selection:text-primary-foreground relative overflow-hidden transition-opacity duration-700",
-                isLoading ? "opacity-0" : "opacity-100"
-              )}
-              style={{ backgroundColor: '#ffffff' }}
-            >
-              {/* Ambient Soft Glow */}
-              <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
-                <div className="absolute -top-[10%] -left-[5%] w-[40%] h-[40%] bg-black/[0.02] blur-[100px] rounded-full" />
-                <div className="absolute top-[30%] -right-[10%] w-[50%] h-[50%] bg-black/[0.02] blur-[120px] rounded-full" />
-                <div className="absolute -bottom-[10%] left-[20%] w-[30%] h-[30%] bg-black/[0.02] blur-[80px] rounded-full" />
-              </div>
+        <SearchProvider>
+          <WishlistProvider>
+            <CartProvider>
+              <GlobalCartAnimation />
+              {isLoading && <SplashScreen onComplete={() => setIsLoading(false)} />}
+              <div 
+                className={cn(
+                  "min-h-screen flex flex-col font-sans selection:bg-primary selection:text-primary-foreground relative overflow-hidden transition-opacity duration-700",
+                  isLoading ? "opacity-0" : "opacity-100"
+                )}
+                style={{ backgroundColor: '#ffffff' }}
+              >
+                {/* Ambient Soft Glow */}
+                <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
+                  <div className="absolute -top-[10%] -left-[5%] w-[40%] h-[40%] bg-black/[0.02] blur-[100px] rounded-full" />
+                  <div className="absolute top-[30%] -right-[10%] w-[50%] h-[50%] bg-black/[0.02] blur-[120px] rounded-full" />
+                  <div className="absolute -bottom-[10%] left-[20%] w-[30%] h-[30%] bg-black/[0.02] blur-[80px] rounded-full" />
+                </div>
 
-              <main className={cn(
-                "flex-grow relative z-10",
-                !isReelMode ? "pb-32" : "pt-0 pb-0"
-              )}>
-                <AnimatedRoutes />
-              </main>
-              {!isReelMode && <FloatingCart />}
-              {!isReelMode && <BottomNav />}
-              <Toaster position="top-center" expand={false} richColors />
-            </div>
-          </CartProvider>
-        </WishlistProvider>
+                {!isReelMode && <Navbar />}
+
+                <main className={cn(
+                  "flex-grow relative z-10",
+                  !isReelMode ? "pb-32" : "pt-0 pb-0"
+                )}>
+                  <AnimatedRoutes />
+                </main>
+                {!isReelMode && <FloatingCart />}
+                {!isReelMode && <BottomNav />}
+                <Toaster position="top-center" expand={false} richColors />
+              </div>
+            </CartProvider>
+          </WishlistProvider>
+        </SearchProvider>
       </AuthProvider>
     </ErrorBoundary>
   );

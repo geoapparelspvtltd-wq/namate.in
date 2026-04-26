@@ -11,6 +11,10 @@
         "photoURL": { "type": "string", "description": "User profile photo URL" },
         "role": { "type": "string", "enum": ["admin", "user"], "description": "User role" },
         "isTribeMember": { "type": "boolean", "description": "Whether the user is a member of the Namate Tribe" },
+        "walletBalance": { "type": "number", "description": "Current balance in the user's wallet", "default": 0 },
+        "namatePoints": { "type": "number", "description": "Loyalty points earned by the user", "default": 0 },
+        "referralCode": { "type": "string", "description": "Unique referral code for the user" },
+        "referredBy": { "type": "string", "description": "UID of the user who referred this user" },
         "createdAt": { "type": "string", "format": "date-time", "description": "Account creation timestamp" }
       },
       "required": ["uid", "email", "role"]
@@ -24,6 +28,7 @@
         "userId": { "type": "string", "description": "UID of the user who placed the order" },
         "userEmail": { "type": "string", "description": "Email of the user" },
         "userName": { "type": "string", "description": "Name of the user" },
+        "referrerId": { "type": "string", "description": "UID of the user who referred this purchase" },
         "items": { 
           "type": "array", 
           "items": {
@@ -40,6 +45,9 @@
         },
         "total": { "type": "number" },
         "status": { "type": "string", "enum": ["pending", "processing", "shipped", "delivered", "cancelled"] },
+        "paymentMethod": { "type": "string", "enum": ["online", "cod"], "default": "online" },
+        "paymentStatus": { "type": "string", "enum": ["paid", "unpaid"], "default": "unpaid" },
+        "pointsAwarded": { "type": "boolean", "default": false },
         "createdAt": { "type": "string", "format": "date-time" }
       },
       "required": ["userId", "items", "total", "status", "createdAt"]
@@ -56,18 +64,148 @@
         "subcategory": { "type": "string", "description": "Optional product subcategory" },
         "description": { "type": "string" },
         "images": { "type": "array", "items": { "type": "string" } },
+        "media": { "type": "array", "description": "Unified media items (images and videos)" },
         "videoUrl": { "type": "string", "description": "Optional product showcase video URL" },
         "sizes": { "type": "array", "items": { "type": "string" } },
         "isNew": { "type": "boolean" },
+        "isUpcoming": { "type": "boolean", "description": "Whether the product is coming soon" },
+        "isTribeExclusive": { "type": "boolean", "description": "Whether the product is exclusive to Tribe members" },
+        "tribeReleaseDate": { "type": "string", "format": "date-time", "description": "Optional date when the product becomes available" },
+        "badge": { "type": "string", "description": "Custom badge text to display on the product card (e.g. New Collection, Best Seller)" },
+        "averageRating": { "type": "number", "description": "Average user rating" },
+        "reviewCount": { "type": "number", "description": "Number of reviews for this product" },
         "createdAt": { "type": "string", "format": "date-time" }
       },
       "required": ["name", "price", "category", "images", "description", "createdAt"]
+    },
+    "galleryImage": {
+      "title": "Gallery Image",
+      "description": "A single image in a product's gallery sub-collection",
+      "type": "object",
+      "properties": {
+        "url": { "type": "string", "description": "Base64 or URL of the image" },
+        "type": { "type": "string", "enum": ["image"] },
+        "order": { "type": "number", "description": "Display order" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["url", "type", "createdAt"]
+    },
+    "storeGalleryImage": {
+      "title": "Store Gallery Image",
+      "description": "A lifestyle image for the store-wide gallery",
+      "type": "object",
+      "properties": {
+        "url": { "type": "string" },
+        "caption": { "type": "string" },
+        "category": { "type": "string" },
+        "subcategory": { "type": "string" },
+        "createdBy": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["url", "createdAt"]
+    },
+    "cartItem": {
+      "title": "Cart Item",
+      "description": "An item in the user's shopping cart",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "price": { "type": "number" },
+        "image": { "type": "string" },
+        "quantity": { "type": "number" },
+        "size": { "type": "string" },
+        "addedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "name", "price", "image", "quantity", "addedAt"]
+    },
+    "wishlistItem": {
+      "title": "Wishlist Item",
+      "description": "An item in the user's wishlist",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "price": { "type": "number" },
+        "image": { "type": "string" },
+        "addedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "name", "price", "image", "addedAt"]
+    },
+    "review": {
+      "title": "Product Review",
+      "description": "A user review for a product",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "userName": { "type": "string" },
+        "userPhoto": { "type": "string" },
+        "rating": { "type": "number", "minimum": 1, "maximum": 5 },
+        "comment": { "type": "string" },
+        "images": { "type": "array", "items": { "type": "string" } },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "rating", "comment", "createdAt"]
+    },
+    "walletTransaction": {
+      "title": "Wallet Transaction",
+      "description": "Record of a wallet credit or debit",
+      "type": "object",
+      "properties": {
+        "amount": { "type": "number" },
+        "type": { "type": "string", "enum": ["credit", "debit"] },
+        "description": { "type": "string" },
+        "orderId": { "type": "string", "description": "Optional linked order ID" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["amount", "type", "description", "createdAt"]
+    },
+    "pointTransaction": {
+      "title": "Point Transaction",
+      "description": "Record of loyalty points earned or spent",
+      "type": "object",
+      "properties": {
+        "points": { "type": "number" },
+        "type": { "type": "string", "enum": ["earn", "redeem"] },
+        "description": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["points", "type", "description", "createdAt"]
+    },
+    "categoryConfig": {
+      "title": "Category Configuration",
+      "description": "Settings for a product category",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "description": "The name of the category (acts as ID)" },
+        "imageUrl": { "type": "string", "description": "Display image for this category" },
+        "showOnHome": { "type": "boolean", "description": "Whether this category strip should appear on the home page" },
+        "order": { "type": "number", "description": "Display order on the home page" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "showOnHome", "createdAt"]
     }
   },
   "firestore": {
     "/users/{userId}": {
       "schema": "user",
       "description": "User profile documents"
+    },
+    "/users/{userId}/cart/{itemId}": {
+      "schema": "cartItem",
+      "description": "User current shopping cart"
+    },
+    "/users/{userId}/wishlist/{itemId}": {
+      "schema": "wishlistItem",
+      "description": "User personal wishlist"
+    },
+    "/users/{userId}/transactions/{transactionId}": {
+      "schema": "walletTransaction",
+      "description": "User wallet transaction history"
+    },
+    "/users/{userId}/points_history/{pointId}": {
+      "schema": "pointTransaction",
+      "description": "History of loyalty points earned by the user"
     },
     "/orders/{orderId}": {
       "schema": "order",
@@ -77,9 +215,25 @@
       "schema": "product",
       "description": "Store products"
     },
+    "/products/{productId}/reviews/{reviewId}": {
+      "schema": "review",
+      "description": "User reviews for a product"
+    },
+    "/products/{productId}/gallery/{imageId}": {
+      "schema": "galleryImage",
+      "description": "Detail images stored in the product's gallery sub-collection"
+    },
+    "/store_gallery/{imageId}": {
+      "schema": "storeGalleryImage",
+      "description": "Lifestyle images for the store's general gallery"
+    },
     "/deleted_products/{productId}": {
       "schema": "product",
       "description": "Archive of deleted products for recovery and auditing"
+    },
+    "/category_configs/{categoryId}": {
+      "schema": "categoryConfig",
+      "description": "Configuration for categories including display images and home page visibility"
     }
   }
 }

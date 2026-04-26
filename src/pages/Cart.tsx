@@ -1,12 +1,14 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Trash2, Plus, Minus, ShoppingBag, ChevronRight, Loader2, ChevronLeft } from 'lucide-react';
+import { Trash2, Plus, Minus, ShoppingBag, ChevronRight, Loader2, ChevronLeft, Heart, Sparkles } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { motion, AnimatePresence } from 'motion/react';
 import { useCart } from '@/lib/CartContext';
+import { useWishlist } from '@/lib/WishlistContext';
 import BrandSignature from '@/components/BrandSignature';
 import { useAuth } from '@/lib/AuthContext';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { cn } from '@/lib/utils';
+import { collection, addDoc, serverTimestamp, doc, writeBatch, increment, query, where, getDocs } from 'firebase/firestore';
 import { db, auth } from '@/lib/firebase';
 import { useState } from 'react';
 import { toast } from 'sonner';
@@ -64,12 +66,35 @@ function handleFirestoreError(error: unknown, operationType: OperationType, path
 export default function Cart() {
   const navigate = useNavigate();
   const { items, updateQuantity, removeFromCart, clearCart } = useCart();
+  const { addToWishlist, isInWishlist } = useWishlist();
   const { user, loginWithGoogle } = useAuth();
+  const userData = user as any;
   const [isCheckingOut, setIsCheckingOut] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState<'online' | 'cod'>('online');
+  const [usePoints, setUsePoints] = useState(false);
 
   const subtotal = items.reduce((acc, item) => acc + (item.price * item.quantity), 0);
   const shipping = 0;
-  const total = subtotal + shipping;
+  
+  // Points logic: 100 points = ₹10 => 1 point = ₹0.1
+  const maxPointsPossible = Math.min(userData?.namatePoints || 0, subtotal * 10);
+  const pointsDiscount = usePoints ? Math.floor(maxPointsPossible / 100) * 10 : 0;
+  const pointsToSpend = usePoints ? Math.floor(maxPointsPossible / 100) * 100 : 0;
+  
+  const total = Math.max(0, subtotal + shipping - pointsDiscount);
+
+  const handleMoveToWishlist = (item: any) => {
+    addToWishlist({
+      id: item.id,
+      name: item.name,
+      price: item.price,
+      image: item.image
+    });
+    removeFromCart(item.id, item.size);
+    toast.success("Moved to wishlist", {
+      description: `${item.name} is now saved for later.`
+    });
+  };
 
   const handleCheckout = async () => {
     if (!user) {
@@ -80,10 +105,31 @@ export default function Cart() {
 
     setIsCheckingOut(true);
     try {
+      const batch = writeBatch(db);
+      const orderId = doc(collection(db, 'orders')).id;
+      const orderRef = doc(db, 'orders', orderId);
+      
+      const coinsToAward = Math.floor(total / 1000) * 100;
+      const shouldAwardNow = paymentMethod === 'online' && coinsToAward > 0;
+
+      // Check for referral
+      let referrerId = userData?.referredBy || '';
+      if (!referrerId) {
+        const referralSource = sessionStorage.getItem('referral_source');
+        if (referralSource) {
+          const q = query(collection(db, 'users'), where('referralCode', '==', referralSource));
+          const qSnap = await getDocs(q);
+          if (!qSnap.empty) {
+            referrerId = qSnap.docs[0].id;
+          }
+        }
+      }
+
       const orderData = {
         userId: user.uid,
         userEmail: user.email,
         userName: user.displayName,
+        referrerId: referrerId,
         items: items.map(item => ({
           id: item.id,
           name: item.name,
@@ -93,16 +139,77 @@ export default function Cart() {
           image: item.image
         })),
         total: total,
+        pointsDiscount: pointsDiscount,
+        pointsSpent: pointsToSpend,
         status: 'pending',
+        paymentMethod: paymentMethod,
+        paymentStatus: total === 0 ? 'paid' : (paymentMethod === 'online' ? 'paid' : 'unpaid'),
+        pointsAwarded: shouldAwardNow,
         createdAt: serverTimestamp()
       };
 
-      await addDoc(collection(db, 'orders'), orderData);
+      batch.set(orderRef, orderData);
+
+      // Handle referral bonus for referrer
+      if (referrerId && referrerId !== user.uid) {
+        const referrerRef = doc(db, 'users', referrerId);
+        batch.update(referrerRef, {
+          namatePoints: increment(100)
+        });
+        const referrerPointsRef = doc(collection(db, 'users', referrerId, 'points_history'));
+        batch.set(referrerPointsRef, {
+          points: 100,
+          type: 'earn',
+          description: `Referral purchase by ${user.email}`,
+          createdAt: serverTimestamp()
+        });
+        sessionStorage.removeItem('referral_source'); // Use once per link/session
+      }
+
+      // 1. Handle Spending Points
+      if (pointsToSpend > 0) {
+        const userRef = doc(db, 'users', user.uid);
+        batch.update(userRef, {
+          namatePoints: increment(-pointsToSpend)
+        });
+
+        const pointsSpentRef = doc(collection(db, 'users', user.uid, 'points_history'));
+        batch.set(pointsSpentRef, {
+          points: pointsToSpend,
+          type: 'redeem',
+          description: `Used for Order #${orderId.slice(-6)}`,
+          createdAt: serverTimestamp()
+        });
+      }
+
+      // 2. Handle Awarding Points for the cash part
+      if (shouldAwardNow) {
+        const userRef = doc(db, 'users', user.uid);
+        batch.update(userRef, {
+          namatePoints: increment(coinsToAward)
+        });
+
+        const pointsEarnRef = doc(collection(db, 'users', user.uid, 'points_history'));
+        batch.set(pointsEarnRef, {
+          points: coinsToAward,
+          type: 'earn',
+          description: `Purchase reward (Order: ${orderId.slice(-6)})`,
+          createdAt: serverTimestamp()
+        });
+      }
+
+      await batch.commit();
       
       clearCart();
-      toast.success("Order placed successfully!", {
-        description: "The tribe is processing your request."
-      });
+      if (shouldAwardNow) {
+        toast.success("Order placed! + " + coinsToAward + " coins awarded.", {
+          description: "Your tribe status is rising."
+        });
+      } else {
+        toast.success("Order placed successfully!", {
+          description: "The tribe is processing your request."
+        });
+      }
       navigate('/profile');
     } catch (error) {
       handleFirestoreError(error, OperationType.CREATE, 'orders');
@@ -163,12 +270,21 @@ export default function Cart() {
                 <div className="flex-grow flex flex-col py-1">
                   <div className="flex justify-between items-start mb-1">
                     <h3 className="text-sm font-bold text-black leading-tight line-clamp-1">{item.name}</h3>
-                    <button 
-                      onClick={() => removeFromCart(item.id, item.size)}
-                      className="text-black/20 hover:text-red-500 transition-colors"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
+                    <div className="flex items-center gap-3">
+                      <button 
+                        onClick={() => handleMoveToWishlist(item)}
+                        className="text-black/20 hover:text-black transition-colors flex items-center gap-1 group/wish"
+                      >
+                        <Heart className={cn("h-4 w-4", isInWishlist(item.id) && "fill-black text-black")} />
+                        <span className="text-[10px] font-black uppercase tracking-widest opacity-0 group-hover/wish:opacity-100 transition-opacity">Save</span>
+                      </button>
+                      <button 
+                        onClick={() => removeFromCart(item.id, item.size)}
+                        className="text-black/20 hover:text-red-500 transition-colors"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
                   </div>
                   <p className="text-[10px] font-black text-black/40 uppercase tracking-widest mb-3">{item.size || 'No Size'}</p>
                   
@@ -215,10 +331,99 @@ export default function Cart() {
 
         {/* Summary Info */}
         <div className="mt-10 space-y-4">
+          <div className="bg-black/5 rounded-[32px] p-6 mb-4">
+            <p className="text-[10px] font-black uppercase tracking-widest mb-4 text-black/40">Select Payment Frequency</p>
+            <div className="flex gap-2">
+              <button 
+                onClick={() => setPaymentMethod('online')}
+                className={cn(
+                  "flex-1 h-14 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all border-2",
+                  paymentMethod === 'online' ? "bg-black text-white border-black" : "bg-white text-black border-black/5"
+                )}
+              >
+                Online Pay
+              </button>
+              <button 
+                onClick={() => setPaymentMethod('cod')}
+                className={cn(
+                  "flex-1 h-14 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all border-2",
+                  paymentMethod === 'cod' ? "bg-black text-white border-black" : "bg-white text-black border-black/5"
+                )}
+              >
+                Cash on Delivery
+              </button>
+            </div>
+            {paymentMethod === 'online' && total >= 1000 && (
+              <p className="mt-4 text-[10px] font-black text-green-600 uppercase tracking-widest flex items-center gap-2">
+                <Sparkles className="w-3 h-3" />
+                Pay now to earn {Math.floor(total / 1000) * 100} Namate Coins immediately!
+              </p>
+            )}
+            {paymentMethod === 'cod' && total >= 1000 && (
+              <p className="mt-4 text-[10px] font-black text-black/40 uppercase tracking-widest">
+                Coins will be credited after successful delivery.
+              </p>
+            )}
+          </div>
+
+          {/* Loyalty Points Merge Option */}
+          {userData && (userData.namatePoints || 0) >= 100 && (
+            <div className={cn(
+              "p-6 rounded-[32px] border-2 transition-all",
+              usePoints ? "bg-black border-black" : "bg-black/5 border-black/5"
+            )}>
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-3">
+                  <div className={cn(
+                    "w-10 h-10 rounded-full flex items-center justify-center",
+                    usePoints ? "bg-[#C5A059]" : "bg-black/10"
+                  )}>
+                    <Sparkles className={cn("w-5 h-5", usePoints ? "text-white" : "text-black/20")} />
+                  </div>
+                  <div>
+                    <p className={cn("text-[10px] font-black uppercase tracking-widest", usePoints ? "text-[#C5A059]" : "text-black/40")}>Namate Points</p>
+                    <p className={cn("text-sm font-bold", usePoints ? "text-white" : "text-black")}>
+                      {userData.namatePoints.toLocaleString()} Available
+                    </p>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => setUsePoints(!usePoints)}
+                  className={cn(
+                    "w-14 h-8 rounded-full transition-all relative",
+                    usePoints ? "bg-[#C5A059]" : "bg-black/20"
+                  )}
+                >
+                  <div className={cn(
+                    "absolute top-1 w-6 h-6 rounded-full bg-white transition-all shadow-sm",
+                    usePoints ? "right-1" : "left-1"
+                  )} />
+                </button>
+              </div>
+              {usePoints && (
+                <div className="pt-4 border-t border-white/10">
+                  <p className="text-[10px] font-black text-white/60 uppercase tracking-widest mb-1">Applying Discount</p>
+                  <div className="flex justify-between items-end">
+                    <p className="text-xl font-black text-white">₹{pointsDiscount}</p>
+                    <p className="text-[10px] font-black text-[#C5A059] uppercase tracking-widest">
+                      Burning {pointsToSpend.toLocaleString()} Points
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
           <div className="flex justify-between items-center">
             <span className="text-xs font-bold text-black/40 uppercase tracking-widest">Subtotal</span>
             <span className="text-sm font-black text-black">₹{subtotal}</span>
           </div>
+          {pointsDiscount > 0 && (
+            <div className="flex justify-between items-center">
+              <span className="text-xs font-bold text-[#C5A059] uppercase tracking-widest">Points Discount</span>
+              <span className="text-sm font-black text-[#C5A059]">-₹{pointsDiscount}</span>
+            </div>
+          )}
           <div className="flex justify-between items-center">
             <span className="text-xs font-bold text-black/40 uppercase tracking-widest">Shipping</span>
             <span className="text-sm font-black text-green-600 uppercase">Free</span>

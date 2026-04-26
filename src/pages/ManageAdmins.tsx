@@ -164,12 +164,12 @@ export default function ManageAdmins() {
 
   if (!isAdmin) {
     return (
-      <div className="min-h-screen bg-background flex flex-col items-center justify-center px-4">
-        <div className="w-24 h-24 bg-red-900/20 rounded-full flex items-center justify-center mb-8">
+      <div className="min-h-screen bg-white flex flex-col items-center justify-center px-4">
+        <div className="w-24 h-24 bg-red-50 rounded-full flex items-center justify-center mb-8">
           <ShieldAlert className="w-12 h-12 text-red-500" />
         </div>
-        <h1 className="text-3xl font-black uppercase tracking-tighter mb-4 text-center">Access Denied</h1>
-        <p className="text-white/40 font-medium text-center mb-10 max-w-xs">
+        <h1 className="text-3xl font-black uppercase tracking-tighter mb-4 text-center text-black">Access Denied</h1>
+        <p className="text-black/40 font-medium text-center mb-10 max-w-xs">
           Only admins can manage other admins.
         </p>
         <Button onClick={() => navigate('/')} className="w-full max-w-xs h-16 bg-black text-white rounded-2xl font-black uppercase tracking-widest">
@@ -180,32 +180,32 @@ export default function ManageAdmins() {
   }
 
   return (
-    <div className="min-h-screen bg-background pb-32">
+    <div className="min-h-screen bg-white pb-32">
       {/* Header */}
-      <div className="sticky top-0 z-50 bg-background/80 backdrop-blur-md border-b border-white/5 px-4 py-4 flex items-center gap-4">
+      <div className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-black/5 px-4 py-4 flex items-center gap-4">
         <button 
           onClick={() => navigate(-1)}
-          className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center hover:bg-white/10 transition-colors"
+          className="w-10 h-10 rounded-full bg-black/5 flex items-center justify-center hover:bg-black/10 transition-colors"
         >
-          <ChevronLeft className="w-6 h-6" />
+          <ChevronLeft className="w-6 h-6 text-black" />
         </button>
-        <h1 className="text-xl font-black uppercase tracking-tighter">Manage Admins</h1>
+        <h1 className="text-xl font-black uppercase tracking-tighter text-black">Manage Admins</h1>
       </div>
 
       <div className="max-w-2xl mx-auto px-4 py-8 space-y-12">
         {/* Search Section */}
         <section className="space-y-6">
           <div className="space-y-2">
-            <h2 className="text-xs font-black uppercase tracking-widest text-white/40">Search User by Email</h2>
+            <h2 className="text-xs font-black uppercase tracking-widest text-black/40">Search User by Email</h2>
             <form onSubmit={handleSearch} className="flex gap-2">
               <div className="relative flex-grow">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/20" />
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-black/20" />
                 <Input 
                   type="email"
                   value={searchEmail}
                   onChange={(e) => setSearchEmail(e.target.value)}
                   placeholder="user@example.com"
-                  className="pl-12 h-14 rounded-2xl border-2 border-white/5 focus:border-white/20 transition-all font-bold bg-white/5"
+                  className="pl-12 h-14 rounded-2xl border-2 border-black/5 focus:border-black/20 transition-all font-bold bg-black/5 text-black"
                 />
               </div>
               <Button 
@@ -220,29 +220,29 @@ export default function ManageAdmins() {
 
           {/* Search Results */}
           {searchResults.length > 0 && (
-            <div className="p-6 bg-white/5 rounded-[32px] border-2 border-white/5">
+            <div className="p-6 bg-black/5 rounded-[32px] border-2 border-black/5">
               {searchResults.map(u => (
                 <div key={u.uid} className="flex items-center justify-between">
                   <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-full bg-white/5 overflow-hidden border-2 border-white/5">
+                    <div className="w-12 h-12 rounded-full bg-black/5 overflow-hidden border-2 border-black/5">
                       {u.photoURL ? (
                         <img src={u.photoURL} alt={u.displayName} className="w-full h-full object-cover" />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center">
-                          <UserIcon className="w-6 h-6 text-white/20" />
+                          <UserIcon className="w-6 h-6 text-black/20" />
                         </div>
                       )}
                     </div>
                     <div>
-                      <h3 className="font-black uppercase tracking-tight">{u.displayName || 'Unnamed User'}</h3>
-                      <p className="text-xs text-white/40 font-bold">{u.email}</p>
+                      <h3 className="font-black uppercase tracking-tight text-black">{u.displayName || 'Unnamed User'}</h3>
+                      <p className="text-xs text-black/40 font-bold">{u.email}</p>
                     </div>
                   </div>
                   <Button 
                     onClick={() => toggleAdminRole(u)}
                     className={cn(
                       "h-10 px-4 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all",
-                      u.role === 'admin' ? "bg-red-900/20 text-red-500 hover:bg-red-900/40" : "bg-[#011c16] text-white hover:bg-black"
+                      u.role === 'admin' ? "bg-red-50 text-red-500 hover:bg-red-100" : "bg-black text-white hover:bg-black/90"
                     )}
                   >
                     {u.role === 'admin' ? 'Remove Admin' : 'Make Admin'}
@@ -256,40 +256,40 @@ export default function ManageAdmins() {
         {/* Current Admins List */}
         <section className="space-y-6">
           <div className="flex items-center justify-between">
-            <h2 className="text-xs font-black uppercase tracking-widest text-white/40">Current Admins</h2>
-            <div className="h-[1px] flex-grow bg-white/10 ml-4" />
+            <h2 className="text-xs font-black uppercase tracking-widest text-black/40">Current Admins</h2>
+            <div className="h-[1px] flex-grow bg-black/10 ml-4" />
           </div>
 
           <div className="space-y-4">
             {isLoadingAdmins ? (
               <div className="flex justify-center py-8">
-                <div className="w-8 h-8 border-4 border-[#011c16] border-t-transparent rounded-full animate-spin" />
+                <div className="w-8 h-8 border-4 border-black border-t-transparent rounded-full animate-spin" />
               </div>
             ) : admins.length > 0 ? (
               admins.map(admin => (
-                <div key={admin.uid} className="flex items-center justify-between p-4 border-2 border-white/5 rounded-2xl">
+                <div key={admin.uid} className="flex items-center justify-between p-4 border-2 border-black/5 rounded-2xl">
                   <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 rounded-full bg-white/5 overflow-hidden">
+                    <div className="w-10 h-10 rounded-full bg-black/5 overflow-hidden">
                       {admin.photoURL ? (
                         <img src={admin.photoURL} alt={admin.displayName} className="w-full h-full object-cover" />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center">
-                          <UserIcon className="w-5 h-5 text-white/20" />
+                          <UserIcon className="w-5 h-5 text-black/20" />
                         </div>
                       )}
                     </div>
                     <div>
                       <div className="flex items-center gap-2">
-                        <h3 className="font-black uppercase tracking-tight text-sm">{admin.displayName || 'Unnamed User'}</h3>
-                        <Shield className="w-3 h-3 text-[#011c16]" />
+                        <h3 className="font-black uppercase tracking-tight text-sm text-black">{admin.displayName || 'Unnamed User'}</h3>
+                        <Shield className="w-3 h-3 text-black" />
                       </div>
-                      <p className="text-[10px] text-white/30 font-bold">{admin.email}</p>
+                      <p className="text-[10px] text-black/30 font-bold">{admin.email}</p>
                     </div>
                   </div>
                   {isPrimaryAdmin && admin.email !== 'geoapparelspvtltd@gmail.com' && (
                     <button 
                       onClick={() => toggleAdminRole(admin)}
-                      className="p-2 text-white/20 hover:text-red-500 transition-colors"
+                      className="p-2 text-black/20 hover:text-red-500 transition-colors"
                     >
                       <X className="w-5 h-5" />
                     </button>
@@ -297,7 +297,7 @@ export default function ManageAdmins() {
                 </div>
               ))
             ) : (
-              <p className="text-center text-white/40 font-bold py-8">No admins found.</p>
+              <p className="text-center text-black/40 font-bold py-8">No admins found.</p>
             )}
           </div>
         </section>

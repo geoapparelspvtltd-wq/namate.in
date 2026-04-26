@@ -115,7 +115,7 @@ export default function Tribe() {
       {/* Comparison Table */}
       <section className="py-20 bg-black/5">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-          <h2 className="text-3xl font-heading font-black text-center uppercase mb-12 text-black">WHY JOIN THE <span className="luxury-text-gradient">TRIBE?</span></h2>
+          <h2 className="text-3xl font-heading font-black text-center uppercase mb-12 text-black">WHY JOIN THE <span className="text-black">TRIBE?</span></h2>
           <div className="bg-white border-2 border-black/10 overflow-hidden rounded-xl">
             <table className="w-full text-left">
               <thead>

@@ -20,7 +20,11 @@ import {
   onSnapshot, 
   doc, 
   updateDoc,
-  Timestamp
+  Timestamp,
+  writeBatch,
+  increment,
+  getDoc,
+  serverTimestamp
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/lib/AuthContext';
@@ -30,6 +34,8 @@ import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { auth } from '@/lib/firebase';
+import { toast } from 'sonner';
+import { Sparkles, Banknote } from 'lucide-react';
 
 enum OperationType {
   CREATE = 'create',
@@ -99,6 +105,9 @@ interface Order {
   items: OrderItem[];
   total: number;
   status: 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
+  paymentMethod: 'online' | 'cod';
+  paymentStatus: 'paid' | 'unpaid';
+  pointsAwarded: boolean;
   createdAt: Timestamp;
 }
 
@@ -132,7 +141,45 @@ export default function OrdersDashboard() {
   const updateOrderStatus = async (orderId: string, newStatus: string) => {
     try {
       const orderRef = doc(db, 'orders', orderId);
-      await updateDoc(orderRef, { status: newStatus });
+      const orderSnap = await getDoc(orderRef);
+      
+      if (!orderSnap.exists()) return;
+      const orderData = orderSnap.data() as Order;
+
+      if (newStatus === 'delivered' && !orderData.pointsAwarded) {
+        const batch = writeBatch(db);
+        const coinsToAward = Math.floor(orderData.total / 1000) * 100;
+
+        // 1. Update Order Status
+        batch.update(orderRef, { 
+          status: 'delivered',
+          paymentStatus: 'paid', // Assuming delivery means paid for COD
+          pointsAwarded: true 
+        });
+
+        if (coinsToAward > 0) {
+          // 2. Award Points
+          const userRef = doc(db, 'users', orderData.userId);
+          batch.update(userRef, {
+            namatePoints: increment(coinsToAward)
+          });
+
+          // 3. Record Point Transaction
+          const pointsHistoryRef = doc(collection(db, 'users', orderData.userId, 'points_history'));
+          batch.set(pointsHistoryRef, {
+            points: coinsToAward,
+            type: 'earn',
+            description: `Delivery reward (Order: ${orderId.slice(-6)})`,
+            createdAt: serverTimestamp()
+          });
+        }
+
+        await batch.commit();
+        toast.success(`Order delivered! ${coinsToAward} Namate coins awarded to customer.`);
+      } else {
+        await updateDoc(orderRef, { status: newStatus });
+        toast.success(`Order status updated to ${newStatus}`);
+      }
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, `orders/${orderId}`);
     }
@@ -281,6 +328,12 @@ export default function OrdersDashboard() {
                   </div>
                   
                   <div className="flex items-center gap-3">
+                    <Badge className={cn("px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border flex items-center gap-1.5", 
+                      order.paymentMethod === 'online' ? "bg-green-500/10 text-green-600 border-green-500/20" : "bg-black/10 text-black/40 border-black/10"
+                    )}>
+                      {order.paymentMethod === 'online' ? <CheckCircle2 className="w-3 h-3" /> : <Banknote className="w-3 h-3" />}
+                      {order.paymentMethod === 'online' ? 'Online Paid' : 'COD'}
+                    </Badge>
                     <Badge className={cn("px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border flex items-center gap-1.5", getStatusColor(order.status))}>
                       {getStatusIcon(order.status)}
                       {order.status}

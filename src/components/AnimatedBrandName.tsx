@@ -26,6 +26,8 @@ export default function AnimatedBrandName({
     visible: {
       opacity: 1,
       y: 0,
+      rotateX: 0,
+      translateZ: 0,
       transition: {
         type: "spring" as const,
         damping: 12,
@@ -35,6 +37,8 @@ export default function AnimatedBrandName({
     hidden: {
       opacity: 0,
       y: 20,
+      rotateX: -90,
+      translateZ: -50,
       transition: {
         type: "spring" as const,
         damping: 12,
@@ -45,7 +49,12 @@ export default function AnimatedBrandName({
 
   return (
     <motion.span
-      style={{ display: "flex", overflow: "hidden" }}
+      style={{ 
+        display: "flex", 
+        overflow: "hidden",
+        perspective: "500px",
+        transformStyle: "preserve-3d"
+      }}
       variants={container}
       initial="hidden"
       animate="visible"
@@ -56,7 +65,10 @@ export default function AnimatedBrandName({
           variants={child}
           key={index}
           className="inline-block"
-          style={{ marginRight: letter === " " ? "0.25em" : "0" }}
+          style={{ 
+            marginRight: letter === " " ? "0.25em" : "0",
+            transformStyle: "preserve-3d"
+          }}
         >
           {letter === " " ? "\u00A0" : letter}
         </motion.span>
