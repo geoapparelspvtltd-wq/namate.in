@@ -29,11 +29,11 @@ const BrandSignature = ({ className, variant = 'gold' }: BrandSignatureProps) =>
         </div>
         
         <h2 className={cn(
-          "text-2xl font-black tracking-tighter",
+          "text-2xl font-black tracking-[0.2em] -mr-[0.2em]",
           variant === 'gold' ? "liquid-gold-text" : 
           variant === 'dark' ? "text-black" : "text-white"
         )}>
-          NAMATE
+          N A M A T E
         </h2>
         
         <p className={cn(

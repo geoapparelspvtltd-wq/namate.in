@@ -87,21 +87,21 @@ export default function Tribe() {
       <section className="py-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
-            <div className="flex flex-col items-center text-center p-8 border-2 border-black/10 rounded-2xl hover:border-[#C5A059] transition-colors">
+            <div className="flex flex-col items-center text-center p-8 border-2 border-black/10 rounded-none hover:border-[#C5A059] transition-colors">
               <div className="w-16 h-16 bg-[#C5A059]/20 rounded-full flex items-center justify-center mb-6">
                 <Zap className="h-8 w-8 text-[#C5A059] fill-[#C5A059]" />
               </div>
               <h3 className="text-xl font-black uppercase mb-4 text-black">Extra 10% Off</h3>
               <p className="text-black/40 font-medium">Get an additional 10% discount on every single product, every single time.</p>
             </div>
-            <div className="flex flex-col items-center text-center p-8 border-2 border-black/10 rounded-2xl hover:border-[#C5A059] transition-colors">
+            <div className="flex flex-col items-center text-center p-8 border-2 border-black/10 rounded-none hover:border-[#C5A059] transition-colors">
               <div className="w-16 h-16 bg-[#C5A059]/20 rounded-full flex items-center justify-center mb-6">
                 <Gift className="h-8 w-8 text-[#C5A059] fill-[#C5A059]" />
               </div>
               <h3 className="text-xl font-black uppercase mb-4 text-black">Early Access</h3>
               <p className="text-black/40 font-medium">Be the first to shop our new collections and limited edition drops.</p>
             </div>
-            <div className="flex flex-col items-center text-center p-8 border-2 border-black/10 rounded-2xl hover:border-[#C5A059] transition-colors">
+            <div className="flex flex-col items-center text-center p-8 border-2 border-black/10 rounded-none hover:border-[#C5A059] transition-colors">
               <div className="w-16 h-16 bg-[#C5A059]/20 rounded-full flex items-center justify-center mb-6">
                 <ShieldCheck className="h-8 w-8 text-[#C5A059] fill-[#C5A059]" />
               </div>
@@ -116,7 +116,7 @@ export default function Tribe() {
       <section className="py-20 bg-black/5">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           <h2 className="text-3xl font-heading font-black text-center uppercase mb-12 text-black">WHY JOIN THE <span className="text-black">TRIBE?</span></h2>
-          <div className="bg-white border-2 border-black/10 overflow-hidden rounded-xl">
+          <div className="bg-white border-2 border-black/10 overflow-hidden rounded-none">
             <table className="w-full text-left">
               <thead>
                 <tr className="bg-black text-white">
@@ -149,7 +149,7 @@ export default function Tribe() {
       <section className="py-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <div className="bg-liquid-gold p-10 rounded-3xl relative shadow-xl shadow-[#FFD700]/20">
+            <div className="bg-liquid-gold p-10 rounded-none relative shadow-xl shadow-[#FFD700]/20">
               <Star className="absolute top-6 right-6 h-12 w-12 text-black/10 fill-black/10" />
               <p className="text-xl font-bold text-black mb-6 italic">
                 "Being part of the Namate Tribe has saved me so much money. I love the early access to their quirky drops!"
@@ -162,7 +162,7 @@ export default function Tribe() {
                 </div>
               </div>
             </div>
-            <div className="bg-black p-10 rounded-3xl relative text-white">
+            <div className="bg-black p-10 rounded-none relative text-white">
               <Star className="absolute top-6 right-6 h-12 w-12 text-white/10 fill-white/10" />
               <p className="text-xl font-bold mb-6 italic">
                 "The priority shipping is a game changer. I always get my t-shirts within 2 days. Best membership ever."

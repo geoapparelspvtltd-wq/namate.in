@@ -10,7 +10,8 @@ import {
   ChevronRight,
   Filter,
   User as UserIcon,
-  ShoppingBag
+  ShoppingBag,
+  RotateCcw
 } from 'lucide-react';
 import AlternatingSearchIcon from '@/components/AlternatingSearchIcon';
 import { 
@@ -24,6 +25,8 @@ import {
   writeBatch,
   increment,
   getDoc,
+  getDocs,
+  limit,
   serverTimestamp
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
@@ -120,23 +123,32 @@ export default function OrdersDashboard() {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
 
-  useEffect(() => {
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const fetchOrders = async () => {
     if (!isAdmin) return;
-
-    const q = query(collection(db, 'orders'), orderBy('createdAt', 'desc'));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const ordersData: Order[] = [];
-      snapshot.forEach((doc) => {
-        ordersData.push({ id: doc.id, ...doc.data() } as Order);
-      });
+    setIsInitialLoading(true);
+    try {
+      const q = query(collection(db, 'orders'), orderBy('createdAt', 'desc'), limit(100));
+      const snapshot = await getDocs(q);
+      const ordersData: Order[] = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Order));
       setOrders(ordersData);
-      setIsInitialLoading(false);
-    }, (error) => {
+    } catch (error) {
       handleFirestoreError(error, OperationType.LIST, 'orders');
-    });
+    } finally {
+      setIsInitialLoading(false);
+      setIsRefreshing(false);
+    }
+  };
 
-    return () => unsubscribe();
+  useEffect(() => {
+    fetchOrders();
   }, [role]);
+
+  const handleManualRefresh = () => {
+    setIsRefreshing(true);
+    fetchOrders();
+  };
 
   const updateOrderStatus = async (orderId: string, newStatus: string) => {
     try {
@@ -305,6 +317,13 @@ export default function OrdersDashboard() {
               </button>
             ))}
           </div>
+          <button
+            onClick={handleManualRefresh}
+            disabled={isRefreshing}
+            className="w-14 h-14 rounded-2xl bg-black text-white flex items-center justify-center hover:bg-black/90 transition-all border-2 border-black flex-shrink-0 disabled:opacity-50"
+          >
+            <RotateCcw className={cn("w-5 h-5", isRefreshing && "animate-spin")} />
+          </button>
         </div>
 
         {/* Orders List */}

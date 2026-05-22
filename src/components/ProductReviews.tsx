@@ -23,7 +23,9 @@ import {
   doc,
   writeBatch,
   increment,
-  getDoc
+  getDoc,
+  getDocs,
+  limit
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/lib/AuthContext';
@@ -66,24 +68,28 @@ export default function ProductReviews({ productId, productName }: ProductReview
   const isAdmin = role === 'admin';
 
   useEffect(() => {
-    const reviewsRef = collection(db, 'products', productId, 'reviews');
-    const q = query(reviewsRef, orderBy('createdAt', 'desc'));
-    
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const fetchedReviews = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data(),
-        createdAt: doc.data().createdAt?.toDate() || new Date()
-      })) as Review[];
-      setReviews(fetchedReviews);
-      setIsLoading(false);
-    }, (error) => {
-      console.error("Error fetching reviews:", error);
-      toast.error("Failed to load reviews");
-      setIsLoading(false);
-    });
+    const fetchReviews = async () => {
+      try {
+        const reviewsRef = collection(db, 'products', productId, 'reviews');
+        const q = query(reviewsRef, orderBy('createdAt', 'desc'), limit(50));
+        const snapshot = await getDocs(q);
+        
+        const fetchedReviews = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data(),
+          createdAt: doc.data().createdAt?.toDate() || new Date()
+        })) as Review[];
+        
+        setReviews(fetchedReviews);
+        setIsLoading(false);
+      } catch (error) {
+        console.error("Error fetching reviews:", error);
+        toast.error("Failed to load reviews");
+        setIsLoading(false);
+      }
+    };
 
-    return () => unsubscribe();
+    fetchReviews();
   }, [productId]);
 
   const handleImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {

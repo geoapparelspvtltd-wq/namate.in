@@ -25,7 +25,7 @@ export default function CategoryGrid() {
 
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-8">
           {categories.map((cat) => (
-            <Link key={cat.name} to={cat.link} className="group relative overflow-hidden rounded-xl aspect-[3/4]">
+            <Link key={cat.name} to={cat.link} className="group relative overflow-hidden rounded-none aspect-[3/4]">
               <img 
                 src={cat.image} 
                 alt={cat.name} 

@@ -1,9 +1,10 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'motion/react';
-import { Heart, Star, ChevronRight } from 'lucide-react';
+import { Heart, Star, ChevronRight, Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useWishlist } from '@/lib/WishlistContext';
+import QuickAddSheet from './QuickAddSheet';
 
 interface CategoryStripProps {
   title: string;
@@ -23,8 +24,8 @@ const CategoryStrip = ({ title, products, coverImage }: CategoryStripProps) => {
       {coverImage && (
         <div className="px-6 mb-8">
           <Link 
-            to={`/shop?category=${encodeURIComponent(title)}`}
-            className="block aspect-[21/9] rounded-[32px] overflow-hidden shadow-2xl shadow-black/5 relative group"
+            to={`/shop?subcategory=${encodeURIComponent(title)}`}
+            className="block aspect-[21/9] rounded-none overflow-hidden shadow-2xl shadow-black/5 relative group"
           >
             <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent z-10" />
             <img 
@@ -46,7 +47,7 @@ const CategoryStrip = ({ title, products, coverImage }: CategoryStripProps) => {
           {!coverImage && <h2 className="text-2xl font-black text-black tracking-tight">{title}</h2>}
         </div>
         <Link 
-          to={`/shop?category=${encodeURIComponent(title)}`}
+          to={`/shop?subcategory=${encodeURIComponent(title)}`}
           className="text-[#3EBBA4] font-bold text-sm flex items-center gap-1 hover:opacity-80 transition-opacity uppercase tracking-widest"
         >
           Explore All
@@ -60,8 +61,8 @@ const CategoryStrip = ({ title, products, coverImage }: CategoryStripProps) => {
         
         {/* View All Card at the end */}
         <Link 
-          to={`/shop?category=${encodeURIComponent(title)}`}
-          className="flex-shrink-0 w-32 flex flex-col items-center justify-center gap-4 bg-gray-50 rounded-2xl border border-dashed border-gray-200 snap-start"
+          to={`/shop?subcategory=${encodeURIComponent(title)}`}
+          className="flex-shrink-0 w-32 flex flex-col items-center justify-center gap-4 bg-gray-50 rounded-none border border-dashed border-gray-200 snap-start"
         >
           <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-sm">
             <ChevronRight className="w-6 h-6 text-[#3EBBA4]" />
@@ -80,31 +81,48 @@ const CategoryStrip = ({ title, products, coverImage }: CategoryStripProps) => {
 
 const CategoryProductCard = ({ product }: { product: any }) => {
   const { toggleWishlist, isInWishlist } = useWishlist();
+  const [isQuickAddOpen, setIsQuickAddOpen] = React.useState(false);
+  const [animationStartPos, setAnimationStartPos] = React.useState<{ x: number, y: number } | undefined>();
+  const cardRef = React.useRef<HTMLDivElement>(null);
   
   const discount = product.originalPrice 
     ? Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)
     : 0;
 
+  const handleQuickAdd = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    if (cardRef.current) {
+      const rect = cardRef.current.getBoundingClientRect();
+      setAnimationStartPos({ x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 });
+    }
+    setIsQuickAddOpen(true);
+  };
+
   return (
     <motion.div 
+      ref={cardRef}
       whileTap={{ scale: 0.98 }}
-      className="flex-shrink-0 w-[190px] bg-white rounded-[20px] overflow-hidden snap-start shadow-xl shadow-black/5 flex flex-col border border-gray-100/50"
+      className="flex-shrink-0 w-[190px] bg-transparent rounded-none overflow-hidden snap-start shadow-xl shadow-black/5 flex flex-col"
     >
       {/* Image Container */}
-      <div className="relative aspect-[3/4] bg-gray-50 overflow-hidden group-card">
+      <div className="relative aspect-[3/4] bg-transparent overflow-hidden group-card">
         <Link to={`/product/${product.id}`} className="block h-full">
            <img 
             src={product.images?.[0] || product.image} 
             alt={product.name} 
-            className="w-full h-full object-cover transition-transform duration-700 group-card-hover:scale-110"
+            className="w-full h-full object-contain transition-transform duration-700 group-card-hover:scale-110"
             referrerPolicy="no-referrer"
           />
         </Link>
         
-        {/* Bestseller Badge */}
-        <div className="absolute top-3 left-0 bg-[#FFF38C] text-black text-[9px] font-black px-3 py-1.5 uppercase tracking-widest rounded-r-lg shadow-sm">
-          BESTSELLER
-        </div>
+        {/* Badge */}
+        {product.badge && (
+          <div className="absolute top-3 left-0 bg-[#FFF38C] text-black text-[9px] font-black px-3 py-1.5 uppercase tracking-widest rounded-none shadow-sm">
+            {product.badge}
+          </div>
+        )}
 
         {/* Rating Badge */}
         {product.averageRating > 0 && (
@@ -126,10 +144,18 @@ const CategoryProductCard = ({ product }: { product: any }) => {
         >
           <Heart className={cn("w-5 h-5 transition-all", isInWishlist(product.id) && "fill-current text-red-500 scale-110")} />
         </button>
+
+        {/* Quick Add Plus Symbol */}
+        <button 
+          onClick={handleQuickAdd}
+          className="absolute bottom-3 right-3 w-12 h-12 bg-black text-white rounded-full flex items-center justify-center shadow-2xl active:scale-90 hover:bg-[#C5A059] transition-all"
+        >
+          <Plus className="w-7 h-7" />
+        </button>
       </div>
 
       {/* Content */}
-      <div className="p-4 bg-white flex-grow border-t border-gray-50">
+      <div className="p-4 bg-transparent flex-grow">
         <Link to={`/product/${product.id}`} className="block mb-2">
           <h3 className="text-[12px] font-black text-black line-clamp-1 truncate uppercase tracking-tight">{product.name}</h3>
           <p className="text-[10px] text-gray-400 font-bold tracking-tight">Men's Comfort Essentials</p>
@@ -144,6 +170,13 @@ const CategoryProductCard = ({ product }: { product: any }) => {
           )}
         </div>
       </div>
+
+      <QuickAddSheet 
+        isOpen={isQuickAddOpen}
+        onOpenChange={setIsQuickAddOpen}
+        product={product}
+        startPos={animationStartPos}
+      />
     </motion.div>
   );
 };

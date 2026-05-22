@@ -19,15 +19,19 @@ interface QuickAddSheetProps {
   startPos?: { x: number, y: number };
 }
 
+import { triggerHaptic } from '@/lib/haptics';
+
 export default function QuickAddSheet({ product, isOpen, onOpenChange, startPos }: QuickAddSheetProps) {
   const [selectedSize, setSelectedSize] = useState('');
   const { addToCart } = useCart();
 
   const handleAdd = () => {
     if (!selectedSize && product.sizes.length > 0) {
+      triggerHaptic('warning');
       return;
     }
 
+    triggerHaptic('success');
     addToCart(product, selectedSize, startPos);
     onOpenChange(false);
     setSelectedSize('');
@@ -41,8 +45,8 @@ export default function QuickAddSheet({ product, isOpen, onOpenChange, startPos 
         <div className="w-12 h-1.5 bg-gray-100 rounded-full mx-auto mb-8" />
         
         <div className="flex gap-6 mb-8">
-          <div className="w-24 aspect-[3/4] rounded-2xl overflow-hidden bg-gray-50 flex-shrink-0">
-            <img src={displayImage} alt={product.name} className="w-full h-full object-cover" />
+          <div className="w-24 aspect-[3/4] rounded-2xl overflow-hidden bg-transparent flex-shrink-0">
+            <img src={displayImage} alt={product.name} className="w-full h-full object-contain" />
           </div>
           <div className="flex flex-col justify-center">
             <h3 className="text-xl font-black uppercase tracking-tighter leading-tight mb-2">{product.name}</h3>
@@ -56,7 +60,10 @@ export default function QuickAddSheet({ product, isOpen, onOpenChange, startPos 
             {product.sizes.map(size => (
               <button
                 key={size}
-                onClick={() => setSelectedSize(size)}
+                onClick={() => {
+                  setSelectedSize(size);
+                  triggerHaptic('light');
+                }}
                 className={cn(
                   "flex-shrink-0 min-w-[56px] h-14 px-4 rounded-2xl border-2 font-black transition-all flex items-center justify-center",
                   selectedSize === size 

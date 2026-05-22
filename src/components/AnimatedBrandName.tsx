@@ -8,7 +8,7 @@ interface AnimatedBrandNameProps {
 }
 
 export default function AnimatedBrandName({ 
-  text = "NAMATE", 
+  text = "N A M A T E", 
   className,
   delay = 0 
 }: AnimatedBrandNameProps) {

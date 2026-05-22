@@ -124,7 +124,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       setIsAnimating(false);
       setAnimationPos(null);
       setAnimationImage(null);
-    }, 800);
+    }, 1200);
   }, [user, items]);
 
   const updateQuantity = useCallback(async (id: string, size: string | undefined, delta: number) => {

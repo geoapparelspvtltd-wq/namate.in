@@ -10,10 +10,15 @@ import {
   Loader2,
   Save,
   ArrowUp,
-  ArrowDown
+  ArrowDown,
+  Trash2,
+  Edit2,
+  Check,
+  X
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { collection, onSnapshot, query, setDoc, doc, serverTimestamp, getDocs } from 'firebase/firestore';
+import { Input } from '@/components/ui/input';
+import { collection, onSnapshot, query, setDoc, doc, serverTimestamp, getDocs, writeBatch, where, deleteDoc } from 'firebase/firestore';
 import { db, auth } from '@/lib/firebase';
 import { useAuth } from '@/lib/AuthContext';
 import { toast } from 'sonner';
@@ -37,6 +42,9 @@ export default function ManageCategories() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState<string | null>(null);
+  const [editingNameId, setEditingNameId] = useState<string | null>(null);
+  const [newName, setNewName] = useState('');
+  const [isRenaming, setIsRenaming] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadCategoryId, setUploadCategoryId] = useState<string | null>(null);
 
@@ -98,8 +106,7 @@ export default function ManageCategories() {
 
       const fullConfig = {
         ...category,
-        ...updates,
-        updatedAt: serverTimestamp()
+        ...updates
       };
 
       const configCollection = activeTab === 'main' ? 'category_configs' : 'subcategory_configs';
@@ -117,6 +124,77 @@ export default function ManageCategories() {
       toast.error("Failed to update config");
     } finally {
       setIsSaving(null);
+    }
+  };
+
+  const handleRename = async (oldName: string) => {
+    if (!newName.trim() || newName === oldName) {
+      setEditingNameId(null);
+      return;
+    }
+
+    if (!window.confirm(`Are you sure you want to rename "${oldName}" to "${newName}"? This will update all products.`)) return;
+
+    setIsRenaming(true);
+    const toastId = toast.loading(`Renaming "${oldName}" to "${newName}"...`);
+
+    try {
+      const fieldName = activeTab === 'main' ? 'category' : 'subcategory';
+      const productsRef = collection(db, 'products');
+      const q = query(productsRef, where(fieldName, '==', oldName));
+      const querySnapshot = await getDocs(q);
+
+      const batch = writeBatch(db);
+      
+      // Update all products
+      querySnapshot.docs.forEach((doc) => {
+        batch.update(doc.ref, { [fieldName]: newName });
+      });
+
+      // Update config document if it exists
+      const configCollection = activeTab === 'main' ? 'category_configs' : 'subcategory_configs';
+      const oldConfigRef = doc(db, configCollection, oldName);
+      const newConfigRef = doc(db, configCollection, newName);
+      
+      const oldConfigSnap = await getDocs(query(collection(db, configCollection)));
+      const oldConfigDoc = oldConfigSnap.docs.find(d => d.id === oldName);
+
+      if (oldConfigDoc) {
+        batch.set(newConfigRef, {
+          ...oldConfigDoc.data(),
+          name: newName,
+          updatedAt: serverTimestamp()
+        });
+        batch.delete(oldConfigRef);
+      }
+
+      await batch.commit();
+      toast.success("Renamed successfully!", { id: toastId });
+      setEditingNameId(null);
+      setNewName('');
+    } catch (error) {
+      console.error("Rename error:", error);
+      toast.error("Failed to rename category", { id: toastId });
+    } finally {
+      setIsRenaming(false);
+    }
+  };
+
+  const handleDeleteImage = async (categoryId: string) => {
+    if (!window.confirm("Remove image cover?")) return;
+    await handleUpdateConfig(categoryId, { imageUrl: '' });
+  };
+
+  const handleDeleteConfig = async (categoryId: string) => {
+    if (!window.confirm(`Are you sure you want to delete the configuration for "${categoryId}"? This will not delete products.`)) return;
+
+    try {
+      const configCollection = activeTab === 'main' ? 'category_configs' : 'subcategory_configs';
+      await deleteDoc(doc(db, configCollection, categoryId));
+      toast.success("Configuration deleted");
+    } catch (error) {
+      console.error("Delete config error:", error);
+      toast.error("Failed to delete configuration");
     }
   };
 
@@ -264,7 +342,47 @@ export default function ManageCategories() {
                 {/* Info */}
                 <div className="flex-grow">
                   <div className="flex items-center gap-3 mb-1">
-                    <h3 className="text-xl font-black uppercase tracking-tighter text-black">{cat.name}</h3>
+                    {editingNameId === cat.id ? (
+                      <div className="flex items-center gap-2">
+                        <Input 
+                          value={newName}
+                          onChange={(e) => setNewName(e.target.value)}
+                          placeholder="New Name"
+                          className="h-8 py-0 px-2 text-sm font-black uppercase text-black w-32"
+                          autoFocus
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') handleRename(cat.name);
+                            if (e.key === 'Escape') setEditingNameId(null);
+                          }}
+                        />
+                        <button 
+                          onClick={() => handleRename(cat.name)}
+                          disabled={isRenaming}
+                          className="p-1 bg-black text-white rounded-md"
+                        >
+                          <Check className="w-3 h-3" />
+                        </button>
+                        <button 
+                          onClick={() => setEditingNameId(null)}
+                          className="p-1 bg-black/5 text-black rounded-md"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        <h3 className="text-xl font-black uppercase tracking-tighter text-black">{cat.name}</h3>
+                        <button 
+                          onClick={() => {
+                            setEditingNameId(cat.id);
+                            setNewName(cat.name);
+                          }}
+                          className="p-1 text-black/20 hover:text-black transition-colors"
+                        >
+                          <Edit2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    )}
                     {cat.showOnHome && (
                       <div className="bg-[#3EBBA4]/10 text-[#3EBBA4] text-[8px] font-black px-2 py-0.5 rounded-full uppercase tracking-widest">
                         LIVE ON HOME
@@ -278,6 +396,13 @@ export default function ManageCategories() {
 
                 {/* Toggle & Upload */}
                 <div className="flex items-center gap-3">
+                  <button 
+                    onClick={() => handleDeleteConfig(cat.id)}
+                    className="w-12 h-12 rounded-2xl bg-red-500/10 text-red-500 flex items-center justify-center hover:bg-red-500 hover:text-white transition-all"
+                    title="Delete Configuration"
+                  >
+                    <Trash2 className="w-5 h-5" />
+                  </button>
                   <button 
                     onClick={() => handleUpdateConfig(cat.id, { showOnHome: !cat.showOnHome })}
                     disabled={isSaving === cat.id}
@@ -324,9 +449,22 @@ export default function ManageCategories() {
                       <Loader2 className="w-8 h-8 text-white animate-spin" />
                     </div>
                   ) || (
-                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center gap-2 text-white">
-                      <ImageIcon className="w-5 h-5" />
-                      <span className="text-[10px] font-black uppercase tracking-widest text-white">Update Image</span>
+                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center gap-3 text-white">
+                      <div className="flex items-center gap-2">
+                        <ImageIcon className="w-5 h-5" />
+                        <span className="text-[10px] font-black uppercase tracking-widest text-white">Update</span>
+                      </div>
+                      {cat.imageUrl && (
+                        <button 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteImage(cat.id);
+                          }}
+                          className="p-3 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
                     </div>
                   )}
                 </div>

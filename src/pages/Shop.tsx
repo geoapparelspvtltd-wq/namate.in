@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import ProductCard from '@/components/ProductCard';
-import { collection, onSnapshot, query, orderBy } from 'firebase/firestore';
+import { collection, onSnapshot, query, orderBy, limit, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Button } from '@/components/ui/button';
 import { 
@@ -9,17 +9,22 @@ import {
   AccordionItem, 
   AccordionTrigger 
 } from '@/components/ui/accordion';
-import { Filter, ChevronDown, SlidersHorizontal, Heart, Sparkles, TrendingUp, Star, RotateCcw } from 'lucide-react';
+import { Filter, ChevronDown, SlidersHorizontal, Heart, Sparkles, TrendingUp, Star, RotateCcw, Search } from 'lucide-react';
 import AlternatingSearchIcon from '@/components/AlternatingSearchIcon';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { cn } from '@/lib/utils';
 import { auth } from '@/lib/firebase';
 import BrandSignature from '@/components/BrandSignature';
+import EndOfFeedSuggestions from '@/components/EndOfFeedSuggestions';
 import { toast } from 'sonner';
 import { useWishlist } from '@/lib/WishlistContext';
 import { useSearch } from '@/lib/SearchContext';
+import { useAuth } from '@/lib/AuthContext';
 import { Link, useSearchParams } from 'react-router-dom';
 import { motion } from 'motion/react';
+import { Edit2 } from 'lucide-react';
+
+import { triggerHaptic } from '@/lib/haptics';
 
 enum OperationType {
   CREATE = 'create',
@@ -74,8 +79,10 @@ function handleFirestoreError(error: unknown, operationType: OperationType, path
 
 export default function Shop() {
   const { searchQuery, setSearchQuery } = useSearch();
+  const { role, user } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const activeCategory = searchParams.get('category');
+  const activeSubcategory = searchParams.get('subcategory');
   
   const [products, setProducts] = useState<any[]>([]);
   const [categoryConfigs, setCategoryConfigs] = useState<any[]>([]);
@@ -88,7 +95,10 @@ export default function Shop() {
   const [selectedSizes, setSelectedSizes] = useState<string[]>([]);
   const [minRating, setMinRating] = useState<number>(0);
 
+  const isAdmin = role === 'admin' || user?.email?.toLowerCase().trim() === 'geoapparelspvtltd@gmail.com';
+
   const setActiveCategory = (category: string | null) => {
+    triggerHaptic('light');
     if (category) {
       setSearchParams({ category });
     } else {
@@ -100,39 +110,75 @@ export default function Shop() {
     setMinRating(0);
   };
 
+  const setActiveSubcategory = (subcategory: string | null) => {
+    triggerHaptic('light');
+    if (subcategory) {
+      setSearchParams({ subcategory });
+    } else {
+      setSearchParams({});
+    }
+    // Reset advanced filters when subcategory changes
+    setPriceFilters([]);
+    setSelectedSizes([]);
+    setMinRating(0);
+  };
+
   const availableCategories = useMemo(() => {
     const cats = new Set(products.map(p => p.category));
     return Array.from(cats).filter(Boolean).sort();
   }, [products]);
 
+  const subcategoriesByCategory = useMemo(() => {
+    const map: Record<string, Set<string>> = {};
+    products.forEach(p => {
+      if (p.category) {
+        if (!map[p.category]) map[p.category] = new Set();
+        if (p.subcategory) map[p.category].add(p.subcategory);
+      }
+    });
+    return Object.fromEntries(
+      Object.entries(map).map(([cat, subs]) => [cat, Array.from(subs).filter(Boolean).sort()])
+    );
+  }, [products]);
+
   useEffect(() => {
-    const q = query(collection(db, 'products'), orderBy('createdAt', 'desc'));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const firestoreProducts = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
-      
-      setProducts(firestoreProducts);
-      setIsLoading(false);
-    }, (error) => {
-      handleFirestoreError(error, OperationType.LIST, 'products');
-    });
-
-    const unsubscribeConfigs = onSnapshot(collection(db, 'category_configs'), (snapshot) => {
-      setCategoryConfigs(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-    });
-
-    return () => {
-      unsubscribe();
-      unsubscribeConfigs();
+    const fetchProducts = async () => {
+      try {
+        const q = query(collection(db, 'products'), orderBy('createdAt', 'desc'), limit(100));
+        const snapshot = await getDocs(q);
+        const firestoreProducts = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }));
+        
+        setProducts(firestoreProducts);
+        setIsLoading(false);
+      } catch (error) {
+        handleFirestoreError(error, OperationType.LIST, 'products');
+      }
     };
+
+    const fetchConfigs = async () => {
+      try {
+        const snapshot = await getDocs(collection(db, 'category_configs'));
+        setCategoryConfigs(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+      } catch (error) {
+        console.error("Error fetching configs:", error);
+      }
+    };
+
+    fetchProducts();
+    fetchConfigs();
   }, []);
 
   const filteredProducts = useMemo(() => {
     let result = products;
     if (activeCategory) {
       result = result.filter(p => p.category === activeCategory);
+    }
+    
+    if (activeSubcategory) {
+      result = result.filter(p => (p.subcategory || 'General') === activeSubcategory);
     }
     
     // Search Filter
@@ -192,6 +238,11 @@ export default function Shop() {
     })).filter(group => group.products.length > 0);
   }, [filteredProducts, activeCategory]);
 
+  const allAvailableSubcategories = useMemo(() => {
+    const subs = new Set(products.map(p => p.subcategory).filter(Boolean));
+    return Array.from(subs).sort();
+  }, [products]);
+
   const FilterContent = () => (
     <div className="space-y-8 pb-12">
       <div>
@@ -235,7 +286,10 @@ export default function Shop() {
 
       <Accordion className="w-full space-y-4">
         <AccordionItem value="size" className="border-none bg-black/5 rounded-[24px] px-6 overflow-hidden">
-          <AccordionTrigger className="text-sm font-black uppercase tracking-widest py-6 hover:no-underline text-black data-[state=open]:text-[#C5A059]">
+          <AccordionTrigger 
+            onClick={() => triggerHaptic('light')}
+            className="text-sm font-black uppercase tracking-widest py-6 hover:no-underline text-black data-[state=open]:text-[#C5A059]"
+          >
             Size Selection
           </AccordionTrigger>
           <AccordionContent className="pb-8">
@@ -289,6 +343,7 @@ export default function Shop() {
                     className="hidden" 
                     checked={priceFilters.includes(range)}
                     onChange={() => {
+                      triggerHaptic('light');
                       setPriceFilters(prev => 
                         prev.includes(range) ? prev.filter(r => r !== range) : [...prev, range]
                       );
@@ -313,7 +368,10 @@ export default function Shop() {
               {[4, 3, 2, 1].map(stars => (
                 <button 
                   key={stars}
-                  onClick={() => setMinRating(stars)}
+                  onClick={() => {
+                    triggerHaptic('light');
+                    setMinRating(stars);
+                  }}
                   className={cn(
                     "flex items-center justify-between p-4 rounded-xl transition-all border-2",
                     minRating === stars
@@ -356,40 +414,126 @@ export default function Shop() {
 
   return (
     <div className="bg-background min-h-screen pb-40 pt-28">
-      {!activeCategory && !searchQuery ? (
+      {!activeCategory && !activeSubcategory && !searchQuery ? (
         /* Categories Grid View */
-        <div className="px-4 py-6">
-          <h2 className="text-2xl font-black uppercase tracking-tighter mb-8 text-black">Shop by Category</h2>
-          <div className="grid grid-cols-1 gap-4">
-            {availableCategories.map((cat) => {
+        <div className="py-6">
+          <div className="px-4 mb-8 flex items-center justify-between">
+            <h2 className="text-xs font-bold text-black uppercase tracking-[0.3em]">Shop by Category</h2>
+            {isAdmin && (
+              <Link 
+                to="/manage-categories"
+                className="flex items-center gap-2 text-[10px] font-black text-[#C5A059] uppercase tracking-widest hover:opacity-80 transition-opacity"
+              >
+                <Edit2 className="w-3 h-3" />
+                Edit Categories
+              </Link>
+            )}
+          </div>
+          <div className="grid grid-cols-6 gap-0 border-t border-l border-[#e5e5e5]">
+            {availableCategories.map((cat, idx) => {
               const config = categoryConfigs.find(c => c.name === cat);
-              const categoryImage = config?.imageUrl || products.find(p => p.category === cat)?.image || 'https://picsum.photos/seed/fashion/600/800';
+              const categoryImage = config?.imageUrl || products.find(p => p.category === cat)?.image;
+              
+              const pattern = [3, 3, 6, 2, 2, 2];
+              const span = pattern[idx % pattern.length];
+              const isFullWidth = span === 6;
+              const isSmall = span === 2;
               
               return (
-                <button 
-                  key={cat} 
-                  onClick={() => setActiveCategory(cat)}
-                  className="group relative h-48 overflow-hidden rounded-[32px] w-full text-left active:scale-[0.98] transition-transform"
+                <motion.div
+                  key={cat}
+                  initial={{ opacity: 0, scale: 0.98 }}
+                  whileInView={{ opacity: 1, scale: 1 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: idx * 0.05 }}
+                  className={cn(
+                    "group relative flex flex-col h-full bg-white border-r-[0.5px] border-b-[0.5px] border-[#e5e5e5]",
+                    span === 3 ? "col-span-3" : span === 6 ? "col-span-6" : "col-span-2"
+                  )}
                 >
-                  <img 
-                    src={categoryImage} 
-                    alt={cat} 
-                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
-                    referrerPolicy="no-referrer"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/20 to-transparent" />
-                  <div className="absolute inset-0 flex items-center px-8">
-                    <div>
-                      <h3 className="text-3xl font-black text-white uppercase tracking-tighter mb-1 group-hover:text-[#C5A059] transition-colors">
-                        {cat}
-                      </h3>
-                      <p className="text-white/60 text-xs font-bold uppercase tracking-widest">Explore Collection</p>
+                  <button 
+                    onClick={() => setActiveCategory(cat)}
+                    className="flex flex-col h-full text-left"
+                  >
+                    <div className={cn(
+                      "relative overflow-hidden bg-gray-50 flex items-center justify-center",
+                      isFullWidth ? "aspect-[16/9] sm:aspect-[21/9]" : 
+                      isSmall ? "aspect-square sm:aspect-[4/5]" : 
+                      "aspect-[2/3] sm:aspect-[3/4]"
+                    )}>
+                      {categoryImage ? (
+                        <img 
+                          src={categoryImage} 
+                          alt={cat} 
+                          className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                          referrerPolicy="no-referrer"
+                        />
+                      ) : (
+                        <div className={cn(
+                          "w-full h-full flex items-center justify-center font-black uppercase transition-transform duration-700 group-hover:scale-110",
+                          isFullWidth ? "text-7xl" : isSmall ? "text-3xl" : "text-5xl",
+                          idx % 3 === 0 ? "bg-gradient-to-br from-[#FFDEE9] to-[#B5FFFC]" : 
+                          idx % 3 === 1 ? "bg-gradient-to-br from-[#8BC6EC] to-[#9599E2]" :
+                          "bg-gradient-to-br from-[#FBAB7E] to-[#F7CE68]",
+                          "text-white"
+                        )}>
+                          {cat.charAt(0)}
+                        </div>
+                      )}
+                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/5 transition-colors duration-300" />
+                      
+                      {isAdmin && (
+                        <Link
+                          to="/manage-categories"
+                          onClick={(e) => e.stopPropagation()}
+                          className="absolute top-4 right-4 z-30 w-10 h-10 bg-black/60 backdrop-blur-md rounded-full flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-all hover:bg-black"
+                        >
+                          <Edit2 className="w-5 h-5" />
+                        </Link>
+                      )}
                     </div>
-                  </div>
-                  <div className="absolute right-8 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center group-hover:bg-white group-hover:border-white transition-all">
-                    <ChevronDown className="w-6 h-6 text-white group-hover:text-black -rotate-90" />
-                  </div>
-                </button>
+                    
+                    <div className={cn(
+                      "p-4 flex flex-col mt-auto",
+                      isSmall && "p-2"
+                    )}>
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex flex-col">
+                          <span className={cn(
+                            "font-bold uppercase tracking-[0.2em] text-black/70",
+                            isSmall ? "text-[7px]" : "text-[10px]"
+                          )}>
+                            {cat}
+                          </span>
+                          {!isSmall && (
+                            <span className="text-[9px] font-bold text-black/30 uppercase tracking-tighter mt-0.5">
+                              {products.filter(p => p.category === cat).length} Products
+                            </span>
+                          )}
+                        </div>
+                        {!isSmall && <ChevronDown className="w-4 h-4 text-black/20 group-hover:text-black transition-colors -rotate-90" />}
+                      </div>
+
+                      {/* Subcategories List */}
+                      {!isSmall && subcategoriesByCategory[cat]?.length > 0 && (
+                        <div className="flex flex-wrap gap-1.5 mt-2 overflow-hidden max-h-24">
+                          {subcategoriesByCategory[cat].map(sub => (
+                            <button
+                              key={sub}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setActiveSubcategory(sub);
+                              }}
+                              className="text-[8px] font-black uppercase tracking-widest px-2.5 py-1.5 bg-black/5 hover:bg-black hover:text-white rounded-full transition-all border border-black/5"
+                            >
+                              {sub}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </button>
+                </motion.div>
               );
             })}
           </div>
@@ -398,17 +542,34 @@ export default function Shop() {
         /* Products View */
         <>
           {/* Horizontal Categories (Breadcrumb style) */}
-          <div className="flex items-center gap-2 py-4 px-4 border-b border-black/5 bg-white/50 backdrop-blur-sm sticky top-28 z-40">
-            <button 
-              onClick={() => setActiveCategory(null)}
-              className="text-[10px] font-black uppercase tracking-widest text-black/40 hover:text-black transition-colors"
-            >
-              Categories
-            </button>
-            <ChevronDown className="w-3 h-3 text-black/20 -rotate-90" />
-            <span className="text-[10px] font-black uppercase tracking-widest text-black">
-              {activeCategory || 'Search Results'}
-            </span>
+          <div className="sticky top-28 z-40 bg-white/80 backdrop-blur-md border-b border-black/5">
+            <div className="flex items-center gap-2 py-4 px-4 overflow-x-auto no-scrollbar scroll-smooth">
+              <button 
+                onClick={() => {
+                  setActiveCategory(null);
+                  setActiveSubcategory(null);
+                }}
+                className={cn(
+                  "whitespace-nowrap text-[10px] font-black uppercase tracking-widest px-4 py-2 rounded-full transition-all border",
+                  !activeCategory && !activeSubcategory ? "bg-black text-white border-black" : "text-black/40 border-black/5 hover:border-black/20"
+                )}
+              >
+                All
+              </button>
+              
+              {allAvailableSubcategories.map(sub => (
+                <button
+                  key={sub}
+                  onClick={() => setActiveSubcategory(sub)}
+                  className={cn(
+                    "whitespace-nowrap text-[10px] font-black uppercase tracking-widest px-4 py-2 rounded-full transition-all border",
+                    activeSubcategory === sub ? "bg-black text-white border-black" : "text-black/40 border-black/5 hover:border-black/20"
+                  )}
+                >
+                  {sub}
+                </button>
+              ))}
+            </div>
           </div>
 
           <div className="max-w-7xl mx-auto px-4 py-6">
@@ -416,21 +577,21 @@ export default function Shop() {
             <div className="flex justify-between items-center mb-10">
               <div className="flex items-center gap-2">
                 <TrendingUp className="w-5 h-5 text-black/60" />
-                <h2 className="text-2xl font-black uppercase tracking-tighter text-black">
-                  {activeCategory || 'Vibe Search'}
+                <h2 className="text-xs font-bold text-black uppercase tracking-[0.3em]">
+                  {activeSubcategory || activeCategory || 'Vibe Search'}
                 </h2>
               </div>
               
               <div className="flex items-center gap-4">
                 <Sheet open={isFilterOpen} onOpenChange={setIsFilterOpen}>
                   <SheetTrigger>
-                    <button className="flex items-center gap-1 text-[10px] font-black uppercase tracking-widest text-black bg-black/5 px-4 py-2 rounded-full hover:bg-black/10 transition-all">
+                    <div className="flex items-center gap-1 text-[10px] font-black uppercase tracking-widest text-black bg-black/5 px-4 py-2 rounded-full hover:bg-black/10 transition-all cursor-pointer">
                       <SlidersHorizontal className="h-3 w-3" />
                       Filter
                       {(priceFilters.length > 0 || selectedSizes.length > 0 || minRating > 0) && (
                         <span className="ml-1 w-1.5 h-1.5 bg-[#C5A059] rounded-full" />
                       )}
-                    </button>
+                    </div>
                   </SheetTrigger>
                   <SheetContent side="bottom" className="h-[85vh] rounded-t-[40px] px-8 bg-white border-black/10 overflow-y-auto no-scrollbar">
                     <div className="mt-8 pb-32">
@@ -461,14 +622,14 @@ export default function Shop() {
               </div>
             </div>
 
-            {/* Subcategory Grouped View (Like Home Page) */}
-            {activeCategory && !searchQuery ? (
+            {/* Subcategory Grouped View (If Category selected) or Flat Grid (If Subcategory selected) */}
+            {activeCategory && !activeSubcategory && !searchQuery ? (
               <div className="space-y-16">
                 {productsBySubcategory.map((group) => (
                   <section key={group.title} className="relative">
                     <div className="flex items-center gap-3 mb-6">
                       <div className="w-1 h-8 bg-black rounded-full" />
-                      <h3 className="text-xl font-black uppercase tracking-tighter text-black">
+                      <h3 className="text-xs font-bold text-black uppercase tracking-[0.3em]">
                         {group.title}
                       </h3>
                       <span className="text-[10px] font-black text-black/20 uppercase tracking-widest ml-auto">
@@ -476,17 +637,17 @@ export default function Shop() {
                       </span>
                     </div>
                     
-                    <div className="flex gap-4 overflow-x-auto no-scrollbar pb-6 snap-x px-1">
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-0 border-t border-l border-[#e5e5e5]">
                       {group.products.map((product, index) => (
                         <motion.div
                           key={product.id}
-                          initial={{ opacity: 0, scale: 0.95 }}
+                          initial={{ opacity: 0, scale: 0.98 }}
                           whileInView={{ opacity: 1, scale: 1 }}
                           viewport={{ once: true }}
                           transition={{ delay: index * 0.05 }}
-                          className="flex-shrink-0 w-[200px] snap-start"
+                          className="bg-white"
                         >
-                          <ProductCard {...product} priority={index < 4} variant="minimal" />
+                          <ProductCard {...product} priority={index < 4} />
                         </motion.div>
                       ))}
                     </div>
@@ -495,32 +656,63 @@ export default function Shop() {
               </div>
             ) : (
               /* Flat Grid for Search Results */
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-4">
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-0 border-t border-l border-[#e5e5e5]">
                 {filteredProducts.map((product, index) => (
                   <motion.div
                     key={product.id}
-                    initial={{ opacity: 0, y: 20 }}
-                    whileInView={{ opacity: 1, y: 0 }}
+                    initial={{ opacity: 0, scale: 0.98 }}
+                    whileInView={{ opacity: 1, scale: 1 }}
                     viewport={{ once: true }}
-                    transition={{ delay: index % 4 * 0.1 }}
+                    transition={{ delay: (index % 4) * 0.1 }}
+                    className="bg-white"
                   >
-                    <ProductCard {...product} priority={index < 4} variant="minimal" />
+                    <ProductCard {...product} priority={index < 4} />
                   </motion.div>
                 ))}
               </div>
             )}
 
+            {filteredProducts.length > 0 && (activeCategory || activeSubcategory || searchQuery) && (
+              <EndOfFeedSuggestions 
+                currentCategory={activeCategory}
+                currentSubcategory={activeSubcategory}
+                allCategories={availableCategories}
+                allSubcategories={allAvailableSubcategories}
+                onSelectCategory={setActiveCategory}
+                onSelectSubcategory={setActiveSubcategory}
+              />
+            )}
+
             {filteredProducts.length === 0 && (
-              <div className="py-20 text-center">
+              <motion.div 
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="py-32 text-center bg-black/5 rounded-[40px] border-2 border-dashed border-black/10 mx-4"
+              >
                 <div className="w-20 h-20 bg-black/5 rounded-full flex items-center justify-center mx-auto mb-6">
-                  <AlternatingSearchIcon />
+                  <Search className="h-10 w-10 text-black/20" />
                 </div>
-                <h3 className="text-xl font-black uppercase mb-2 text-black">Nothing found</h3>
-                <p className="text-sm text-black/40 font-bold mb-8">Try adjusting your filters.</p>
-                <Button onClick={() => setActiveCategory(null)} className="bg-black text-white font-black px-8 py-4 rounded-full">
-                  BACK TO CATEGORIES
+                <h3 className="text-2xl font-black uppercase tracking-tighter mb-2 text-black">NO MATCHES FOUND</h3>
+                <p className="text-sm text-black/40 font-bold mb-8 uppercase tracking-widest px-8">
+                  {searchQuery 
+                    ? `WE COULDN'T FIND ANYTHING FOR "${searchQuery.toUpperCase()}"`
+                    : "TRY ADJUSTING YOUR FILTERS TO FIND WHAT YOU'RE LOOKING FOR"}
+                </p>
+                <Button 
+                  onClick={() => {
+                    triggerHaptic('medium');
+                    setActiveCategory(null);
+                    setActiveSubcategory(null);
+                    setSearchQuery('');
+                    setPriceFilters([]);
+                    setSelectedSizes([]);
+                    setMinRating(0);
+                  }} 
+                  className="bg-black text-white font-black px-10 py-6 rounded-full hover:scale-105 active:scale-95 transition-all text-xs tracking-widest"
+                >
+                  RESET ALL FILTERS
                 </Button>
-              </div>
+              </motion.div>
             )}
           </div>
         </>

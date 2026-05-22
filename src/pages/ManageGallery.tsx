@@ -9,6 +9,7 @@ import {
   Camera,
   Loader2,
   X,
+  Check,
   Type,
   LayoutGrid,
   Tags
@@ -24,7 +25,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn, compressImage } from '@/lib/utils';
-import { collection, addDoc, serverTimestamp, getDocs, query, orderBy, deleteDoc, doc, onSnapshot } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, getDocs, query, orderBy, deleteDoc, doc, onSnapshot, setDoc } from 'firebase/firestore';
 import { db, auth as firebaseAuth } from '@/lib/firebase';
 import { toast } from 'sonner';
 import { useAuth } from '@/lib/AuthContext';
@@ -32,12 +33,13 @@ import BrandSignature from '@/components/BrandSignature';
 
 export default function ManageGallery() {
   const navigate = useNavigate();
-  const { user, role, loading } = useAuth();
+  const { user, role, loading, isNative, requestImagePick } = useAuth();
   const isAdmin = role === 'admin' || user?.email?.toLowerCase().trim() === 'geoapparelspvtltd@gmail.com';
   
   const [images, setImages] = useState<any[]>([]);
   const [isFetching, setIsFetching] = useState(true);
   const [isUploading, setIsUploading] = useState(false);
+  const [editingImage, setEditingImage] = useState<any | null>(null);
   const [caption, setCaption] = useState('');
   const [category, setCategory] = useState('');
   const [subcategory, setSubcategory] = useState('');
@@ -68,6 +70,45 @@ export default function ManageGallery() {
 
     return () => unsubscribe();
   }, [isAdmin, loading]);
+
+  useEffect(() => {
+    if (!isNative) return;
+
+    const handleNativeImage = async (event: any) => {
+      const { data } = event.detail;
+      const base64 = data?.image || data?.base64 || data?.data;
+      
+      if (!base64) return;
+
+      setIsUploading(true);
+      const toastId = toast.loading("Adding from app...");
+
+      try {
+        const formattedBase64 = base64.startsWith('data:') ? base64 : `data:image/jpeg;base64,${base64}`;
+        const compressed = await compressImage(formattedBase64, 1200, 1200, 0.6);
+        
+        await addDoc(collection(db, 'store_gallery'), {
+          url: compressed,
+          caption: caption || 'Lifestyle Shot',
+          category: category || null,
+          subcategory: subcategory || null,
+          createdBy: user?.uid,
+          createdAt: serverTimestamp()
+        });
+
+        toast.success("Image added to gallery", { id: toastId });
+        setCaption('');
+      } catch (error) {
+        console.error("Native Gallery Error:", error);
+        toast.error("Failed to add image", { id: toastId });
+      } finally {
+        setIsUploading(false);
+      }
+    };
+
+    window.addEventListener('flutterImageSuccess' as any, handleNativeImage);
+    return () => window.removeEventListener('flutterImageSuccess' as any, handleNativeImage);
+  }, [isNative, caption, category, subcategory, user]);
 
   const uploadImages = async (files: FileList) => {
     setIsUploading(true);
@@ -127,6 +168,40 @@ export default function ManageGallery() {
     }
   };
 
+  const handleEdit = (img: any) => {
+    setEditingImage(img);
+    setCaption(img.caption || '');
+    setCategory(img.category || 'NONE');
+    setSubcategory(img.subcategory || '');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleUpdate = async () => {
+    if (!editingImage) return;
+    setIsUploading(true);
+    const toastId = toast.loading("Updating image details...");
+
+    try {
+      await setDoc(doc(db, 'store_gallery', editingImage.id), {
+        caption: caption || 'Lifestyle Shot',
+        category: category === 'NONE' ? null : category,
+        subcategory: subcategory || null,
+        updatedAt: serverTimestamp()
+      }, { merge: true });
+
+      toast.success("Details updated!", { id: toastId });
+      setEditingImage(null);
+      setCaption('');
+      setCategory('');
+      setSubcategory('');
+    } catch (error) {
+      console.error("Update error:", error);
+      toast.error("Failed to update details", { id: toastId });
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
   if (loading || isFetching) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-white">
@@ -157,6 +232,30 @@ export default function ManageGallery() {
         {/* Upload Interface */}
         <section className="bg-black/5 rounded-[40px] p-8 mb-12 border-2 border-black/5">
           <div className="flex flex-col gap-6">
+            <div className="flex items-center justify-between px-2">
+              <h2 className="text-sm font-black uppercase tracking-widest text-black">
+                {editingImage ? "Edit Image Details" : "Upload Lifestyle shots"}
+              </h2>
+              {editingImage && (
+                <button 
+                  onClick={() => {
+                    setEditingImage(null);
+                    setCaption('');
+                    setCategory('');
+                    setSubcategory('');
+                  }}
+                  className="text-[10px] font-black uppercase text-red-500 hover:underline"
+                >
+                  Cancel Edit
+                </button>
+              )}
+            </div>
+
+            {editingImage && (
+              <div className="w-24 h-32 rounded-2xl overflow-hidden mb-2">
+                <img src={editingImage.url} alt="Preview" className="w-full h-full object-cover" />
+              </div>
+            )}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
               <div className="space-y-4">
                 <Label className="text-xs font-black uppercase tracking-widest text-black/40 ml-2">Image Caption</Label>
@@ -213,14 +312,35 @@ export default function ManageGallery() {
             />
 
             <Button 
-              onClick={() => fileInputRef.current?.click()}
+              onClick={() => {
+                if (editingImage) {
+                  handleUpdate();
+                } else if (isNative) {
+                  toast.info("Opening app lookbook picker...");
+                  requestImagePick('gallery');
+                  // Fallback after 3s
+                  setTimeout(() => {
+                    if (!isUploading) {
+                      toast.info("Fallback: using local files");
+                      fileInputRef.current?.click();
+                    }
+                  }, 3000);
+                } else {
+                  fileInputRef.current?.click();
+                }
+              }}
               disabled={isUploading}
               className="w-full h-20 sm:h-24 bg-black text-white rounded-3xl font-black uppercase tracking-widest text-sm hover:bg-black/90 transition-all shadow-2xl shadow-black/20 flex flex-col items-center justify-center gap-1 group"
             >
               {isUploading ? (
                 <>
                   <Loader2 className="w-6 h-6 animate-spin mb-1" />
-                  SHARPENING...
+                  {editingImage ? 'SAVING...' : 'SHARPENING...'}
+                </>
+              ) : editingImage ? (
+                <>
+                  <Check className="w-6 h-6" />
+                  <span>SAVE CHANGES</span>
                 </>
               ) : (
                 <>
@@ -285,13 +405,22 @@ export default function ManageGallery() {
                   <p className="text-white font-black uppercase tracking-tighter text-lg leading-tight mb-4">
                     {img.caption}
                   </p>
-                  <button 
-                    onClick={() => handleDelete(img.id)}
-                    className="w-full py-3 bg-red-500 text-white rounded-xl font-black uppercase tracking-widest text-[10px] hover:bg-red-600 transition-colors flex items-center justify-center gap-2"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                    REMOVE FROM GALLERY
-                  </button>
+                  <div className="flex flex-col gap-2">
+                    <button 
+                      onClick={() => handleEdit(img)}
+                      className="w-full py-3 bg-white text-black rounded-xl font-black uppercase tracking-widest text-[10px] hover:bg-white/90 transition-colors flex items-center justify-center gap-2 shadow-lg"
+                    >
+                      <Type className="w-3.5 h-3.5" />
+                      EDIT DETAILS
+                    </button>
+                    <button 
+                      onClick={() => handleDelete(img.id)}
+                      className="w-full py-3 bg-red-500 text-white rounded-xl font-black uppercase tracking-widest text-[10px] hover:bg-red-600 transition-colors flex items-center justify-center gap-2 shadow-lg"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      REMOVE FROM GALLERY
+                    </button>
+                  </div>
                 </div>
 
                 <div className="absolute top-4 right-4 text-[8px] font-black text-white/40 uppercase tracking-widest bg-black/20 backdrop-blur-md px-2 py-0.5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity">

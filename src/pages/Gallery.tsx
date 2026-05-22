@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import React, { useState, useEffect, useRef } from 'react';
+import { motion, AnimatePresence, useScroll, useTransform } from 'motion/react';
 import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Camera, Loader2, Sparkles, X, ChevronRight, Share2, Filter, LayoutGrid } from 'lucide-react';
@@ -8,9 +8,59 @@ import BrandSignature from '@/components/BrandSignature';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
+function GalleryItem({ img, idx, onClick }: { img: any, idx: number, onClick: () => void }) {
+  const itemRef = React.useRef(null);
+  const { scrollYProgress } = useScroll({
+    target: itemRef,
+    offset: ["start end", "end start"]
+  });
+
+  const rotateX = useTransform(scrollYProgress, [0, 0.5, 1], [10, 0, -10]);
+  const scale = useTransform(scrollYProgress, [0, 0.5, 1], [0.95, 1, 0.95]);
+
+  return (
+    <motion.div
+      ref={itemRef}
+      layout
+      initial={{ opacity: 0, y: 30 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, scale: 0.9 }}
+      viewport={{ once: true }}
+      transition={{ delay: (idx % 4) * 0.1 }}
+      onClick={onClick}
+      style={{ 
+        perspective: '1000px',
+        rotateX,
+        scale
+      }}
+      className={cn(
+        "group relative cursor-pointer overflow-hidden rounded-none bg-black/5",
+        idx % 5 === 0 ? "aspect-[4/6]" : "aspect-[4/5]"
+      )}
+    >
+      <img 
+        src={img.url} 
+        alt={img.caption || ''} 
+        className="w-full h-full object-cover transition-all duration-1000 group-hover:scale-110"
+        referrerPolicy="no-referrer"
+      />
+      
+      {/* Hover overlay hint */}
+      <div className="absolute inset-0 bg-white opacity-0 group-hover:opacity-10 transition-opacity duration-700 z-20" />
+      
+      <div className="absolute inset-0 transition-all duration-500 flex flex-col justify-end p-6 z-30">
+        <div className="flex justify-end">
+          <ChevronRight className="w-4 h-4 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
 export default function Gallery() {
   const [images, setImages] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const isSharing = useRef(false);
   const [selectedImage, setSelectedImage] = useState<any | null>(null);
   const [activeCategory, setActiveCategory] = useState<string>('ALL');
 
@@ -38,16 +88,31 @@ export default function Gallery() {
     activeCategory === 'ALL' || img.category === activeCategory
   );
 
-  const handleShare = (img: any) => {
+  const handleShare = async (img: any) => {
+    if (isSharing.current) return;
+
     if (navigator.share) {
-      navigator.share({
-        title: 'Namate Lookbook',
-        text: img.caption,
-        url: window.location.href
-      }).catch(console.error);
+      isSharing.current = true;
+      try {
+        await navigator.share({
+          title: 'Namate Lookbook',
+          text: img.caption,
+          url: window.location.href
+        });
+      } catch (error: any) {
+        if (error.name !== 'AbortError') {
+          console.error("Error sharing:", error);
+        }
+      } finally {
+        isSharing.current = false;
+      }
     } else {
-      navigator.clipboard.writeText(window.location.href);
-      toast.success("Lookbook link copied!");
+      try {
+        await navigator.clipboard.writeText(window.location.href);
+        toast.success("Lookbook link copied!");
+      } catch (error) {
+        console.error("Clipboard error:", error);
+      }
     }
   };
 
@@ -112,44 +177,12 @@ export default function Gallery() {
       <section className="px-4 pb-40 max-w-7xl mx-auto">
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-8">
           {filteredImages.map((img, idx) => (
-            <motion.div
-              key={img.id}
-              layout
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9 }}
-              viewport={{ once: true }}
-              transition={{ delay: (idx % 4) * 0.1 }}
-              onClick={() => setSelectedImage(img)}
-              className={cn(
-                "group relative cursor-pointer overflow-hidden rounded-[32px] bg-black/5",
-                idx % 5 === 0 ? "aspect-[4/6] scale-105" : "aspect-[4/5]"
-              )}
-            >
-              <img 
-                src={img.url} 
-                alt={img.caption || ''} 
-                className="w-full h-full object-cover grayscale hover:grayscale-0 transition-all duration-1000"
-                referrerPolicy="no-referrer"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-all duration-500 p-6 flex flex-col justify-end">
-                <div className="flex flex-wrap gap-2 mb-2">
-                  {img.category && (
-                    <span className="text-[8px] font-black uppercase tracking-widest bg-white text-black px-2 py-0.5 rounded">
-                      {img.category}
-                    </span>
-                  )}
-                </div>
-                <p className="text-white font-black uppercase tracking-tighter text-sm mb-2 transform translate-y-4 group-hover:translate-y-0 transition-transform">
-                  {img.caption}
-                </p>
-                <div className="h-[1px] w-0 group-hover:w-full bg-white/20 transition-all duration-700 mb-4" />
-                <div className="flex items-center justify-between text-[8px] font-black text-white/40 uppercase tracking-widest">
-                  <span>{img.createdAt.toLocaleDateString()}</span>
-                  <ChevronRight className="w-3 h-3" />
-                </div>
-              </div>
-            </motion.div>
+            <GalleryItem 
+              key={img.id} 
+              img={img} 
+              idx={idx} 
+              onClick={() => setSelectedImage(img)} 
+            />
           ))}
         </div>
 
@@ -190,7 +223,7 @@ export default function Gallery() {
                 <motion.div 
                   initial={{ scale: 0.9, opacity: 0 }}
                   animate={{ scale: 1, opacity: 1 }}
-                  className="rounded-[48px] overflow-hidden shadow-2xl mb-12 shadow-black/10"
+                  className="rounded-none overflow-hidden shadow-2xl mb-12 shadow-black/10"
                 >
                   <img 
                     src={selectedImage.url} 

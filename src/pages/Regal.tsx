@@ -66,16 +66,15 @@ export default function Regal() {
           <div className="hidden sm:block h-1 flex-grow bg-gradient-to-r from-black/10 to-transparent ml-8" />
         </div>
 
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-10">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-0 border-t border-l border-[#e5e5e5]">
           {premiumProducts.map((product) => (
             <motion.div
               key={product.id}
-              initial={{ opacity: 0, scale: 0.9 }}
+              initial={{ opacity: 0, scale: 0.98 }}
               whileInView={{ opacity: 1, scale: 1 }}
               viewport={{ once: true }}
-              className="relative group"
+              className="bg-white"
             >
-              <div className="absolute -inset-1 bg-gradient-to-b from-black/5 to-transparent rounded-3xl blur opacity-0 group-hover:opacity-100 transition duration-500" />
               <ProductCard {...product} />
             </motion.div>
           ))}
@@ -96,7 +95,7 @@ export default function Regal() {
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.1 }}
-              className="p-8 border border-black/10 rounded-3xl bg-black/5 hover:bg-black/10 transition-colors"
+              className="p-8 border border-black/10 rounded-none bg-black/5 hover:bg-black/10 transition-colors"
             >
               <benefit.icon className="w-10 h-10 text-[#C5A059] mb-6" />
               <h3 className="text-xl font-black uppercase mb-4 text-black">{benefit.title}</h3>
@@ -108,7 +107,7 @@ export default function Regal() {
 
       {/* CTA */}
       <section className="max-w-4xl mx-auto px-4 text-center py-20">
-        <div className="p-12 border-4 border-black/10 rounded-[40px] relative overflow-hidden">
+        <div className="p-12 border-4 border-black/10 rounded-none relative overflow-hidden">
           <div className="absolute inset-0 bg-black/5" />
           <h2 className="text-4xl font-black uppercase tracking-tighter mb-6 relative z-10 text-black">READY TO ASCEND?</h2>
           <p className="text-lg text-black/60 mb-10 relative z-10">

@@ -44,7 +44,7 @@ export default function Sale() {
     <div className="bg-background min-h-screen">
       {/* Header Section */}
       <section className="px-4 pt-6 pb-8">
-        <div className="bg-white/5 rounded-[40px] p-8 relative overflow-hidden shadow-2xl shadow-white/5 border border-white/10">
+        <div className="bg-white/5 rounded-none p-8 relative overflow-hidden shadow-2xl shadow-white/5 border border-white/10">
           <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -mr-32 -mt-32 blur-3xl" />
           <div className="relative z-10">
             <div className="flex items-center gap-2 mb-4">
@@ -114,9 +114,9 @@ export default function Sale() {
           </p>
         </div>
 
-        <div className="px-2 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-0 border-t border-l border-[#e5e5e5]">
           {allSaleItems.map((product) => (
-            <div key={product.id}>
+            <div key={product.id} className="bg-white">
               <ProductCard {...product} />
             </div>
           ))}

@@ -16,7 +16,7 @@ import {
 import BrandSignature from '@/components/BrandSignature';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { collection, onSnapshot, query, orderBy, deleteDoc, doc, setDoc, serverTimestamp, updateDoc } from 'firebase/firestore';
+import { collection, onSnapshot, query, orderBy, deleteDoc, doc, setDoc, serverTimestamp, updateDoc, getDocs } from 'firebase/firestore';
 import { db, auth } from '@/lib/firebase';
 import { useAuth } from '@/lib/AuthContext';
 import { toast } from 'sonner';
@@ -36,29 +36,30 @@ export default function ManageProducts() {
   useEffect(() => {
     if (!isAdmin) return;
 
-    const q = query(collection(db, 'products'));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const firestoreProducts = snapshot.docs.map(doc => {
-        const data = doc.data();
-        return {
-          id: doc.id,
-          ...data,
-          createdAt: data.createdAt?.toDate?.() || new Date(0)
-        };
-      });
-      
-      // Sort client-side
-      firestoreProducts.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
-      
-      setProducts(firestoreProducts);
-      setIsLoading(false);
-    }, (error) => {
-      console.error("Error fetching products:", error);
-      toast.error("Failed to load products");
-      setIsLoading(false);
-    });
+    const fetchProducts = async () => {
+      setIsLoading(true);
+      try {
+        const q = query(collection(db, 'products'), orderBy('createdAt', 'desc'));
+        const snapshot = await getDocs(q);
+        const firestoreProducts = snapshot.docs.map(doc => {
+          const data = doc.data();
+          return {
+            id: doc.id,
+            ...data,
+            createdAt: data.createdAt?.toDate?.() || new Date(0)
+          };
+        });
+        
+        setProducts(firestoreProducts);
+      } catch (error) {
+        console.error("Error fetching products:", error);
+        toast.error("Failed to load products");
+      } finally {
+        setIsLoading(false);
+      }
+    };
 
-    return () => unsubscribe();
+    fetchProducts();
   }, [isAdmin]);
 
   const handleDelete = async (productId: string, productName: string) => {
@@ -78,6 +79,20 @@ export default function ManageProducts() {
           deletedAt: serverTimestamp(),
           deletedBy: user?.email || 'unknown'
         });
+
+        // Optional: Clean up sub-collections (media, gallery, reviews)
+        // Since we are moving the main doc, we avoid orphan sub-collections
+        const subCollections = ['media', 'gallery', 'reviews'];
+        for (const sub of subCollections) {
+          try {
+            const subSnap = await getDocs(collection(db, 'products', productId, sub));
+            for (const subDoc of subSnap.docs) {
+              await deleteDoc(doc(db, 'products', productId, sub, subDoc.id));
+            }
+          } catch (err) {
+            console.error(`Error cleaning up sub-collection ${sub}:`, err);
+          }
+        }
       }
 
       await deleteDoc(doc(db, 'products', productId));

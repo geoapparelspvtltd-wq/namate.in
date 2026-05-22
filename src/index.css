@@ -159,6 +159,14 @@
     font-family: 'Cormorant Garamond', serif;
     font-style: italic;
   }
+
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
 }
 
 .dark {
@@ -204,11 +212,16 @@
     @apply text-foreground overflow-x-hidden selection:bg-primary selection:text-primary-foreground;
     -webkit-tap-highlight-color: transparent;
     overscroll-behavior-y: none;
+    overscroll-behavior-x: none;
+    touch-action: manipulation;
+    user-select: none;
     }
   html {
     @apply font-sans;
     scrollbar-width: none;
     -ms-overflow-style: none;
+    overscroll-behavior: none;
+    scrollbar-gutter: stable;
     }
   html::-webkit-scrollbar {
     display: none;

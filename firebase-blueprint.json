@@ -15,6 +15,18 @@
         "namatePoints": { "type": "number", "description": "Loyalty points earned by the user", "default": 0 },
         "referralCode": { "type": "string", "description": "Unique referral code for the user" },
         "referredBy": { "type": "string", "description": "UID of the user who referred this user" },
+        "savedShippingDetails": {
+          "type": "object",
+          "properties": {
+            "receiverName": { "type": "string" },
+            "mobileNumber": { "type": "string" },
+            "pincode": { "type": "string" },
+            "street": { "type": "string" },
+            "landmark": { "type": "string" },
+            "city": { "type": "string" },
+            "state": { "type": "string" }
+          }
+        },
         "createdAt": { "type": "string", "format": "date-time", "description": "Account creation timestamp" }
       },
       "required": ["uid", "email", "role"]
@@ -44,6 +56,19 @@
           }
         },
         "total": { "type": "number" },
+        "shippingDetails": {
+          "type": "object",
+          "properties": {
+            "receiverName": { "type": "string" },
+            "mobileNumber": { "type": "string" },
+            "pincode": { "type": "string" },
+            "street": { "type": "string" },
+            "landmark": { "type": "string" },
+            "city": { "type": "string" },
+            "state": { "type": "string" }
+          },
+          "required": ["receiverName", "mobileNumber", "pincode", "street"]
+        },
         "status": { "type": "string", "enum": ["pending", "processing", "shipped", "delivered", "cancelled"] },
         "paymentMethod": { "type": "string", "enum": ["online", "cod"], "default": "online" },
         "paymentStatus": { "type": "string", "enum": ["paid", "unpaid"], "default": "unpaid" },
@@ -184,9 +209,58 @@
         "createdAt": { "type": "string", "format": "date-time" }
       },
       "required": ["name", "showOnHome", "createdAt"]
+    },
+    "notification": {
+      "title": "Notification",
+      "description": "A system-wide notification for users",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "body": { "type": "string" },
+        "type": { "type": "string", "enum": ["offer", "product_update", "order_update", "system"] },
+        "imageUrl": { "type": "string" },
+        "link": { "type": "string" },
+        "targetAudience": { "type": "string", "enum": ["all", "tribe_members"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["title", "body", "type", "createdAt"]
+    },
+    "trialRecord": {
+      "title": "Trial Record",
+      "description": "Record of a user's AI virtual try-on session",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "imageUrl": { "type": "string", "description": "URL of the generated result in Firebase Storage" },
+        "productId": { "type": "string", "description": "Optional ID of the product tried on" },
+        "productName": { "type": "string" },
+        "bodyType": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      },
+      "required": ["imageUrl", "timestamp"]
+    },
+    "systemConfig": {
+      "title": "System Configuration",
+      "description": "Global application settings",
+      "type": "object",
+      "properties": {
+        "isMaintenanceMode": { "type": "boolean", "description": "Whether the site is in maintenance mode" },
+        "maintenanceMessage": { "type": "string", "description": "Custom message to display during maintenance" },
+        "updatedAt": { "type": "string", "format": "date-time" },
+        "updatedBy": { "type": "string" }
+      },
+      "required": ["isMaintenanceMode"]
     }
   },
   "firestore": {
+    "/system_configs/{configId}": {
+      "schema": "systemConfig",
+      "description": "Global site settings including maintenance mode status"
+    },
+    "/notifications/{notificationId}": {
+      "schema": "notification",
+      "description": "System-wide notifications for marketing, offers, and updates"
+    },
     "/users/{userId}": {
       "schema": "user",
       "description": "User profile documents"
@@ -206,6 +280,10 @@
     "/users/{userId}/points_history/{pointId}": {
       "schema": "pointTransaction",
       "description": "History of loyalty points earned by the user"
+    },
+    "/users/{userId}/trials/{trialId}": {
+      "schema": "trialRecord",
+      "description": "History of the user's AI virtual try-on results"
     },
     "/orders/{orderId}": {
       "schema": "order",

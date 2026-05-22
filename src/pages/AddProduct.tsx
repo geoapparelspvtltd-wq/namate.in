@@ -98,7 +98,7 @@ function handleFirestoreError(error: unknown, operationType: OperationType, path
 export default function AddProduct() {
   const navigate = useNavigate();
   const { id } = useParams();
-  const { user, role, loading, loginWithGoogle } = useAuth();
+  const { user, role, loading, isNative, requestImagePick, loginWithGoogle } = useAuth();
   const isAdmin = role === 'admin' || user?.email?.toLowerCase().trim() === 'geoapparelspvtltd@gmail.com';
   
   const [isLoading, setIsLoading] = useState(false);
@@ -227,6 +227,24 @@ export default function AddProduct() {
       tribeReleaseDate: product.tribeReleaseDate || ''
     });
 
+    // Fetch sub-collection reel media items
+    const fetchReelMedia = async () => {
+      try {
+        const mediaSnap = await getDocs(query(collection(db, 'products', product.id, 'media'), orderBy('createdAt', 'asc')));
+        if (!mediaSnap.empty) {
+          const fetchedMedia = mediaSnap.docs.map(doc => ({
+            id: doc.id,
+            type: doc.data().type as 'image' | 'video',
+            url: doc.data().url
+          }));
+          setFormData(prev => ({ ...prev, media: fetchedMedia }));
+        }
+      } catch (error) {
+        console.error("Error fetching reel media:", error);
+      }
+    };
+    fetchReelMedia();
+
     // Fetch sub-collection gallery images
     const fetchGallery = async () => {
       try {
@@ -250,12 +268,11 @@ export default function AddProduct() {
 
   const resetForm = () => {
     setEditingProductId(null);
-    setFormData({
+    setFormData(prev => ({
+      ...prev,
       name: '',
       price: '',
-      category: '',
-      customCategory: '',
-      subcategory: '',
+      // Keep category and subcategory for "sticky" behavior
       description: '',
       badge: '',
       media: [],
@@ -264,7 +281,7 @@ export default function AddProduct() {
       isUpcoming: false,
       isTribeExclusive: false,
       tribeReleaseDate: ''
-    });
+    }));
     setSelectedSizes([]);
   };
 
@@ -362,6 +379,50 @@ export default function AddProduct() {
     fetchCategories();
   }, []);
 
+  useEffect(() => {
+    if (!isNative) return;
+
+    const handleNativeImage = async (event: any) => {
+      const { data, context } = event.detail;
+      const base64 = data?.image || data?.base64 || data?.data;
+      
+      if (!base64) return;
+
+      setIsUploading(true);
+      try {
+        const formattedBase64 = base64.startsWith('data:') ? base64 : `data:image/jpeg;base64,${base64}`;
+        const compressed = await compressImage(formattedBase64, 1200, 1200, 0.7);
+
+        const newItem = {
+          id: `${context || 'image'}-${Date.now()}`,
+          type: 'image' as const,
+          url: compressed
+        };
+
+        if (context === 'gallery') {
+          setFormData(prev => ({
+            ...prev,
+            galleryMedia: [...prev.galleryMedia, newItem]
+          }));
+        } else {
+          setFormData(prev => ({
+            ...prev,
+            media: [...prev.media, newItem]
+          }));
+        }
+        toast.success("Image added from app");
+      } catch (error) {
+        console.error("Native Upload Error:", error);
+        toast.error("Failed to process image");
+      } finally {
+        setIsUploading(false);
+      }
+    };
+
+    window.addEventListener('flutterImageSuccess' as any, handleNativeImage);
+    return () => window.removeEventListener('flutterImageSuccess' as any, handleNativeImage);
+  }, [isNative, formData]);
+
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>, isGallery = false) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
@@ -387,7 +448,8 @@ export default function AddProduct() {
     try {
       const base64Promises = Array.from(files).map(async (file: File) => {
         const base64 = await readAsDataURL(file);
-        return await compressImage(base64, 1000, 1000, 0.5);
+        // Scaled to max 1024px and compressed for Firestore sub-collection data format
+        return await compressImage(base64, 1024, 1024, 0.4);
       });
       const compressedStrings = await Promise.all(base64Promises);
 
@@ -408,8 +470,50 @@ export default function AddProduct() {
       toast.error("Failed to process images", { id: toastId });
     } finally {
       setIsUploading(false);
-      e.target.value = '';
+      if (e.target) e.target.value = '';
     }
+  };
+
+  const handleNativeMediaUpload = (isGallery = false) => {
+    const requestId = `req-${Date.now()}`;
+    
+    if (!(window as any).FlutterMediaChannel) {
+      // Fallback: Ask for URL if bridge not found
+      const url = window.prompt("Paste image URL:");
+      if (url && url.startsWith('http')) {
+        const newItem = {
+          id: `${isGallery ? 'gallery' : 'image'}-${Date.now()}`,
+          type: 'image' as const,
+          url
+        };
+        setFormData(prev => ({
+          ...prev,
+          [isGallery ? 'galleryMedia' : 'media']: [...prev[isGallery ? 'galleryMedia' : 'media'], newItem]
+        }));
+        toast.success("Image added via link");
+      }
+      return;
+    }
+
+    (window as any).onFlutterMediaUpload = (url: string, reqId: string) => {
+      if (reqId === requestId) {
+        const newItem = {
+          id: `${isGallery ? 'gallery' : 'image'}-${Date.now()}`,
+          type: 'image' as const,
+          url
+        };
+        setFormData(prev => ({
+          ...prev,
+          [isGallery ? 'galleryMedia' : 'media']: [...prev[isGallery ? 'galleryMedia' : 'media'], newItem]
+        }));
+        toast.success("Native upload complete");
+      }
+    };
+
+    (window as any).FlutterMediaChannel.postMessage(JSON.stringify({
+      type: 'PICK_IMAGE',
+      requestId
+    }));
   };
 
   const onCropComplete = useCallback((_croppedArea: any, _croppedAreaPixels: any) => {
@@ -542,11 +646,9 @@ export default function AddProduct() {
         subcategory: formData.subcategory.trim(),
         description: formData.description.trim(),
         badge: formData.badge.trim(),
-        media: finalMedia, // Store unified media
-        videoUrls: videoUrls,
+        // Media handled via sub-collections below to stay under 1MB
         videoUrl: videoUrls[0] || '', // Legacy support
-        image: imageUrls[0] || '', // Set the main image
-        images: imageUrls,
+        image: imageUrls[0] || '', // Set the main image for cards
         sizes: selectedSizes,
         isPremium: formData.isPremium,
         isUpcoming: formData.isUpcoming,
@@ -556,14 +658,25 @@ export default function AddProduct() {
       };
 
       if (editingProductId) {
+        // Update main document - media, images, videoUrls are excluded to keep doc small
         await updateDoc(doc(db, 'products', editingProductId), productData);
         
+        // Handle Media/Reel Documents (Sub-collection)
+        const oldMediaSnap = await getDocs(collection(db, 'products', editingProductId, 'media'));
+        await Promise.all(oldMediaSnap.docs.map(d => deleteDoc(d.ref)));
+        
+        await Promise.all(formData.media.map((m, i) => 
+          addDoc(collection(db, 'products', editingProductId, 'media'), {
+            ...m,
+            order: i,
+            createdAt: serverTimestamp()
+          })
+        ));
+
         // Handle Gallery Documents (Sub-collection)
-        // First delete existing (simple way for this app, since images are base64)
         const oldGallerySnap = await getDocs(collection(db, 'products', editingProductId, 'gallery'));
         await Promise.all(oldGallerySnap.docs.map(d => deleteDoc(d.ref)));
         
-        // Add new gallery items
         await Promise.all(formData.galleryMedia.map((m, i) => 
           addDoc(collection(db, 'products', editingProductId, 'gallery'), {
             url: m.url,
@@ -579,8 +692,19 @@ export default function AddProduct() {
       } else {
         productData.isNew = true;
         productData.createdAt = serverTimestamp();
+        
+        // Save main product
         const docRef = await addDoc(collection(db, 'products'), productData);
         
+        // Save media to sub-collection
+        await Promise.all(formData.media.map((m, i) => 
+          addDoc(collection(docRef, 'media'), {
+            ...m,
+            order: i,
+            createdAt: serverTimestamp()
+          })
+        ));
+
         // Handle Gallery Documents (Sub-collection)
         await Promise.all(formData.galleryMedia.map((m, i) => 
           addDoc(collection(docRef, 'gallery'), {
@@ -863,19 +987,58 @@ export default function AddProduct() {
                   <p className="text-[10px] text-black/20 font-bold uppercase tracking-widest mt-1">Drag to reorder or use arrows</p>
                 </div>
                 <div className="flex gap-2">
-                  <button 
-                    type="button"
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={isUploading}
-                    className="flex items-center gap-2 px-4 py-2 bg-black/5 rounded-full text-[10px] font-black uppercase tracking-widest hover:bg-black/10 transition-all"
-                  >
-                    <ImageIcon className="w-3.5 h-3.5" />
-                    + Photo
-                  </button>
+                  <div className="flex bg-black/5 p-1 rounded-full">
+                    <button 
+                      type="button"
+                      onClick={() => {
+                        if (isNative) {
+                          toast.info("Opening app media picker...");
+                          requestImagePick('gallery', 'media');
+                          // Fallback after 3s
+                          setTimeout(() => {
+                            if (!isUploading) {
+                              toast.info("Fallback: using local files");
+                              fileInputRef.current?.click();
+                            }
+                          }, 3000);
+                        } else {
+                          fileInputRef.current?.click();
+                        }
+                      }}
+                      disabled={isUploading}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest hover:bg-white transition-all text-black/60 hover:text-black"
+                      title={isNative ? "Upload via App (Tap for local fallback)" : "Upload from computer"}
+                    >
+                      <Upload className="w-3 h-3" />
+                      {isNative ? 'Pick' : 'Local'}
+                    </button>
+                    <button 
+                      type="button"
+                      onClick={() => {
+                        if (isNative) {
+                          toast.info("Opening app media picker...");
+                          requestImagePick('gallery', 'gallery');
+                          setTimeout(() => {
+                            if (!isUploading) {
+                              toast.info("Fallback: using local files");
+                              galleryFileInputRef.current?.click();
+                            }
+                          }, 3000);
+                        } else {
+                          handleNativeMediaUpload(false);
+                        }
+                      }}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest hover:bg-white transition-all text-black/60 hover:text-black"
+                      title={isNative ? "Pick from App" : "Upload via App or Link"}
+                    >
+                      <ImageIcon className="w-3 h-3" />
+                      {isNative ? 'Pick' : 'Cloud/Link'}
+                    </button>
+                  </div>
                   <button 
                     type="button"
                     onClick={addVideoUrl}
-                    className="flex items-center gap-2 px-4 py-2 bg-black/5 rounded-full text-[10px] font-black uppercase tracking-widest hover:bg-black/10 transition-all"
+                    className="flex items-center gap-2 px-4 py-2 bg-black/5 rounded-full text-[10px] font-black uppercase tracking-widest hover:bg-black/10 transition-all border border-black/5"
                   >
                     <Video className="w-3.5 h-3.5" />
                     + Video
@@ -1243,15 +1406,27 @@ export default function AddProduct() {
                   <Label className="text-xs font-black uppercase tracking-widest text-black/40">Product Gallery (Sub-collection)</Label>
                   <p className="text-[10px] text-black/20 font-bold uppercase tracking-widest mt-1">Extra details for the tribe to explore</p>
                 </div>
-                <button 
-                  type="button"
-                  onClick={() => galleryFileInputRef.current?.click()}
-                  disabled={isUploading}
-                  className="flex items-center gap-2 px-4 py-2 bg-black/5 rounded-full text-[10px] font-black uppercase tracking-widest hover:bg-black/10 transition-all border border-black/5"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  + Gallery
-                </button>
+                <div className="flex gap-2">
+                  <div className="flex bg-black/5 p-1 rounded-full">
+                    <button 
+                      type="button"
+                      onClick={() => galleryFileInputRef.current?.click()}
+                      disabled={isUploading}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest hover:bg-white transition-all text-black/60 hover:text-black"
+                    >
+                      <Upload className="w-3 h-3" />
+                      Local
+                    </button>
+                    <button 
+                      type="button"
+                      onClick={() => handleNativeMediaUpload(true)}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest hover:bg-white transition-all text-black/60 hover:text-black"
+                    >
+                      <ImageIcon className="w-3 h-3" />
+                      Cloud/Link
+                    </button>
+                  </div>
+                </div>
               </div>
 
               <input 

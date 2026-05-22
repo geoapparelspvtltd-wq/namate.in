@@ -1,5 +1,6 @@
 {
-  "name": "Namate",
+  "name": "N A M A T E",
   "description": "A quirky, bold e-commerce app for Gen Z and Millennials, inspired by Bewakoof. Featuring the Namate Tribe loyalty program and a mobile-first design.",
-  "requestFramePermissions": []
+  "requestFramePermissions": ["geolocation"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }
