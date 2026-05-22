@@ -617,10 +617,6 @@ export default function AddProduct() {
       toast.error("Please select a category");
       return;
     }
-    if (!formData.description.trim()) {
-      toast.error("Description is required");
-      return;
-    }
     
     const validMedia = formData.media.filter(m => m.url.trim() !== '');
     if (validMedia.length === 0) {

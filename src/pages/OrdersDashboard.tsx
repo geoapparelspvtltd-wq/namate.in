@@ -107,11 +107,18 @@ interface Order {
   userName: string;
   items: OrderItem[];
   total: number;
-  status: 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
+  status: 'pending' | 'processing' | 'shipped' | 'delivered' | 'return_requested' | 'returned' | 'cancelled';
   paymentMethod: 'online' | 'cod';
   paymentStatus: 'paid' | 'unpaid';
   pointsAwarded: boolean;
   createdAt: Timestamp;
+  returnRequest?: {
+    reason: string;
+    type: 'refund' | 'exchange';
+    targetSize?: string | null;
+    requestedAt: any;
+    status: string;
+  };
 }
 
 export default function OrdersDashboard() {
@@ -203,6 +210,8 @@ export default function OrdersDashboard() {
       case 'processing': return 'bg-blue-900/20 text-blue-400 border-blue-900/30';
       case 'shipped': return 'bg-purple-900/20 text-purple-400 border-purple-900/30';
       case 'delivered': return 'bg-green-900/20 text-green-400 border-green-900/30';
+      case 'return_requested': return 'bg-amber-950 text-[#C5A059] border-amber-905/30';
+      case 'returned': return 'bg-neutral-800 text-neutral-400 border-neutral-700/50';
       case 'cancelled': return 'bg-red-900/20 text-red-500 border-red-900/30';
       default: return 'bg-white/10 text-white/40 border-white/10';
     }
@@ -214,6 +223,8 @@ export default function OrdersDashboard() {
       case 'processing': return <Package className="w-3 h-3" />;
       case 'shipped': return <Truck className="w-3 h-3" />;
       case 'delivered': return <CheckCircle2 className="w-3 h-3" />;
+      case 'return_requested': return <RotateCcw className="w-3 h-3 text-[#C5A059] animate-spin-slow" />;
+      case 'returned': return <CheckCircle2 className="w-3 h-3 text-neutral-400" />;
       case 'cancelled': return <XCircle className="w-3 h-3" />;
       default: return null;
     }
@@ -256,18 +267,8 @@ export default function OrdersDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-background pb-32">
-      <div className="max-w-4xl mx-auto px-4 py-8 space-y-8">
-        <div className="flex items-center gap-4 mb-8">
-          <button 
-            onClick={() => navigate(-1)}
-            className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center hover:bg-white/10 transition-colors"
-          >
-            <ChevronLeft className="w-6 h-6" />
-          </button>
-          <h1 className="text-xl font-black uppercase tracking-tighter">Order Management</h1>
-        </div>
-
+    <div className="min-h-screen bg-background pt-24 pb-32">
+      <div className="max-w-4xl mx-auto px-4 py-4 space-y-8">
         {/* Stats Summary */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           <div className="p-6 bg-white/5 rounded-3xl border border-white/5">
@@ -302,7 +303,7 @@ export default function OrdersDashboard() {
             />
           </div>
           <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2 sm:pb-0">
-            {['all', 'pending', 'processing', 'shipped', 'delivered', 'cancelled'].map(status => (
+            {['all', 'pending', 'processing', 'shipped', 'delivered', 'return_requested', 'returned', 'cancelled'].map(status => (
               <button
                 key={status}
                 onClick={() => setStatusFilter(status)}
@@ -373,6 +374,22 @@ export default function OrdersDashboard() {
                   </div>
                 </div>
 
+                {/* Return Request Specifications Info Block */}
+                {order.status === 'return_requested' && order.returnRequest && (
+                  <div className="px-6 py-4 bg-amber-950/20 border-y border-amber-900/20 flex items-start gap-4 text-left">
+                    <div className="w-8 h-8 rounded-full bg-amber-950/40 flex items-center justify-center border border-[#C5A059]/20 self-start flex-shrink-0">
+                      <RotateCcw className="w-4 h-4 text-[#C5A059]" />
+                    </div>
+                    <div>
+                      <h4 className="text-[10px] font-black uppercase tracking-widest text-[#C5A059] mb-1">Return & Exchange Request Information</h4>
+                      <div className="text-[10px] font-semibold text-white/70 space-y-1">
+                        <p>• <span className="text-white/40">Reason:</span> {order.returnRequest.reason}</p>
+                        <p>• <span className="text-white/30">Action Requested:</span> {order.returnRequest.type === 'refund' ? "Refund to Tribe Wallet" : `Swap Size Exchange to (${order.returnRequest.targetSize})`}</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 {/* Items Preview */}
                 <div className="p-6">
                   <div className="flex gap-3 overflow-x-auto no-scrollbar">
@@ -393,7 +410,7 @@ export default function OrdersDashboard() {
                 {/* Actions */}
                 <div className="px-6 py-4 bg-white/5 border-t border-white/5 flex flex-wrap gap-2">
                   <span className="text-[10px] font-black uppercase tracking-widest text-white/40 mr-2 self-center">Update Status:</span>
-                  {['pending', 'processing', 'shipped', 'delivered', 'cancelled'].map(status => (
+                  {['pending', 'processing', 'shipped', 'delivered', 'return_requested', 'returned', 'cancelled'].map(status => (
                     <button
                       key={status}
                       onClick={() => updateOrderStatus(order.id, status)}

@@ -298,27 +298,15 @@ export default function TrialRoom() {
   return (
     <div className="min-h-screen bg-white pt-24 pb-32 px-4">
       <div className="max-w-4xl mx-auto">
-        {/* Header */}
-        <div className="flex items-center gap-4 mb-8">
-          <button 
-            onClick={() => navigate(-1)}
-            className="p-2 hover:bg-black/5 rounded-full transition-colors"
-          >
-            <ChevronLeft className="w-6 h-6" />
-          </button>
-          <div>
-            <h1 className="text-3xl font-black uppercase tracking-tighter italic">Trial Room</h1>
-            <div className="flex items-center gap-2">
-              <p className="text-black/50 text-sm">AI Virtual Try-On</p>
-              {auth.currentUser && (
-                <span className="flex items-center gap-1 text-[10px] bg-green-500/10 text-green-600 px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">
-                  <History className="w-2.5 h-2.5" />
-                  Cloud Sync Active
-                </span>
-              )}
-            </div>
+        {/* Header Status Indicator */}
+        {auth.currentUser && (
+          <div className="flex justify-end mb-6">
+            <span className="flex items-center gap-1 text-[9px] bg-[#064e3b]/5 text-[#064e3b] px-2.5 py-1 rounded-full font-bold uppercase tracking-wider">
+              <History className="w-2.5 h-2.5" />
+              Cloud Sync Active
+            </span>
           </div>
-        </div>
+        )}
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           {/* Left Side: Upload & Input */}
@@ -499,7 +487,7 @@ export default function TrialRoom() {
           {/* Right Side: Result */}
           <div className="flex flex-col items-center justify-center gap-6 relative">
             {/* Floating Action Button (Mobile Only) */}
-            <div className="fixed bottom-24 right-6 z-[60] lg:hidden">
+            <div className="fixed bottom-36 right-6 z-[60] lg:hidden">
               <motion.button
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.9 }}

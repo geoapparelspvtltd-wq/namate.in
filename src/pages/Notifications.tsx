@@ -40,22 +40,8 @@ export default function Notifications() {
   }, [userData]);
 
   return (
-    <div className="min-h-screen bg-white pb-32 pt-10">
+    <div className="min-h-screen bg-white pt-24 pb-32">
       <div className="max-w-2xl mx-auto px-4">
-        {/* Header */}
-        <div className="flex items-center gap-4 mb-10">
-          <button 
-            onClick={() => navigate(-1)}
-            className="w-12 h-12 flex items-center justify-center bg-black/5 rounded-2xl hover:bg-black hover:text-white transition-all group"
-          >
-            <ChevronLeft className="w-5 h-5 group-active:scale-90 transition-transform" />
-          </button>
-          <div>
-            <h1 className="text-3xl font-black uppercase tracking-tighter leading-none">Inbox</h1>
-            <p className="text-[10px] font-black text-black/40 uppercase tracking-widest mt-1">Exclusive drops and news</p>
-          </div>
-        </div>
-
         {loading ? (
           <div className="flex flex-col items-center justify-center py-20">
             <div className="w-8 h-8 border-4 border-black border-t-transparent rounded-full animate-spin mb-4" />

@@ -1,112 +1,105 @@
 import { Link, useLocation } from 'react-router-dom';
-import { Crown, LayoutGrid, User, Home } from 'lucide-react';
+import { Search, Heart, ShoppingBag, User } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import RegalDiamond from './RegalDiamond';
-import { memo } from 'react';
+import { memo, useState } from 'react';
 import { motion } from 'motion/react';
-
-import { useState, useEffect } from 'react';
-
+import { useCart } from '@/lib/CartContext';
+import { useWishlist } from '@/lib/WishlistContext';
 import { triggerHaptic } from '@/lib/haptics';
 
 const BottomNav = memo(() => {
   const location = useLocation();
-  const [scrolled, setScrolled] = useState(false);
+  const { items } = useCart();
+  const { wishlist } = useWishlist();
 
-  useEffect(() => {
-    const handleScroll = () => {
-      setScrolled(window.scrollY > 100);
-    };
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
+  const [logoIndex, setLogoIndex] = useState(0);
+  const logoSrcs = [
+    "https://i.postimg.cc/wTBMVB6g/Gemini-Generated-Image-22c90822c90822c9-copy.png"
+  ];
 
-  // Hide bottom nav in reel mode (ProductDetail)
-  if (location.pathname.startsWith('/product/')) return null;
+  const handleLogoError = () => {
+    // Already using the correct direct link
+  };
 
-  const NavLink = ({ to, children, isActive, isRegal = false }: any) => (
+  const itemCount = items.reduce((acc, item) => acc + item.quantity, 0);
+
+  const NavLink = ({ to, children, label, isActive }: any) => (
     <Link 
       to={to} 
       onClick={() => triggerHaptic(isActive ? 'light' : 'medium')}
-      className={cn(
-        "flex flex-col items-center justify-center transition-all duration-500 relative",
-        isRegal 
-          ? cn("w-11 h-11 rounded-[16px] my-0.5", isActive ? "bg-black scale-105 shadow-2xl shadow-black/30" : "bg-black/10 text-black hover:bg-black")
-          : cn("w-9 h-9 rounded-full", isActive ? "bg-black text-white scale-105 shadow-lg shadow-black/10" : "text-black/40 hover:text-black hover:bg-black/5")
-      )}
+      className="flex flex-col items-center justify-center w-14 sm:w-16 h-12 transition-all duration-300 relative group cursor-pointer"
     >
-      {children}
-      {isActive && !isRegal && (
+      <div className={cn(
+        "flex items-center justify-center transition-all duration-300 rounded-lg relative",
+        isActive ? "text-black scale-105" : "text-black/45 hover:text-black"
+      )}>
+        {children}
+      </div>
+      {label && (
+        <span className={cn(
+          "text-[7px] font-black uppercase tracking-[0.2em] -mr-[0.2em] mt-1.5 transition-colors duration-300",
+          isActive ? "text-black" : "text-black/35 group-hover:text-black"
+        )}>
+          {label}
+        </span>
+      )}
+      {isActive && (
         <motion.div 
           layoutId="activeTabBottom"
-          className="absolute -left-1.5 w-1 h-3 bg-[#C5A059] rounded-full"
-          transition={{ type: "spring", stiffness: 300, damping: 30 }}
+          className="absolute -bottom-1 w-1 h-1 bg-[#111] rounded-full"
+          transition={{ type: "spring", stiffness: 350, damping: 25 }}
         />
       )}
     </Link>
   );
 
   return (
-    <div className="fixed right-0 bottom-24 z-50 pointer-events-none translate-y-0">
-      <div className={cn(
-        "flex flex-col items-center justify-center gap-2.5 p-2 transition-all duration-700 pointer-events-auto",
-        "bg-white/70 backdrop-blur-2xl border-l border-y border-black/[0.03] shadow-[0_8px_40px_rgba(0,0,0,0.03)] rounded-l-[32px]"
-      )}>
+    <div className="fixed bottom-0 left-0 right-0 max-w-md mx-auto z-[120] bg-[#F7F4F0]/95 backdrop-blur-md border-t border-neutral-200/50 shadow-[0_-8px_40px_rgba(0,0,0,0.02)] pb-safe">
+      <div className="max-w-md mx-auto flex items-center justify-between py-2.5 px-6">
         {/* Home */}
-        <NavLink to="/" isActive={location.pathname === '/'}>
-          <Home className="w-4 h-4" />
+        <NavLink to="/" label="Home" isActive={location.pathname === '/'}>
+          <img 
+            src={logoSrcs[logoIndex]} 
+            onError={handleLogoError} 
+            className={cn(
+              "w-5 h-5 object-contain transition-all duration-300 mix-blend-multiply",
+              location.pathname === '/' ? "opacity-100 scale-105" : "opacity-65 grayscale hover:grayscale-0 hover:opacity-100"
+            )}
+            alt="Home"
+            referrerPolicy="no-referrer"
+          />
         </NavLink>
 
-        {/* Categories */}
-        <NavLink to="/shop" isActive={location.pathname === '/shop'}>
-          <LayoutGrid className="w-4 h-4" />
+        {/* Explore / Shop */}
+        <NavLink to="/shop" label="Explore" isActive={location.pathname === '/shop'}>
+          <Search className="w-4 h-4" strokeWidth={2.2} />
         </NavLink>
 
-        {/* Logo / Regal (Central Action) */}
-        <NavLink to="/regal" isActive={location.pathname === '/regal'} isRegal={true}>
-          <div className="relative w-full h-full flex items-center justify-center overflow-hidden">
-            <motion.div 
-              animate={location.pathname === '/regal' ? { rotate: 360 } : { rotate: 0 }}
-              whileHover={{ scale: 1.2, rotate: 360 }}
-              whileTap={{ scale: 0.9 }}
-              transition={{ 
-                rotate: { duration: 0.5, ease: "easeInOut" },
-                scale: { type: "spring", stiffness: 300, damping: 20 }
-              }}
-              className={cn(
-                "w-7 h-7 relative",
-                location.pathname === '/regal' ? "bg-white" : "bg-black"
-              )}
-              style={{ 
-                WebkitMaskImage: "url('https://i.ibb.co/rG66vw6q/Chat-GPT-Image-Apr-10-2026-12-40-57-AM.png')",
-                maskImage: "url('https://i.ibb.co/rG66vw6q/Chat-GPT-Image-Apr-10-2026-12-40-57-AM.png')",
-                WebkitMaskSize: "contain",
-                maskSize: "contain",
-                WebkitMaskRepeat: "no-repeat",
-                maskRepeat: "no-repeat",
-                WebkitMaskPosition: "center",
-                maskPosition: "center",
-              }}
-            >
-              {/* Premium Shine Effect */}
-              <motion.div
-                initial={{ x: '-100%', skewX: -20 }}
-                whileHover={{ x: '200%' }}
-                transition={{ duration: 0.8, ease: "easeInOut" }}
-                className="absolute inset-0 w-1/2 h-full bg-gradient-to-r from-transparent via-white/40 to-transparent z-10"
-              />
-            </motion.div>
+        {/* Wishlist */}
+        <NavLink to="/wishlist" label="Wishlist" isActive={location.pathname === '/wishlist'}>
+          <div className="relative">
+            <Heart className="w-4 h-4" strokeWidth={2.2} />
+            {wishlist.length > 0 && (
+              <span className="absolute -top-1 -right-1 w-1.5 h-1.5 bg-black rounded-full" />
+            )}
           </div>
         </NavLink>
 
-        {/* Sale */}
-        <NavLink to="/sale" isActive={location.pathname === '/sale'}>
-          <span className="text-[6px] font-brand font-black uppercase tracking-widest rotate-90">SALE</span>
+        {/* Bag */}
+        <NavLink to="/cart" label="Bag" isActive={location.pathname === '/cart'}>
+          <div className="relative">
+            <ShoppingBag className="w-4 h-4" strokeWidth={2.2} />
+            {itemCount > 0 && (
+              <span className="absolute -top-1 -right-1.5 bg-black text-[#F7F4F0] text-[6px] font-black min-w-[12px] h-[12px] rounded-full flex items-center justify-center px-0.5">
+                {itemCount}
+              </span>
+            )}
+          </div>
         </NavLink>
 
         {/* Profile */}
-        <NavLink to="/profile" isActive={location.pathname === '/profile'}>
-          <User className="w-4 h-4" />
+        <NavLink to="/profile" label="Profile" isActive={location.pathname === '/profile'}>
+          <User className="w-4 h-4" strokeWidth={2.2} />
         </NavLink>
       </div>
     </div>

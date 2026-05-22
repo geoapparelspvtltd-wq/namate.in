@@ -8,8 +8,8 @@ export default function FloatingCart() {
   const location = useLocation();
   const { isAnimating, animationPos, animationImage } = useCart();
   
-  // Hide in reel mode or cart page
-  if (location.pathname.startsWith('/product/') || location.pathname === '/cart') return null;
+  // Hide only on cart page
+  if (location.pathname === '/cart') return null;
 
   const [navbarBagPos, setNavbarBagPos] = useState<{ x: number, y: number } | null>(null);
 

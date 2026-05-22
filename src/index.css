@@ -208,7 +208,7 @@
     @apply border-border outline-ring/50;
     }
   body {
-    background-color: #ffffff !important;
+    background-color: #EAE6E1 !important;
     @apply text-foreground overflow-x-hidden selection:bg-primary selection:text-primary-foreground;
     -webkit-tap-highlight-color: transparent;
     overscroll-behavior-y: none;

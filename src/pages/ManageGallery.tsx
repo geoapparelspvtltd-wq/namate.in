@@ -379,7 +379,7 @@ export default function ManageGallery() {
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.9 }}
-                className="group relative aspect-[4/5] rounded-[32px] overflow-hidden bg-black/5 border border-black/5 hover:border-black/20 transition-all"
+                className="group relative aspect-[4/5] rounded-[32px] overflow-hidden bg-black/5 border border-black/5 hover:border-black/20 transition-all shadow-sm hover:shadow-xl duration-500"
               >
                 <img 
                   src={img.url} 
@@ -387,44 +387,58 @@ export default function ManageGallery() {
                   className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-700"
                   referrerPolicy="no-referrer"
                 />
-                
-                {/* Overlay */}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity p-6 flex flex-col justify-end">
-                  <div className="mb-2 flex flex-wrap gap-2">
+
+                {/* Permanent Overlay for Quick Actions / Always Visible on Admin View */}
+                <div className="absolute top-4 left-4 right-4 flex items-center justify-between z-20 pointer-events-none">
+                  <div className="flex gap-1.5">
                     {img.category && (
-                      <span className="text-[8px] font-black uppercase tracking-widest bg-white text-black px-2 py-0.5 rounded">
+                      <span className="text-[8px] font-black uppercase tracking-widest bg-black/50 backdrop-blur-md text-white px-2.5 py-1 rounded-full shadow-sm">
                         {img.category}
                       </span>
                     )}
+                  </div>
+                  
+                  <div className="flex items-center gap-1.5 pointer-events-auto">
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleEdit(img);
+                      }}
+                      className="w-8 h-8 rounded-full bg-white/90 backdrop-blur text-black hover:bg-black hover:text-white flex items-center justify-center shadow-lg transition-all active:scale-95"
+                      title="Edit details"
+                    >
+                      <Type className="w-3.5 h-3.5" />
+                    </button>
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDelete(img.id);
+                      }}
+                      className="w-8 h-8 rounded-full bg-red-500 text-white hover:bg-red-600 flex items-center justify-center shadow-lg transition-all active:scale-95"
+                      title="Delete image"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+                
+                {/* Overlay with details */}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-transparent to-transparent md:opacity-0 md:group-hover:opacity-100 opacity-100 transition-opacity p-6 flex flex-col justify-end pointer-events-none">
+                  <div className="mb-1.5 flex flex-wrap gap-1.5">
                     {img.subcategory && (
-                      <span className="text-[8px] font-black uppercase tracking-widest border border-white/20 text-white px-2 py-0.5 rounded">
+                      <span className="text-[8px] font-black uppercase tracking-widest bg-white/10 backdrop-blur text-white/90 px-2 py-0.5 rounded border border-white/10">
                         {img.subcategory}
                       </span>
                     )}
                   </div>
-                  <p className="text-white font-black uppercase tracking-tighter text-lg leading-tight mb-4">
+                  <p className="text-white font-black uppercase tracking-tighter text-base leading-tight mb-3">
                     {img.caption}
                   </p>
-                  <div className="flex flex-col gap-2">
-                    <button 
-                      onClick={() => handleEdit(img)}
-                      className="w-full py-3 bg-white text-black rounded-xl font-black uppercase tracking-widest text-[10px] hover:bg-white/90 transition-colors flex items-center justify-center gap-2 shadow-lg"
-                    >
-                      <Type className="w-3.5 h-3.5" />
-                      EDIT DETAILS
-                    </button>
-                    <button 
-                      onClick={() => handleDelete(img.id)}
-                      className="w-full py-3 bg-red-500 text-white rounded-xl font-black uppercase tracking-widest text-[10px] hover:bg-red-600 transition-colors flex items-center justify-center gap-2 shadow-lg"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                      REMOVE FROM GALLERY
-                    </button>
+                  
+                  {/* Subtle date display */}
+                  <div className="text-[8px] font-bold text-white/50 uppercase tracking-widest">
+                    Added {img.createdAt instanceof Date ? img.createdAt.toLocaleDateString() : 'recently'}
                   </div>
-                </div>
-
-                <div className="absolute top-4 right-4 text-[8px] font-black text-white/40 uppercase tracking-widest bg-black/20 backdrop-blur-md px-2 py-0.5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity">
-                  {img.createdAt.toLocaleDateString()}
                 </div>
               </motion.div>
             ))}

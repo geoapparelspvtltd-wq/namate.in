@@ -1,22 +1,21 @@
-import { Link, useLocation } from 'react-router-dom';
-import { Heart, Search, ChevronLeft, Home, Bell } from 'lucide-react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Heart, ChevronLeft, Menu, ShoppingBag, X, HelpCircle, Key, Plus, FileText, Grid, Images, Layers, Settings, History } from 'lucide-react';
 import { useWishlist } from '@/lib/WishlistContext';
 import { useAuth } from '@/lib/AuthContext';
-import { useSearch } from '@/lib/SearchContext';
 import { useCart } from '@/lib/CartContext';
 import { memo, useState, useEffect, useRef } from 'react';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
-
 import { triggerHaptic } from '@/lib/haptics';
 
 const Navbar = memo(() => {
   const location = useLocation();
+  const navigate = useNavigate();
   const { wishlist } = useWishlist();
-  const { searchQuery, setSearchQuery } = useSearch();
   const { items } = useCart();
-  const { user, role, isNative } = useAuth();
+  const { user, role, logout } = useAuth();
   const [scrolled, setScrolled] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
   const bagRef = useRef<HTMLDivElement>(null);
 
   const itemCount = items.reduce((acc, item) => acc + item.quantity, 0);
@@ -38,184 +37,294 @@ const Navbar = memo(() => {
       window.removeEventListener('scroll', updateBagPos);
       window.removeEventListener('resize', updateBagPos);
     };
-  }, [itemCount, scrolled]);
+  }, [itemCount]);
 
   useEffect(() => {
     const handleScroll = () => {
-      setScrolled(window.scrollY > 100);
+      setScrolled(window.scrollY > 30);
     };
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // Hide navbar in reel mode (ProductDetail)
-  if (location.pathname.startsWith('/product/')) return null;
+  // Close drawer on route change
+  useEffect(() => {
+    setDrawerOpen(false);
+  }, [location.pathname]);
 
   const isPrimaryAdmin = user?.email?.toLowerCase().trim() === 'geoapparelspvtltd@gmail.com';
   const isAdmin = role === 'admin' || isPrimaryAdmin;
+
+  // Determine header layout based on route
   const isHome = location.pathname === '/';
+  
+  // Custom headers for other routes to match mockup screens
+  let headerTitle = "";
+  let rightAction: React.ReactNode = null;
+  const showBackBtn = !isHome;
+
+  if (location.pathname === '/wishlist') {
+    headerTitle = "WISHLIST";
+  } else if (location.pathname === '/cart') {
+    headerTitle = `MY BAG (${itemCount})`;
+    rightAction = (
+      <button 
+        onClick={() => {
+          triggerHaptic('light');
+          // Add custom edit action or simply toggles if needed
+        }} 
+        className="text-[9px] font-black tracking-widest text-[#111] uppercase"
+      >
+        EDIT
+      </button>
+    );
+  } else if (location.pathname === '/profile') {
+    headerTitle = "PROFILE";
+    rightAction = (
+      <button 
+        onClick={() => {
+          triggerHaptic('medium');
+          navigate('/my-orders');
+        }} 
+        className="text-black/70 hover:text-black"
+        id="profile-settings-btn"
+      >
+        <Settings className="w-4 h-4" />
+      </button>
+    );
+  } else if (location.pathname === '/trial-room') {
+    headerTitle = "AI TRY-ON";
+  } else if (location.pathname.startsWith('/product/')) {
+    headerTitle = ""; // Center product title handled internally or empty
+    rightAction = null;
+  } else if (location.pathname === '/shop') {
+    headerTitle = "EXPLORE COLLECTION";
+  } else if (location.pathname === '/my-orders') {
+    headerTitle = "MY ORDERS";
+  } else {
+    // Fallback title formatting
+    const path = location.pathname.substring(1).replace('-', ' ');
+    headerTitle = path ? path.toUpperCase() : "NAMATE";
+  }
 
   return (
-    <nav className="fixed top-0 left-0 right-0 z-[100] w-full pointer-events-none transition-all duration-500">
-      {/* Top Bar for Logo */}
-      {!isNative && (
-        <div className={cn(
-          "w-full px-6 py-4 flex items-center justify-start transition-all duration-700 relative overflow-hidden",
-          scrolled 
-            ? "translate-y-0 opacity-100" 
-            : "translate-y-0 opacity-100",
-          scrolled ? "bg-white/80 backdrop-blur-2xl border-b border-black/[0.03] shadow-[0_4px_30px_rgba(0,0,0,0.02)] py-3" : "bg-transparent"
-        )}>
-          {/* Crystalline Shine on scroll */}
-          {scrolled && (
-            <motion.div 
-              initial={{ x: '-100%' }}
-              animate={{ x: '100%' }}
-              transition={{ duration: 1.5, repeat: Infinity, repeatDelay: 5 }}
-              className="absolute inset-0 w-1/3 h-full bg-gradient-to-r from-transparent via-white/40 to-transparent skew-x-[-20deg] pointer-events-none"
-            />
-          )}
+    <>
+      <nav className={cn(
+        "fixed top-0 left-0 right-0 max-w-md mx-auto z-[100] w-full transition-all duration-300 bg-transparent border-none",
+        scrolled ? "py-2.5" : "py-4"
+      )}>
+        <div className="max-w-md mx-auto px-6 h-12 flex items-center justify-between">
+          
+          {/* Left Action Button */}
+          <div className="w-10 flex items-center justify-start">
+            {showBackBtn ? (
+              <button
+                onClick={() => {
+                  triggerHaptic('light');
+                  navigate(-1);
+                }}
+                className="w-8 h-8 -ml-1 flex items-center justify-center text-black/80 hover:text-black transition-colors"
+                id="header-back-btn"
+              >
+                <ChevronLeft className="w-5 h-5 stroke-[2.5]" />
+              </button>
+            ) : (
+              <button
+                onClick={() => {
+                  triggerHaptic('light');
+                  setDrawerOpen(true);
+                }}
+                className="w-8 h-8 -ml-1 flex items-center justify-center text-black/80 hover:text-black transition-colors"
+                id="header-menu-btn"
+              >
+                <Menu className="w-5 h-5" />
+              </button>
+            )}
+          </div>
 
-          <div className="flex items-center pointer-events-auto">
-            <Link to="/" onClick={() => triggerHaptic('light')} className="w-12 h-12 flex items-center justify-center group relative z-[110]">
-              <div className="relative w-8 h-8 flex items-center justify-center">
-                {/* Background Glow */}
-                <motion.div 
-                  initial={{ opacity: 0, scale: 0.8 }}
-                  whileHover={{ opacity: 0.4, scale: 1.2 }}
-                  className="absolute inset-0 bg-[#C5A059]/30 rounded-full blur-xl transition-all duration-500"
-                />
-                
-                {/* Main Logo */}
-                <motion.div 
-                  whileHover={{ 
-                    scale: 1.1,
-                    rotate: 360,
-                  }}
-                  whileTap={{ scale: 0.95 }}
-                  transition={{ 
-                    rotate: { duration: 0.4, ease: "circOut" },
-                    scale: { type: "spring", stiffness: 400, damping: 15 }
-                  }}
-                  className="relative w-8 h-8 bg-black group-hover:bg-[#C5A059] transition-colors duration-500 overflow-hidden"
-                  style={{ 
-                    WebkitMaskImage: "url('https://i.ibb.co/rG66vw6q/Chat-GPT-Image-Apr-10-2026-12-40-57-AM.png')",
-                    maskImage: "url('https://i.ibb.co/rG66vw6q/Chat-GPT-Image-Apr-10-2026-12-40-57-AM.png')",
-                    WebkitMaskSize: "contain",
-                    maskSize: "contain",
-                    WebkitMaskRepeat: "no-repeat",
-                    maskRepeat: "no-repeat",
-                    WebkitMaskPosition: "center",
-                    maskPosition: "center",
-                  }}
-                >
-                  {/* Premium Shine Effect */}
-                  <motion.div
-                    initial={{ x: '-100%', skewX: -20 }}
-                    whileHover={{ x: '200%' }}
-                    transition={{ duration: 0.8, ease: "easeInOut" }}
-                    className="absolute inset-0 w-1/2 h-full bg-gradient-to-r from-transparent via-white/40 to-transparent z-10"
-                  />
-                </motion.div>
+          {/* Centered Logo/Title Area */}
+          <div className="flex-1 flex flex-col items-center justify-center text-center">
+            {!isHome && (
+              <span className="text-[11px] font-black tracking-[0.25em] -mr-[0.25em] text-[#111] uppercase line-clamp-1 max-w-[200px]">
+                {headerTitle}
+              </span>
+            )}
+          </div>
 
-                {/* Subtle outer ring on hover */}
-                <motion.div 
-                  initial={{ opacity: 0, scale: 0.5 }}
-                  whileHover={{ opacity: 1, scale: 1 }}
-                  className="absolute -inset-1 border border-[#C5A059]/20 rounded-full pointer-events-none"
-                />
-              </div>
-            </Link>
+          {/* Right Action Button */}
+          <div className="w-10 flex items-center justify-end" ref={bagRef}>
+            {rightAction}
           </div>
         </div>
-      )}
+      </nav>
 
-      {/* Side Bar for Actions - Attached to Right Border */}
-      <div className={cn(
-        "fixed right-0 top-24 z-50 flex flex-col items-center gap-2 p-2 pointer-events-auto transition-all duration-700",
-        "bg-white/70 backdrop-blur-2xl border-l border-y border-black/[0.03] shadow-[0_4px_30px_rgba(0,0,0,0.02)] rounded-l-[32px]",
-        isNative && "top-8" // Move up if no logo
-      )}>
-        {/* Notifications */}
-        <Link to="/notifications" onClick={() => triggerHaptic('light')} className="w-10 h-10 flex items-center justify-center relative group">
-          <motion.div
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            className="w-8 h-8 rounded-full bg-black/5 flex items-center justify-center text-black/40 hover:bg-black hover:text-white transition-all"
-          >
-            <Bell className="w-4 h-4" />
-          </motion.div>
-        </Link>
-        
-        {/* Cart Bag */}
-        <Link to="/cart" onClick={() => triggerHaptic('light')} className="w-10 h-10 flex items-center justify-center relative group">
-          <motion.div
-            ref={bagRef}
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            className="relative cursor-pointer flex items-center justify-center"
-          >
-            <div className="relative scale-[0.6] origin-center -rotate-6">
-              {/* Bag Handles */}
-              <div className="absolute -top-3 left-1/2 -translate-x-1/2 flex gap-2 z-0">
-                <div className="w-5 h-7 border-[2.5px] border-[#8B7355]/40 rounded-t-lg" />
-              </div>
-              
-              {/* Bag Body */}
-              <div className={cn(
-                "relative z-10 w-13 h-15 bg-[#D2B48C] border-[1px] border-[#8B7355]/30 shadow-sm flex flex-col items-center justify-center overflow-hidden transition-all duration-500 rounded-px",
-                itemCount > 0 ? "bg-[#C4A484]" : "bg-[#D2B48C]"
-              )}>
-                {/* Logo */}
-                <div 
-                  className="w-[50%] h-[50%] bg-black/70"
-                  style={{ 
-                    WebkitMaskImage: "url('https://i.ibb.co/rG66vw6q/Chat-GPT-Image-Apr-10-2026-12-40-57-AM.png')",
-                    maskImage: "url('https://i.ibb.co/rG66vw6q/Chat-GPT-Image-Apr-10-2026-12-40-57-AM.png')",
-                    WebkitMaskSize: "contain",
-                    maskSize: "contain",
-                    WebkitMaskRepeat: "no-repeat",
-                    maskRepeat: "no-repeat",
-                    WebkitMaskPosition: "center",
-                  }}
-                />
-              </div>
-
-              {/* Badge */}
-              <AnimatePresence>
-                {itemCount > 0 && (
-                  <motion.div
-                    initial={{ scale: 0 }}
-                    animate={{ scale: 1 }}
-                    exit={{ scale: 0 }}
-                    className="absolute -top-1.5 -right-1.5 bg-black text-white text-[9px] font-black min-w-[20px] h-[20px] rounded-full flex items-center justify-center border-2 border-white z-30 shadow-lg px-1"
+      {/* Slide-out Menu Drawer */}
+      <AnimatePresence>
+        {drawerOpen && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 0.5 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setDrawerOpen(false)}
+              className="fixed inset-0 bg-black z-[1000]"
+            />
+            
+            <motion.div
+              initial={{ x: '-100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '-100%' }}
+              transition={{ type: "spring", damping: 30, stiffness: 350 }}
+              className="fixed top-0 bottom-0 left-0 w-80 max-w-[85vw] bg-[#F7F4F0] z-[1001] shadow-2xl flex flex-col justify-between p-8"
+              style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 2rem)' }}
+            >
+              <div>
+                <div className="flex items-center justify-between mb-10">
+                  <div className="flex flex-col items-start select-none">
+                    <img 
+                      src="https://i.postimg.cc/wTBMVB6g/Gemini-Generated-Image-22c90822c90822c9-copy.png"
+                      className="w-8 h-8 object-contain mix-blend-multiply mb-1"
+                      alt="Brand Logo"
+                      referrerPolicy="no-referrer"
+                    />
+                    <span className="text-[11px] font-brand font-black tracking-[0.3em] text-[#111]">
+                      NAMATE
+                    </span>
+                    <span className="text-[7px] tracking-[0.2em] font-medium text-black/30 uppercase mt-0.5">
+                      Premium Apparel
+                    </span>
+                  </div>
+                  <button 
+                    onClick={() => setDrawerOpen(false)}
+                    className="w-8 h-8 flex items-center justify-center text-black/40 hover:text-black bg-black/5 rounded-full"
                   >
-                    {itemCount}
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-          </motion.div>
-        </Link>
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
 
-        {/* Wishlist Action */}
-        <Link to="/wishlist" onClick={() => triggerHaptic('light')} className={cn(
-          "relative shrink-0 w-10 h-10 flex items-center justify-center rounded-full group transition-all duration-500",
-          "bg-black/5 text-black hover:bg-black hover:text-white"
-        )}>
-          <Heart className={cn(
-            "w-4.5 h-4.5 transition-colors"
-          )} />
-          {wishlist.length > 0 && (
-            <span className="absolute top-1.5 right-1.5 min-w-[14px] h-[14px] bg-red-500 text-white text-[6px] font-black rounded-full flex items-center justify-center border-2 border-white">
-              {wishlist.length}
-            </span>
-          )}
-        </Link>
-      </div>
-    </nav>
+                <div className="space-y-1.5">
+                  <span className="text-[8px] font-black uppercase tracking-widest text-black/30 block mb-2 px-1">Shop & Craft</span>
+                  
+                  <Link 
+                    to="/" 
+                    className="flex items-center justify-between p-3.5 bg-black/5 hover:bg-black/10 rounded-2xl transition-colors text-xs font-black uppercase tracking-wider text-black"
+                  >
+                    <span>Linen Home</span>
+                  </Link>
+                  
+                  <Link 
+                    to="/shop" 
+                    className="flex items-center justify-between p-3.5 bg-black/5 hover:bg-black/10 rounded-2xl transition-colors text-xs font-black uppercase tracking-wider text-black"
+                  >
+                    <span>Explore Products</span>
+                  </Link>
+
+                  <Link 
+                    to="/trial-room" 
+                    className="flex items-center justify-between p-3.5 bg-black/5 hover:bg-black/10 rounded-2xl transition-colors text-xs font-black uppercase tracking-wider text-black"
+                  >
+                    <span>AI Virtual Try-On</span>
+                  </Link>
+
+                  <Link 
+                    to="/tribe" 
+                    className="flex items-center justify-between p-3.5 bg-black/5 hover:bg-black/10 rounded-2xl transition-colors text-xs font-black uppercase tracking-wider text-black"
+                  >
+                    <span>Join the Tribe</span>
+                  </Link>
+
+                  {user && (
+                    <Link 
+                      to="/my-orders" 
+                      className="flex items-center justify-between p-3.5 bg-black/5 hover:bg-black/10 rounded-2xl transition-colors text-xs font-black uppercase tracking-wider text-black"
+                    >
+                      <span>My Orders</span>
+                    </Link>
+                  )}
+                </div>
+
+                {isAdmin && (
+                  <div className="space-y-1.5 mt-8">
+                    <span className="text-[8px] font-black uppercase tracking-widest text-[#C5A059] block mb-2 px-1">Admin Space</span>
+                    
+                    <Link 
+                      to="/orders-dashboard" 
+                      className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-black/5 transition-colors text-[10px] font-black uppercase tracking-widest"
+                    >
+                      <FileText className="w-3.5 h-3.5 text-black/60" />
+                      <span>Orders Feed</span>
+                    </Link>
+
+                    <Link 
+                      to="/manage-products" 
+                      className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-black/5 transition-colors text-[10px] font-black uppercase tracking-widest"
+                    >
+                      <Grid className="w-3.5 h-3.5 text-black/60" />
+                      <span>Product Registry</span>
+                    </Link>
+
+                    <Link 
+                      to="/add-product" 
+                      className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-black/5 transition-colors text-[10px] font-black uppercase tracking-widest"
+                    >
+                      <Plus className="w-3.5 h-3.5 text-black/60" />
+                      <span>Add New Clothes</span>
+                    </Link>
+
+                    <Link 
+                      to="/manage-gallery" 
+                      className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-black/5 transition-colors text-[10px] font-black uppercase tracking-widest"
+                    >
+                      <Images className="w-3.5 h-3.5 text-black/60" />
+                      <span>Configure Hero</span>
+                    </Link>
+
+                    <Link 
+                      to="/manage-categories" 
+                      className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-black/5 transition-colors text-[10px] font-black uppercase tracking-widest"
+                    >
+                      <Layers className="w-3.5 h-3.5 text-black/60" />
+                      <span>Categories</span>
+                    </Link>
+                  </div>
+                )}
+              </div>
+
+              <div className="space-y-4">
+                {user ? (
+                  <div className="p-4 bg-black/5 rounded-2xl">
+                    <span className="text-[8px] font-black uppercase tracking-widest text-black/30 block mb-1">Signed In</span>
+                    <span className="text-[10px] font-black tracking-tight text-black line-clamp-1 mb-3">{user.email}</span>
+                    <button
+                      onClick={() => {
+                        logout();
+                        setDrawerOpen(false);
+                      }}
+                      className="w-full py-2.5 bg-black hover:bg-black/80 text-[#F7F4F0] rounded-xl text-[9px] font-black uppercase tracking-widest"
+                    >
+                      Sign Out
+                    </button>
+                  </div>
+                ) : (
+                  <Link 
+                    to="/profile" 
+                    className="flex items-center justify-center gap-2 p-3.5 bg-[#C5A059] text-white hover:bg-[#B08A45] rounded-2xl transition-colors text-xs font-black uppercase tracking-widest"
+                  >
+                    <span>Connect Profile</span>
+                  </Link>
+                )}
+
+                <div className="flex items-center justify-between text-[8px] font-bold text-black/20 uppercase tracking-widest px-1">
+                  <span>Namate Studio v1.5</span>
+                  <span>Est. 2026</span>
+                </div>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+    </>
   );
 });
 
 export default Navbar;
-

@@ -212,18 +212,9 @@ function AdminMaintenanceBadge() {
 }
 
 function AppContent({ isLoading, setIsLoading }: { isLoading: boolean, setIsLoading: (val: boolean) => void }) {
-  const location = useLocation();
-  const isReelMode = location.pathname.startsWith('/product/');
   const { isMaintenanceMode, role, isNative } = useAuth();
 
-  // Handle splash screen bypass for web
-  useEffect(() => {
-    if (!isNative && isLoading) {
-      setIsLoading(false);
-    }
-  }, [isNative, isLoading, setIsLoading]);
-
-  const showSplash = isLoading && isNative;
+  const showSplash = isLoading;
   
   return (
     <ErrorBoundary>
@@ -236,31 +227,24 @@ function AppContent({ isLoading, setIsLoading }: { isLoading: boolean, setIsLoad
             {showSplash && <SplashScreen onComplete={() => setIsLoading(false)} />}
             <div 
               className={cn(
-                "min-h-screen flex flex-col font-sans selection:bg-primary selection:text-primary-foreground relative overflow-hidden transition-opacity duration-300",
+                "min-h-screen flex flex-col font-sans selection:bg-primary selection:text-primary-foreground relative overflow-hidden transition-opacity duration-300 w-full max-w-md mx-auto md:shadow-[0_0_100px_rgba(0,0,0,0.06)] md:border-x md:border-neutral-200/50",
                 showSplash ? "opacity-0" : "opacity-100"
               )}
-              style={{ backgroundColor: '#ffffff' }}
+              style={{ backgroundColor: '#F7F4F0' }}
             >
-              {/* Ambient Soft Glow */}
-              <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
-                <div className="absolute -top-[10%] -left-[5%] w-[40%] h-[40%] bg-black/[0.02] blur-[100px] rounded-full" />
-                <div className="absolute top-[30%] -right-[10%] w-[50%] h-[50%] bg-black/[0.02] blur-[120px] rounded-full" />
-                <div className="absolute -bottom-[10%] left-[20%] w-[30%] h-[30%] bg-black/[0.02] blur-[80px] rounded-full" />
-              </div>
+              {/* Subtle natural linen grain feel */}
+              <div className="fixed inset-0 max-w-md mx-auto pointer-events-none opacity-[0.015] bg-[radial-gradient(#111_1px,transparent_1px)] [background-size:12px_12px] z-0" />
 
-              {!isReelMode && <Navbar />}
+              <Navbar />
               <NativeAppBanner />
               <NotificationBridge />
 
-              <main className={cn(
-                "flex-grow relative z-10",
-                !isReelMode ? "pb-32" : "pt-0 pb-0"
-              )}>
+              <main className="flex-grow relative z-10 pb-32">
                 <AnimatedRoutes />
               </main>
-              {!isReelMode && <SearchBottomBar />}
-              {!isReelMode && <FloatingCart />}
-              {!isReelMode && <BottomNav />}
+              <SearchBottomBar />
+              <FloatingCart />
+              <BottomNav />
               <Toaster position="top-center" expand={false} richColors />
             </div>
           </CartProvider>

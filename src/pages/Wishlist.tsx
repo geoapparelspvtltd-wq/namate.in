@@ -19,23 +19,8 @@ export default function Wishlist() {
   };
 
   return (
-    <div className="min-h-screen bg-background pb-32">
-      <div className="px-4 py-8 max-w-7xl mx-auto">
-        <div className="flex items-center gap-4 mb-8">
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            onClick={() => navigate(-1)}
-            className="rounded-full bg-black/5"
-          >
-            <ChevronLeft className="w-6 h-6 text-black" />
-          </Button>
-          <h1 className="text-xl font-black uppercase tracking-tighter text-black">My Wishlist</h1>
-          <div className="ml-auto bg-black text-white text-[10px] font-black px-2 py-1 rounded-full">
-            {wishlist.length} ITEMS
-          </div>
-        </div>
-
+    <div className="min-h-screen bg-background pt-20 pb-32">
+      <div className="px-4 py-4 max-w-7xl mx-auto">
         {wishlist.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 text-center">
             <div className="w-20 h-20 bg-black/5 rounded-full flex items-center justify-center mb-6">

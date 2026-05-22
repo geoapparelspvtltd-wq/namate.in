@@ -8,7 +8,12 @@ import {
   Truck, 
   XCircle,
   ChevronRight,
-  Package
+  Package,
+  RotateCcw,
+  AlertCircle,
+  RefreshCw,
+  Check,
+  X
 } from 'lucide-react';
 import BrandSignature from '@/components/BrandSignature';
 import { 
@@ -17,8 +22,11 @@ import {
   where, 
   orderBy, 
   onSnapshot, 
-  Timestamp
+  Timestamp,
+  doc,
+  updateDoc
 } from 'firebase/firestore';
+import { toast } from 'sonner';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/lib/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -92,10 +100,17 @@ interface Order {
   id: string;
   items: OrderItem[];
   total: number;
-  status: 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
+  status: 'pending' | 'processing' | 'shipped' | 'delivered' | 'return_requested' | 'returned' | 'cancelled';
   paymentMethod: 'online' | 'cod';
   pointsAwarded: boolean;
   createdAt: Timestamp;
+  returnRequest?: {
+    reason: string;
+    type: 'refund' | 'exchange';
+    targetSize?: string | null;
+    requestedAt: any;
+    status: string;
+  };
 }
 
 export default function UserOrders() {
@@ -103,6 +118,39 @@ export default function UserOrders() {
   const { user, loading } = useAuth();
   const [orders, setOrders] = useState<Order[]>([]);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
+
+  // Return & Exchange states
+  const [returnOrder, setReturnOrder] = useState<Order | null>(null);
+  const [returnReason, setReturnReason] = useState('Size mismatch - too small');
+  const [returnType, setReturnType] = useState<'refund' | 'exchange'>('refund');
+  const [targetSize, setTargetSize] = useState('M');
+  const [returnStep, setReturnStep] = useState<'form' | 'success'>('form');
+  const [isSubmittingReturn, setIsSubmittingReturn] = useState(false);
+
+  const handleReturnSubmit = async () => {
+    if (!returnOrder) return;
+    setIsSubmittingReturn(true);
+    try {
+      const orderRef = doc(db, 'orders', returnOrder.id);
+      await updateDoc(orderRef, {
+        status: 'return_requested',
+        returnRequest: {
+          reason: returnReason,
+          type: returnType,
+          targetSize: returnType === 'exchange' ? targetSize : null,
+          requestedAt: new Date(),
+          status: 'pending'
+        }
+      });
+      toast.success("Return / Exchange request submitted!");
+      setReturnStep('success');
+    } catch (e) {
+      console.error("Return error: ", e);
+      toast.error("Failed to submit return request");
+    } finally {
+      setIsSubmittingReturn(false);
+    }
+  };
 
   useEffect(() => {
     if (!user) return;
@@ -133,6 +181,8 @@ export default function UserOrders() {
       case 'processing': return 'bg-blue-900/20 text-blue-400 border-blue-900/30';
       case 'shipped': return 'bg-purple-900/20 text-purple-400 border-purple-900/30';
       case 'delivered': return 'bg-green-900/20 text-green-400 border-green-900/30';
+      case 'return_requested': return 'bg-amber-950 text-[#C5A059] border-amber-900/30';
+      case 'returned': return 'bg-neutral-800 text-neutral-400 border-neutral-700/50';
       case 'cancelled': return 'bg-red-900/20 text-red-500 border-red-900/30';
       default: return 'bg-white/10 text-white/40 border-white/10';
     }
@@ -144,6 +194,8 @@ export default function UserOrders() {
       case 'processing': return <Package className="w-3 h-3" />;
       case 'shipped': return <Truck className="w-3 h-3" />;
       case 'delivered': return <CheckCircle2 className="w-3 h-3" />;
+      case 'return_requested': return <RotateCcw className="w-3 h-3 text-[#C5A059] animate-spin-slow" />;
+      case 'returned': return <CheckCircle2 className="w-3 h-3 text-neutral-400" />;
       case 'cancelled': return <XCircle className="w-3 h-3" />;
       default: return null;
     }
@@ -169,17 +221,8 @@ export default function UserOrders() {
   }
 
   return (
-    <div className="min-h-screen bg-background pb-32">
-      <div className="max-w-2xl mx-auto px-4 py-8">
-        <div className="flex items-center gap-4 mb-8">
-          <button 
-            onClick={() => navigate(-1)}
-            className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center hover:bg-white/10 transition-colors"
-          >
-            <ChevronLeft className="w-6 h-6" />
-          </button>
-          <h1 className="text-xl font-black uppercase tracking-tighter">My Orders</h1>
-        </div>
+    <div className="min-h-screen bg-background pt-24 pb-32">
+      <div className="max-w-2xl mx-auto px-4 py-4">
         {orders.length > 0 ? (
           <div className="space-y-6">
             {orders.map(order => (
@@ -229,6 +272,56 @@ export default function UserOrders() {
                     <span className="text-xs font-black uppercase tracking-widest text-white/40">Total Paid</span>
                     <span className="text-xl font-black">₹{order.total}</span>
                   </div>
+
+                  {order.status === 'delivered' && (
+                    <div className="mt-4 pt-4 border-t border-white/5">
+                      <Button
+                        onClick={() => {
+                          setReturnOrder(order);
+                          setReturnReason('Size mismatch - too small');
+                          setReturnType('refund');
+                          setReturnStep('form');
+                          setTargetSize(order.items[0]?.size || 'M');
+                        }}
+                        className="w-full bg-[#C5A059] hover:bg-[#d5b36e] text-black font-black text-[10px] uppercase tracking-widest h-11 rounded-2xl flex items-center justify-center gap-2"
+                      >
+                        <RotateCcw className="w-4 h-4" />
+                        Easy Return & Exchange
+                      </Button>
+                    </div>
+                  )}
+
+                  {order.status === 'return_requested' && (
+                    <div className="mt-4 pt-4 border-t border-white/5">
+                      <div className="bg-[#C5A059]/10 text-[#C5A059] border border-[#C5A059]/20 rounded-2xl p-4 flex items-start gap-3">
+                        <RotateCcw className="w-4 h-4 mt-0.5 flex-shrink-0 animate-spin-slow" style={{ animationDuration: '6s' }} />
+                        <div>
+                          <p className="text-[10px] font-black uppercase tracking-widest text-[#C5A059] mb-1">Return Requested</p>
+                          <p className="text-[10px] font-semibold text-white/70 leading-normal">
+                            Reason: {order.returnRequest?.reason || 'Size doesn\'t fit'} <br />
+                            Type: {order.returnRequest?.type === 'refund' ? 'Tribe Wallet Refund' : `Size Exchange (${order.returnRequest?.targetSize})`}
+                          </p>
+                          <p className="text-[9px] text-[#C5A059]/80 font-bold uppercase tracking-widest mt-2">
+                            • Status: Pending pickup (within 24-48 hours)
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {order.status === 'returned' && (
+                    <div className="mt-4 pt-4 border-t border-white/5">
+                      <div className="bg-white/5 border border-white/10 rounded-2xl p-4 flex items-start gap-3">
+                        <Check className="w-4 h-4 mt-0.5 flex-shrink-0 text-green-500" />
+                        <div>
+                          <p className="text-[10px] font-black uppercase tracking-widest text-neutral-400 mb-1">Returned & Approved</p>
+                          <p className="text-[10px] font-medium text-white/40 leading-normal">
+                            This return has been collected and successfully processed.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             ))}
@@ -243,6 +336,184 @@ export default function UserOrders() {
         )}
       </div>
       <BrandSignature variant="dark" className="mb-20 opacity-20" />
+
+      {/* Dynamic Easy Return & Exchange Modal Overlay */}
+      {returnOrder && (
+        <div className="fixed inset-0 z-[200] bg-black/80 backdrop-blur-md flex items-end sm:items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-[#111] border-2 border-white/5 text-white w-full max-w-md rounded-t-[32px] sm:rounded-[32px] overflow-hidden shadow-2xl relative my-auto">
+            
+            {/* Header */}
+            <div className="p-6 border-b border-white/5 flex justify-between items-center bg-white/2">
+              <div>
+                <h3 className="text-sm font-brand font-black uppercase tracking-widest text-[#C5A059] mb-1">Easy Return & Exchange</h3>
+                <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest">Order #{returnOrder.id.slice(-8)}</p>
+              </div>
+              <button 
+                onClick={() => setReturnOrder(null)} 
+                className="w-8 h-8 rounded-full bg-white/5 border border-white/10 flex items-center justify-center hover:bg-white/10 text-white transition-colors"
+              >
+                <X className="w-4 h-4 text-white" />
+              </button>
+            </div>
+
+            {returnStep === 'form' ? (
+              <div className="p-6 space-y-6">
+                
+                {/* Products Summary */}
+                <div className="space-y-3">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-white/40">Items to Return</p>
+                  {returnOrder.items.map((item, index) => (
+                    <div key={index} className="flex gap-4 p-3 bg-white/5 rounded-2xl border border-white/5">
+                      <div className="w-12 h-14 bg-white/10 rounded-lg overflow-hidden">
+                        <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h4 className="text-xs font-black uppercase tracking-tight line-clamp-1">{item.name}</h4>
+                        <p className="text-[9px] font-bold text-white/40 uppercase tracking-widest mt-0.5">{item.size || 'Standard'} • Qty {item.quantity}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Return Type Selection */}
+                <div className="space-y-3">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-white/40">Choose Return Action</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setReturnType('refund')}
+                      className={cn(
+                        "p-4 rounded-2xl border text-left transition-all flex flex-col justify-between h-24",
+                        returnType === 'refund' 
+                          ? "border-[#C5A059] bg-[#C5A059]/5 text-white" 
+                          : "border-white/5 bg-white/2 text-white/60 hover:border-white/10"
+                      )}
+                    >
+                      <RotateCcw className={cn("w-5 h-5", returnType === 'refund' ? "text-[#C5A059]" : "text-white/40")} />
+                      <div>
+                        <p className="text-[10px] font-black uppercase tracking-widest">Tribe Refund</p>
+                        <p className="text-[8px] mt-0.5 text-white/40">Wallet credit (Instant!)</p>
+                      </div>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setReturnType('exchange')}
+                      className={cn(
+                        "p-4 rounded-2xl border text-left transition-all flex flex-col justify-between h-24",
+                        returnType === 'exchange' 
+                          ? "border-[#C5A059] bg-[#C5A059]/5 text-white" 
+                          : "border-white/5 bg-white/2 text-white/60 hover:border-white/10"
+                      )}
+                    >
+                      <RefreshCw className={cn("w-5 h-5", returnType === 'exchange' ? "text-[#C5A059]" : "text-white/40")} />
+                      <div>
+                        <p className="text-[10px] font-black uppercase tracking-widest">Size Exchange</p>
+                        <p className="text-[8px] mt-0.5 text-white/40">Request a swap size</p>
+                      </div>
+                    </button>
+                  </div>
+                </div>
+
+                {/* If Size Exchange selected, show custom options */}
+                {returnType === 'exchange' && (
+                  <div className="space-y-3">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-white/40">Select Requested Size</p>
+                    <div className="flex gap-2">
+                      {['XS', 'S', 'M', 'L', 'XL', 'XXL'].map((sz) => (
+                        <button
+                          key={sz}
+                          type="button"
+                          onClick={() => setTargetSize(sz)}
+                          className={cn(
+                            "w-10 h-10 rounded-xl text-xs font-black uppercase tracking-widest flex items-center justify-center transition-all",
+                            targetSize === sz 
+                              ? "bg-white text-black" 
+                              : "bg-white/5 hover:bg-white/15 border border-white/5 text-white"
+                          )}
+                        >
+                          {sz}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Return Reason Option */}
+                <div className="space-y-2">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-white/40">Select Reason for Return</p>
+                  <select
+                    value={returnReason}
+                    onChange={(e) => setReturnReason(e.target.value)}
+                    className="w-full h-12 bg-white/5 border border-white/5 rounded-2xl px-4 text-xs font-bold text-white/80 focus:outline-none focus:border-[#C5A059] transition-all"
+                  >
+                    <option value="Size mismatch - too small">Size doesn't fit (Too small)</option>
+                    <option value="Size mismatch - too big">Size doesn't fit (Too big)</option>
+                    <option value="Item damaged or defective">Item damaged or defective</option>
+                    <option value="Incorrect item received">Incorrect item received</option>
+                    <option value="Product quality not as expected">Product quality not as expected</option>
+                    <option value="Changed mind - No longer needed">Changed mind / No longer needed</option>
+                  </select>
+                </div>
+
+                {/* Submit Action */}
+                <button
+                  type="button"
+                  disabled={isSubmittingReturn}
+                  onClick={handleReturnSubmit}
+                  className="w-full h-14 bg-[#C5A059] hover:bg-[#d5b36e] text-black font-black uppercase tracking-widest text-xs rounded-2xl flex items-center justify-center gap-2 transition-all disabled:opacity-50"
+                >
+                  {isSubmittingReturn ? (
+                    <RefreshCw className="w-5 h-5 animate-spin" />
+                  ) : (
+                    <>
+                      <Check className="w-4 h-4 stroke-[3]" />
+                      Submit Request
+                    </>
+                  )}
+                </button>
+
+              </div>
+            ) : (
+              <div className="p-8 text-center space-y-6">
+                <div className="w-16 h-16 bg-[#C5A059]/10 rounded-full flex items-center justify-center mx-auto border border-[#C5A059]/20">
+                  <Check className="w-8 h-8 text-[#C5A059]" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-black uppercase tracking-tighter text-white mb-2">Request Lodged!</h3>
+                  <p className="text-white/60 text-xs leading-relaxed max-w-xs mx-auto">
+                    Your {returnType === 'refund' ? "return & refund" : "exchange size"} request of Order #{returnOrder.id.slice(-8)} has been logged successfully.
+                  </p>
+                </div>
+
+                <div className="p-4 bg-white/5 rounded-3xl text-left border border-white/5 space-y-3">
+                  <p className="text-[9px] font-black uppercase tracking-widest text-white/30">Next Steps</p>
+                  <div className="flex gap-3 text-[10px] leading-relaxed">
+                    <span className="w-5 h-5 bg-white/10 rounded-full flex items-center justify-center font-black flex-shrink-0 text-[#C5A059]">1</span>
+                    <p className="text-white/80">Keep items ready along with original tags in proper packing.</p>
+                  </div>
+                  <div className="flex gap-3 text-[10px] leading-relaxed">
+                    <span className="w-5 h-5 bg-white/10 rounded-full flex items-center justify-center font-black flex-shrink-0 text-[#C5A059]">2</span>
+                    <p className="text-white/80">Our pickup executive will inspect and collect the package within 24-48 hours.</p>
+                  </div>
+                  <div className="flex gap-3 text-[10px] leading-relaxed">
+                    <span className="w-5 h-5 bg-white/10 rounded-full flex items-center justify-center font-black flex-shrink-0 text-[#C5A059]">3</span>
+                    <p className="text-white/80">{returnType === 'refund' ? 'Tribe Wallet refund credit will be instantly posted upon pickup!' : 'Your exchange dress will be dispatched immediately.'}</p>
+                  </div>
+                </div>
+
+                <Button
+                  onClick={() => setReturnOrder(null)}
+                  className="w-full h-14 bg-white text-black font-black uppercase tracking-widest text-[10px] rounded-2xl"
+                >
+                  Close Window
+                </Button>
+              </div>
+            )}
+
+          </div>
+        </div>
+      )}
     </div>
   );
 }

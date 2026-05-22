@@ -77,6 +77,34 @@ function handleFirestoreError(error: unknown, operationType: OperationType, path
   toast.error(`Firestore Error (${operationType}): ${errInfo.error}`);
 }
 
+const getProductExtraDetails = (p: any) => {
+  const nameL = (p.name || '').toLowerCase();
+  const descL = (p.description || '').toLowerCase();
+  
+  // Pattern detection
+  let pattern = p.pattern || 'Solid';
+  if (nameL.includes('print') || descL.includes('print')) pattern = 'Printed';
+  else if (nameL.includes('stripe') || descL.includes('stripe')) pattern = 'Striped';
+  else if (nameL.includes('check') || descL.includes('check')) pattern = 'Checked';
+  else if (nameL.includes('embroid') || descL.includes('embroid')) pattern = 'Embroidered';
+
+  // Fabric detection
+  let fabric = p.fabric || 'Cotton Blend';
+  if (nameL.includes('linen') || descL.includes('linen')) fabric = 'Linen';
+  else if (nameL.includes('denim') || descL.includes('denim') || nameL.includes('jean')) fabric = 'Denim';
+  else if (nameL.includes('silk') || descL.includes('silk')) fabric = 'Silk';
+  else if (nameL.includes('wool') || descL.includes('wool')) fabric = 'Wool';
+  else if (nameL.includes('polyester') || descL.includes('polyester')) fabric = 'Polyester';
+
+  // Discount calculation
+  const discount = p.discount || (p.originalPrice && p.price ? Math.round(((p.originalPrice - p.price) / p.originalPrice) * 100) : 0);
+
+  // Delivery Days
+  const deliveryDays = p.deliveryDays || (p.id ? (p.id.charCodeAt(0) % 3) + 2 : 2);
+
+  return { pattern, fabric, discount, deliveryDays };
+};
+
 export default function Shop() {
   const { searchQuery, setSearchQuery } = useSearch();
   const { role, user } = useAuth();
@@ -95,6 +123,13 @@ export default function Shop() {
   const [selectedSizes, setSelectedSizes] = useState<string[]>([]);
   const [minRating, setMinRating] = useState<number>(0);
 
+  // Myntra Specific Filters State
+  const [sortBy, setSortBy] = useState<string>('relevance');
+  const [selectedPatterns, setSelectedPatterns] = useState<string[]>([]);
+  const [selectedFabrics, setSelectedFabrics] = useState<string[]>([]);
+  const [minDiscount, setMinDiscount] = useState<number>(0);
+  const [onlyExpress, setOnlyExpress] = useState<boolean>(false);
+
   const isAdmin = role === 'admin' || user?.email?.toLowerCase().trim() === 'geoapparelspvtltd@gmail.com';
 
   const setActiveCategory = (category: string | null) => {
@@ -104,10 +139,15 @@ export default function Shop() {
     } else {
       setSearchParams({});
     }
-    // Reset advanced filters when category changes
+    // Reset advanced filters and Myntra specific filters when category changes
     setPriceFilters([]);
     setSelectedSizes([]);
     setMinRating(0);
+    setSortBy('relevance');
+    setSelectedPatterns([]);
+    setSelectedFabrics([]);
+    setMinDiscount(0);
+    setOnlyExpress(false);
   };
 
   const setActiveSubcategory = (subcategory: string | null) => {
@@ -117,10 +157,15 @@ export default function Shop() {
     } else {
       setSearchParams({});
     }
-    // Reset advanced filters when subcategory changes
+    // Reset advanced filters and Myntra specific filters when subcategory changes
     setPriceFilters([]);
     setSelectedSizes([]);
     setMinRating(0);
+    setSortBy('relevance');
+    setSelectedPatterns([]);
+    setSelectedFabrics([]);
+    setMinDiscount(0);
+    setOnlyExpress(false);
   };
 
   const availableCategories = useMemo(() => {
@@ -219,8 +264,51 @@ export default function Shop() {
       result = result.filter(p => (p.averageRating || 0) >= minRating);
     }
 
-    return result;
-  }, [products, activeCategory, searchQuery, priceFilters, selectedSizes, minRating]);
+    // --- Myntra Filter Integrations ---
+    result = result.filter(p => {
+      const { pattern, fabric, discount, deliveryDays } = getProductExtraDetails(p);
+
+      // Pattern Filter
+      if (selectedPatterns.length > 0 && !selectedPatterns.includes(pattern)) {
+        return false;
+      }
+
+      // Fabric Filter
+      if (selectedFabrics.length > 0 && !selectedFabrics.includes(fabric)) {
+        return false;
+      }
+
+      // Discount Filter
+      if (minDiscount > 0 && discount < minDiscount) {
+        return false;
+      }
+
+      // Express Delivery Filter
+      if (onlyExpress && deliveryDays > 2) {
+        return false;
+      }
+
+      return true;
+    });
+
+    // --- Sorting Options ---
+    const sortedResult = [...result];
+    if (sortBy === 'priceLow') {
+      sortedResult.sort((a, b) => a.price - b.price);
+    } else if (sortBy === 'priceHigh') {
+      sortedResult.sort((a, b) => b.price - a.price);
+    } else if (sortBy === 'rating') {
+      sortedResult.sort((a, b) => (b.averageRating || 0) - (a.averageRating || 0));
+    } else if (sortBy === 'discount') {
+      sortedResult.sort((a, b) => {
+        const discA = getProductExtraDetails(a).discount;
+        const discB = getProductExtraDetails(b).discount;
+        return discB - discA;
+      });
+    }
+
+    return sortedResult;
+  }, [products, activeCategory, activeSubcategory, searchQuery, priceFilters, selectedSizes, minRating, sortBy, selectedPatterns, selectedFabrics, minDiscount, onlyExpress]);
 
   const productsBySubcategory = useMemo(() => {
     if (!activeCategory) return [];
@@ -248,17 +336,21 @@ export default function Shop() {
       <div>
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-sm font-black uppercase tracking-widest text-[#C5A059]">Collection</h3>
-          {(priceFilters.length > 0 || selectedSizes.length > 0 || minRating > 0) && (
+          {(priceFilters.length > 0 || selectedSizes.length > 0 || minRating > 0 || selectedPatterns.length > 0 || selectedFabrics.length > 0 || minDiscount > 0 || onlyExpress) && (
             <button 
               onClick={() => {
                 setPriceFilters([]);
                 setSelectedSizes([]);
                 setMinRating(0);
+                setSelectedPatterns([]);
+                setSelectedFabrics([]);
+                setMinDiscount(0);
+                setOnlyExpress(false);
               }}
               className="group flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-black/30 hover:text-red-500 transition-colors"
             >
               <RotateCcw className="w-3 h-3 group-hover:rotate-180 transition-transform duration-500" />
-              Reset
+              Reset All
             </button>
           )}
         </div>
@@ -285,6 +377,133 @@ export default function Shop() {
       </div>
 
       <Accordion className="w-full space-y-4">
+        {/* Express Delivery */}
+        <AccordionItem value="express" className="border-none bg-black/5 rounded-[24px] px-6 overflow-hidden">
+          <AccordionTrigger className="text-sm font-black uppercase tracking-widest py-6 hover:no-underline text-black data-[state=open]:text-[#C5A059]">
+            Delivery Time
+          </AccordionTrigger>
+          <AccordionContent className="pb-8">
+            <label className={cn(
+              "flex items-center gap-4 p-4 rounded-xl cursor-pointer transition-all border-2",
+              onlyExpress ? "bg-white border-black shadow-sm" : "bg-white/50 border-transparent hover:border-black/5"
+            )}>
+              <div className={cn(
+                "w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all",
+                onlyExpress ? "bg-black border-black" : "border-black/10"
+              )}>
+                {onlyExpress && <div className="w-1.5 h-1.5 bg-white rounded-full" />}
+              </div>
+              <input 
+                type="checkbox" 
+                className="hidden" 
+                checked={onlyExpress}
+                onChange={() => {
+                  triggerHaptic('light');
+                  setOnlyExpress(!onlyExpress);
+                }}
+              />
+              <span className={cn(
+                "text-xs font-black uppercase tracking-widest",
+                onlyExpress ? "text-black" : "text-black/40"
+              )}>Express Fast Delivery (within 48 hrs)</span>
+            </label>
+          </AccordionContent>
+        </AccordionItem>
+
+        {/* Pattern Selection */}
+        <AccordionItem value="pattern" className="border-none bg-black/5 rounded-[24px] px-6 overflow-hidden">
+          <AccordionTrigger className="text-sm font-black uppercase tracking-widest py-6 hover:no-underline text-black data-[state=open]:text-[#C5A059]">
+            Design Themes & Patterns
+          </AccordionTrigger>
+          <AccordionContent className="pb-8">
+            <div className="grid grid-cols-2 gap-2">
+              {['Solid', 'Printed', 'Striped', 'Checked', 'Embroidered'].map(pattern => (
+                <button 
+                  key={pattern}
+                  onClick={() => {
+                    triggerHaptic('light');
+                    setSelectedPatterns(prev => 
+                      prev.includes(pattern) ? prev.filter(p => p !== pattern) : [...prev, pattern]
+                    );
+                  }}
+                  className={cn(
+                    "p-3 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all border-2",
+                    selectedPatterns.includes(pattern)
+                      ? "bg-black text-white border-black shadow-sm"
+                      : "bg-white text-black/40 border-black/5 hover:border-black/20"
+                  )}
+                >
+                  {pattern}
+                </button>
+              ))}
+            </div>
+          </AccordionContent>
+        </AccordionItem>
+
+        {/* Fabric Selection */}
+        <AccordionItem value="fabric" className="border-none bg-black/5 rounded-[24px] px-6 overflow-hidden">
+          <AccordionTrigger className="text-sm font-black uppercase tracking-widest py-6 hover:no-underline text-black data-[state=open]:text-[#C5A059]">
+            Material & Fabric
+          </AccordionTrigger>
+          <AccordionContent className="pb-8">
+            <div className="grid grid-cols-2 gap-2">
+              {['Cotton Blend', 'Linen', 'Denim', 'Silk', 'Wool', 'Polyester'].map(fabric => (
+                <button 
+                  key={fabric}
+                  onClick={() => {
+                    triggerHaptic('light');
+                    setSelectedFabrics(prev => 
+                      prev.includes(fabric) ? prev.filter(f => f !== fabric) : [...prev, fabric]
+                    );
+                  }}
+                  className={cn(
+                    "p-3 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all border-2",
+                    selectedFabrics.includes(fabric)
+                      ? "bg-black text-white border-black shadow-sm"
+                      : "bg-white text-black/40 border-black/5 hover:border-black/20"
+                  )}
+                >
+                  {fabric}
+                </button>
+              ))}
+            </div>
+          </AccordionContent>
+        </AccordionItem>
+
+        {/* Discount Targets */}
+        <AccordionItem value="discount" className="border-none bg-black/5 rounded-[24px] px-6 overflow-hidden">
+          <AccordionTrigger className="text-sm font-black uppercase tracking-widest py-6 hover:no-underline text-black data-[state=open]:text-[#C5A059]">
+            Discount Targets
+          </AccordionTrigger>
+          <AccordionContent className="pb-8">
+            <div className="flex flex-col gap-2">
+              {[10, 20, 30, 50].map(disc => (
+                <button 
+                  key={disc}
+                  onClick={() => {
+                    triggerHaptic('light');
+                    setMinDiscount(minDiscount === disc ? 0 : disc);
+                  }}
+                  className={cn(
+                    "flex items-center justify-between p-4 rounded-xl transition-all border-2",
+                    minDiscount === disc
+                      ? "bg-white border-black shadow-sm"
+                      : "bg-white/50 border-transparent hover:border-black/5"
+                  )}
+                >
+                  <span className={cn(
+                    "text-xs font-black uppercase tracking-widest",
+                    minDiscount === disc ? "text-black" : "text-black/40"
+                  )}>
+                    {disc}% Off & Above
+                  </span>
+                  {minDiscount === disc && <div className="w-1.5 h-1.5 bg-black rounded-full" />}
+                </button>
+              ))}
+            </div>
+          </AccordionContent>
+        </AccordionItem>
+
         <AccordionItem value="size" className="border-none bg-black/5 rounded-[24px] px-6 overflow-hidden">
           <AccordionTrigger 
             onClick={() => triggerHaptic('light')}
@@ -582,13 +801,37 @@ export default function Shop() {
                 </h2>
               </div>
               
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-3">
+                {/* Sort By Selector */}
+                <div className="relative flex items-center gap-1.5">
+                  <select
+                    value={sortBy}
+                    onChange={(e) => {
+                      triggerHaptic('light');
+                      setSortBy(e.target.value);
+                    }}
+                    className="appearance-none bg-black/5 hover:bg-black/10 text-[10px] font-black uppercase tracking-widest text-black pl-4 pr-8 py-2 rounded-full cursor-pointer focus:outline-none transition-all border-none"
+                    style={{
+                      backgroundImage: `url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='currentColor'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2.5' d='M19 9l-7 7-7-7'/%3E%3C/svg%3E")`,
+                      backgroundPosition: 'right 0.75rem center',
+                      backgroundSize: '1em 1em',
+                      backgroundRepeat: 'no-repeat'
+                    }}
+                  >
+                    <option value="relevance">Sort: Relevance</option>
+                    <option value="discount">Sort: Better Discount</option>
+                    <option value="priceLow">Sort: Price Low-High</option>
+                    <option value="priceHigh">Sort: Price High-Low</option>
+                    <option value="rating">Sort: Top Rated</option>
+                  </select>
+                </div>
+
                 <Sheet open={isFilterOpen} onOpenChange={setIsFilterOpen}>
                   <SheetTrigger>
                     <div className="flex items-center gap-1 text-[10px] font-black uppercase tracking-widest text-black bg-black/5 px-4 py-2 rounded-full hover:bg-black/10 transition-all cursor-pointer">
                       <SlidersHorizontal className="h-3 w-3" />
                       Filter
-                      {(priceFilters.length > 0 || selectedSizes.length > 0 || minRating > 0) && (
+                      {(priceFilters.length > 0 || selectedSizes.length > 0 || minRating > 0 || selectedPatterns.length > 0 || selectedFabrics.length > 0 || minDiscount > 0 || onlyExpress) && (
                         <span className="ml-1 w-1.5 h-1.5 bg-[#C5A059] rounded-full" />
                       )}
                     </div>

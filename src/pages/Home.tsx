@@ -80,6 +80,7 @@ export default function Home() {
   const [allCategoryConfigs, setAllCategoryConfigs] = useState<any[]>([]);
   const [subcategoryConfigs, setSubcategoryConfigs] = useState<any[]>([]);
   const [currentGalleryIndex, setCurrentGalleryIndex] = useState(0);
+  const [isAutoPlay, setIsAutoPlay] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
   const { wishlist } = useWishlist();
 
@@ -94,12 +95,12 @@ export default function Home() {
 
   // Auto-rotate gallery
   useEffect(() => {
-    if (galleryImages.length <= 1) return;
+    if (galleryImages.length <= 1 || !isAutoPlay) return;
     const interval = setInterval(() => {
       setCurrentGalleryIndex(prev => (prev + 1) % galleryImages.length);
-    }, 7000);
+    }, 5000);
     return () => clearInterval(interval);
-  }, [galleryImages.length, currentGalleryIndex]);
+  }, [galleryImages.length, currentGalleryIndex, isAutoPlay]);
 
   // Preload next gallery image
   useEffect(() => {
@@ -299,9 +300,9 @@ export default function Home() {
         </div>
         <div className="px-4 space-y-4">
           <div className="h-4 w-32 bg-black/5 animate-pulse" />
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-0 border-t border-l border-[#e5e5e5]">
             {[1, 2, 3, 4].map(i => (
-              <div key={i} className="aspect-[3/4] bg-black/5 animate-pulse" />
+              <div key={i} className="aspect-[3/4] bg-black/5 animate-pulse border-r border-b border-[#e5e5e5]" />
             ))}
           </div>
         </div>
@@ -310,159 +311,145 @@ export default function Home() {
   }
 
   return (
-    <div className="bg-background min-h-screen pb-40">
-      {/* Gallery Hero Section */}
-      <section ref={heroRef} className="relative mb-12" style={{ perspective: '1500px' }}>
-        <div className="relative h-[55vh] md:h-[85vh] w-full rounded-none overflow-hidden group shadow-2xl shadow-black/10">
-          <AnimatePresence mode="popLayout" initial={false}>
-            <motion.div
-              key={currentGalleryIndex}
-              initial={{ clipPath: 'inset(0 0 0 100%)', x: '10%', opacity: 0 }}
-              animate={{ clipPath: 'inset(0 0 0 0%)', x: 0, opacity: 1 }}
-              exit={{ clipPath: 'inset(0 100% 0 0%)', x: '-10%', opacity: 0 }}
-              transition={{ duration: 1.2, ease: [0.22, 1, 0.36, 1] }}
-              drag="x"
-              dragConstraints={{ left: 0, right: 0 }}
-              dragElastic={0.2}
-              onDragEnd={(e, { offset, velocity }) => {
-                const swipeSpeed = Math.abs(velocity.x);
-                const swipeDistance = offset.x;
-                
-                if (swipeDistance < -50 || (swipeSpeed > 500 && swipeDistance < 0)) {
-                  handleNext();
-                } else if (swipeDistance > 50 || (swipeSpeed > 500 && swipeDistance > 0)) {
-                  handlePrev();
-                }
-              }}
-              style={{ 
-                scale: heroScale, 
-                opacity: heroOpacity,
-                rotateX: heroRotateX,
-                transformOrigin: 'top center'
-              }}
-              className="absolute inset-0 cursor-grab active:cursor-grabbing"
-            >
-              <img 
-                src={galleryImages[currentGalleryIndex]?.url || "https://picsum.photos/seed/fashion/800/1200"} 
-                alt="Hero" 
-                className="w-full h-full object-cover transform scale-110"
-                referrerPolicy="no-referrer"
-              />
-            </motion.div>
-          </AnimatePresence>
-
-                {/* Stable 3D Shirt Button CTA */}
-          <div className="absolute inset-0 flex flex-col items-center justify-center z-30 pointer-events-none">
-            <motion.div
-              initial={{ scale: 0.8, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              transition={{ delay: 0.5, duration: 1, ease: "easeOut" }}
-              className="flex flex-col items-center gap-6"
-            >
-              {/* The Bubble Button */}
-              <div className="relative group/btn w-32 h-32 md:w-64 md:h-64 flex items-center justify-center">
-                {/* Outer Iridescent Glow */}
-                <div className="absolute inset-[-10px] rounded-full bg-gradient-to-tr from-[#E8809B] via-[#6EBED6] to-[#B07DB8] opacity-30 blur-2xl animate-pulse" />
-                
-                {/* Shadow/Depth */}
-                <div className="absolute inset-0 rounded-full bg-black/40 blur-xl translate-y-10 scale-90" />
-                
-                {/* Button Body - Glossy Bubble Shell */}
-                <div className="w-full h-full rounded-full bg-gradient-to-br from-white/80 via-white/10 to-transparent p-[3px] shadow-[0_30px_60px_rgba(0,0,0,0.5),inset_0_4px_10px_rgba(255,255,255,0.7)] backdrop-blur-[2px] flex items-center justify-center overflow-hidden relative">
-                  {/* Iridescent Layer */}
-                  <div className="absolute inset-0 bg-[conic-gradient(from_0deg,_#E8809B,_#6EBED6,_#B07DB8,_#D9CD64,_#6EBED6,_#E8809B)] opacity-60 mix-blend-color-dodge animate-[spin_15s_linear_infinite]" />
-                  
-                  {/* High Gloss Highlights */}
-                  <div className="absolute top-[10%] left-[20%] w-[40%] h-[20%] bg-white/60 blur-xl rounded-full rotate-[-35deg]" />
-                  <div className="absolute bottom-[10%] right-[20%] w-[30%] h-[15%] bg-white/20 blur-lg rounded-full rotate-[145deg]" />
-
-                  {/* Button Face - Transparent Logo Cutout */}
-                  <div 
-                    className="w-[90%] h-[90%] rounded-full bg-black/5 backdrop-blur-[4px] shadow-[inset_0_10px_30px_rgba(0,0,0,0.4),inset_0_-10px_30px_rgba(255,255,255,0.2)] relative"
-                    style={{ 
-                      WebkitMaskImage: "url('https://i.ibb.co/rG66vw6q/Chat-GPT-Image-Apr-10-2026-12-40-57-AM.png'), radial-gradient(circle, black 100%, black 100%)",
-                      maskImage: "url('https://i.ibb.co/rG66vw6q/Chat-GPT-Image-Apr-10-2026-12-40-57-AM.png'), radial-gradient(circle, black 100%, black 100%)",
-                      WebkitMaskComposite: "destination-out",
-                      maskComposite: "exclude",
-                      WebkitMaskSize: "65%, 100%",
-                      maskSize: "65%, 100%",
-                      WebkitMaskRepeat: "no-repeat, no-repeat",
-                      maskRepeat: "no-repeat, no-repeat",
-                      WebkitMaskPosition: "center, center",
-                      maskPosition: "center, center",
-                    }}
-                  >
-                    {/* Shimmer effect inside the bubble shell */}
-                    <div className="absolute inset-0 opacity-40 bg-gradient-to-tr from-transparent via-white to-transparent -translate-x-full group-hover/btn:translate-x-full transition-transform duration-1000" />
-                  </div>
-                </div>
-              </div>
-
-              {/* Text */}
+    <div className="bg-[#F7F4F0] min-h-screen pb-40">
+      {/* Immersive Gallery Hero Section (Mockup-style) */}
+      <section ref={heroRef} className="relative px-4 pt-4 mb-10">
+        <div className="relative h-[65vh] md:h-[75vh] w-full rounded-2xl overflow-hidden shadow-sm group">
+          {/* Main Slide/Fade Gallery with AnimatePresence */}
+          <div className="absolute inset-0 overflow-hidden">
+            <AnimatePresence initial={false} mode="wait">
               <motion.div
-                initial={{ y: 20, opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                transition={{ delay: 0.8, duration: 0.8 }}
-                className="flex flex-col items-center"
+                key={currentGalleryIndex}
+                initial={{ opacity: 0, scale: 1.02 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.98 }}
+                transition={{ duration: 0.8, ease: "easeInOut" }}
+                className="absolute inset-0"
               >
-                <span className="text-white font-black text-xl md:text-3xl uppercase tracking-[0.2em] drop-shadow-[0_4px_8px_rgba(0,0,0,0.3)] border-b-2 border-white pb-1">
-                  Trial Room
-                </span>
+                <img 
+                  src={
+                    (galleryImages && galleryImages.length > 0)
+                      ? galleryImages[currentGalleryIndex]?.url 
+                      : [
+                          "https://images.unsplash.com/photo-1620799140408-edc6dcb6d633?auto=format&fit=crop&w=1200&q=80",
+                          "https://images.unsplash.com/photo-1576016770956-debb63d900bb?auto=format&fit=crop&w=1200&q=80",
+                          "https://images.unsplash.com/photo-1441986300917-64674bd600d8?auto=format&fit=crop&w=1200&q=80"
+                        ][currentGalleryIndex % 3]
+                  } 
+                  alt="Gallery Slide" 
+                  className="w-full h-full object-cover brightness-[0.93] contrast-[1.02]"
+                  referrerPolicy="no-referrer"
+                />
               </motion.div>
-            </motion.div>
+            </AnimatePresence>
+            
+            {/* Elegant vignette/gradient overlay */}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-black/15 to-transparent pointer-events-none" />
           </div>
-          
-          {/* Persistent Link overlay */}
-          <Link 
-            to="/trial-room"
-            className="absolute inset-0 z-40"
-          />
 
-
-          {/* Persistent Hero Overlay UI - Arrows removed for natural sliding */}
-          <div className="absolute inset-0 z-20 pointer-events-none">
-            {/* Overlay empty as requested, using drag gestures for manual slide */}
+          {/* Auto/Manual Mode Selector Badge */}
+          <div className="absolute top-6 right-6 z-20 flex gap-2">
+            <button 
+              onClick={() => {
+                triggerHaptic('light');
+                setIsAutoPlay(!isAutoPlay);
+              }}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/40 hover:bg-black/60 text-white backdrop-blur-md shadow-sm border border-white/10 text-[8px] font-black tracking-widest uppercase transition-all"
+            >
+              <span className={cn("w-1.5 h-1.5 rounded-full", isAutoPlay ? "bg-emerald-400 animate-pulse" : "bg-neutral-500")} />
+              <span>{isAutoPlay ? 'AUTO ON' : 'AUTO OFF'}</span>
+            </button>
           </div>
-        </div>
 
-          {/* Indicators - Premium look */}
-          {galleryImages.length > 1 && (
-            <div className="absolute bottom-10 left-1/2 -translate-x-1/2 z-30 flex gap-2">
-              {galleryImages.map((_, i) => (
+          {/* Left/Right manual arrows for Manual navigation */}
+          <div className="absolute inset-x-4 top-1/2 -translate-y-1/2 z-20 flex justify-between pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+            <button
+              onClick={() => {
+                triggerHaptic('light');
+                setIsAutoPlay(false); // Switch to manual upon click!
+                handlePrev();
+              }}
+              className="w-9 h-9 rounded-full bg-black/20 hover:bg-black/40 border border-white/10 backdrop-blur-sm flex items-center justify-center text-white/90 active:scale-95 transition-all pointer-events-auto shadow-md"
+            >
+              <ChevronLeft className="w-5 h-5 stroke-[2.5]" />
+            </button>
+
+            <button
+              onClick={() => {
+                triggerHaptic('light');
+                setIsAutoPlay(false); // Switch to manual upon click!
+                handleNext();
+              }}
+              className="w-9 h-9 rounded-full bg-black/20 hover:bg-black/40 border border-white/10 backdrop-blur-sm flex items-center justify-center text-white/90 active:scale-95 transition-all pointer-events-auto shadow-md"
+            >
+              <ChevronRight className="w-5 h-5 stroke-[2.5]" />
+            </button>
+          </div>
+
+          {/* Bullet dots/indicators of slides */}
+          <div className="absolute bottom-6 right-8 z-20 flex gap-1.5">
+            {Array.from({ length: Math.max(galleryImages.length, 3) }).map((_, idx) => {
+              const isActive = currentGalleryIndex === idx;
+              return (
                 <button
-                  key={i}
-                  onPointerDown={(e) => {
-                    e.preventDefault();
+                  key={idx}
+                  onClick={() => {
                     triggerHaptic('light');
-                    setCurrentGalleryIndex(i);
+                    setIsAutoPlay(false); // Switch to manual when clicking indicator
+                    setCurrentGalleryIndex(idx);
                   }}
                   className={cn(
-                    "h-1.5 transition-all duration-500 rounded-full shadow-inner",
-                    currentGalleryIndex === i ? "w-10 bg-white" : "w-1.5 bg-white/20 hover:bg-white/40"
+                    "h-1.5 rounded-full transition-all duration-300",
+                    isActive ? "w-6 bg-white" : "w-1.5 bg-white/40 hover:bg-white/60"
                   )}
                 />
-              ))}
+              );
+            })}
+          </div>
+
+          {/* Texts overlay matching mockup exactly */}
+          <div className="absolute inset-x-0 bottom-0 p-8 sm:p-12 flex flex-col items-start text-white space-y-2 z-10">
+            <span className="text-[10px] font-black uppercase tracking-[0.3em] text-[#F7F4F0]/80">
+              NEW DROP
+            </span>
+            <h2 className="text-3xl sm:text-5xl font-brand font-black uppercase tracking-[0.1em] text-[#F7F4F0]">
+              LINEN SHIRTS
+            </h2>
+            <p className="font-serif italic text-sm sm:text-base text-[#F7F4F0]/90">
+              Crafted for Breathability.
+            </p>
+            <div className="pt-4">
+              <Link 
+                to="/shop" 
+                onClick={() => triggerHaptic('medium')}
+                className="inline-block bg-black hover:bg-neutral-900 text-[#F7F4F0] text-[9px] font-black uppercase tracking-widest px-8 py-3.5 rounded-sm transition-all shadow-md active:scale-95"
+              >
+                EXPLORE NOW
+              </Link>
             </div>
-          )}
+          </div>
+        </div>
       </section>
 
       {/* Quick Category Navigation */}
-      <CategoryQuickNav categories={quickNavCategories} isAdmin={isAdmin} />
+      <section className="mb-10">
+        <CategoryQuickNav categories={quickNavCategories} isAdmin={isAdmin} />
+      </section>
 
-      {/* Search Results / Featured Subcategory Sections */}
+      {/* Search Results Or Curated Page Contents */}
       {searchQuery ? (
         <section className="mb-16">
           <motion.div 
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="flex items-center justify-between px-4 mb-8"
+            className="flex items-center justify-between px-6 mb-8"
           >
             <div>
               <div className="flex items-center gap-3 mb-1">
                 <Search className="w-4 h-4 text-black/30" />
                 <h2 className="text-xs font-bold text-black uppercase tracking-[0.3em]">Search Results</h2>
               </div>
-              <p className="text-[9px] font-bold text-black/30 uppercase tracking-[0.1em] pl-7">
+              <p className="text-[9px] font-bold text-black/35 uppercase tracking-[0.1em] pl-7">
                 Showing {filteredAndSortedProducts.length} items for "{searchQuery}"
               </p>
             </div>
@@ -490,19 +477,16 @@ export default function Home() {
                   }
                 }
               }}
-              className="grid grid-cols-2 md:grid-cols-4 gap-0 border-t border-[#e5e5e5]"
+              className="grid grid-cols-2 md:grid-cols-4 gap-0 border-t border-l border-[#e5e5e5]"
             >
-              {filteredAndSortedProducts.map((product, idx) => (
+              {filteredAndSortedProducts.map((product) => (
                 <motion.div
                   key={product.id}
                   variants={{
-                    hidden: { opacity: 0, y: 20 },
+                    hidden: { opacity: 0, y: 15 },
                     visible: { opacity: 1, y: 0 }
                   }}
-                  className={cn(
-                    "bg-white border-l border-b border-[#e5e5e5]",
-                    idx % 2 === 0 ? "md:border-l-0" : ""
-                  )}
+                  className="bg-white"
                 >
                   <ProductCard {...product} />
                 </motion.div>
@@ -512,118 +496,156 @@ export default function Home() {
             <motion.div 
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
-              className="text-center py-24 bg-black/5 rounded-[40px] border-2 border-dashed border-black/10"
+              className="text-center py-20 px-4 bg-black/[0.02] mx-4 rounded-3xl border border-dashed border-black/10"
             >
-              <div className="w-16 h-16 bg-black/10 rounded-full flex items-center justify-center mx-auto mb-6">
-                <Search className="w-8 h-8 text-black/20" />
+              <div className="w-14 h-14 bg-black/5 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Search className="w-6 h-6 text-black/30" />
               </div>
-              <h3 className="text-xl font-black uppercase tracking-tighter mb-2">No Matches Found</h3>
-              <p className="text-black/40 font-bold uppercase tracking-widest text-xs max-w-xs mx-auto mb-8">
+              <h3 className="text-sm font-black uppercase tracking-[0.2em] mb-2 text-black">No Matches Found</h3>
+              <p className="text-black/40 font-semibold uppercase tracking-widest text-[9px] max-w-xs mx-auto mb-6">
                 We couldn't find any products matching your search for "{searchQuery}".
               </p>
               <button 
                 onClick={() => setSearchQuery('')}
-                className="bg-black text-white text-[10px] font-black px-8 py-3 rounded-full hover:scale-105 active:scale-95 transition-all"
+                className="bg-black text-white text-[9px] font-black px-6 py-3 rounded-full hover:scale-105 active:scale-95 transition-all"
               >
                 BROWSE ALL PRODUCTS
               </button>
             </motion.div>
           )}
-
-          {searchQuery && filteredAndSortedProducts.length > 0 && (
-            <div className="px-4">
-              <EndOfFeedSuggestions 
-                allCategories={quickNavCategories.map(c => c.name)}
-                allSubcategories={Array.from(new Set(products.map(p => p.subcategory).filter(Boolean)))}
-                onSelectCategory={(cat) => {
-                  setSearchQuery('');
-                  const navigate = (window as any).navigation?.navigate || (() => window.location.href = `/shop?category=${cat}`);
-                  window.location.href = `/shop?category=${cat}`;
-                }}
-                onSelectSubcategory={(sub) => {
-                  setSearchQuery('');
-                  window.location.href = `/shop?subcategory=${sub}`;
-                }}
-              />
-            </div>
-          )}
         </section>
       ) : (
-        productsBySubcategory.map((group) => (
-          <section key={group.title} className="mb-16">
-            <div className="flex items-center justify-between px-4 mb-6">
-              <h2 className="text-xs font-bold text-black uppercase tracking-[0.3em]">{group.title}</h2>
+        <>
+          {/* NEW ARRIVALS Section with Horizontal Scroll exactly matches mockup */}
+          <section className="mb-12 px-6">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xs font-black text-black uppercase tracking-[0.3em]">
+                NEW ARRIVALS
+              </h2>
               <Link 
-                to={`/shop?subcategory=${encodeURIComponent(group.title)}`}
-                className="text-[9px] font-bold text-black/30 uppercase tracking-[0.1em] flex items-center gap-1 hover:text-black transition-colors"
+                to="/shop"
+                className="text-[9px] font-black text-black/35 hover:text-black uppercase tracking-widest transition-colors"
               >
-                View All <ArrowRight className="w-3 h-3" />
+                View All
               </Link>
             </div>
-            
-            <motion.div 
-              initial="hidden"
-              whileInView="visible"
-              viewport={{ once: true, margin: "-50px" }}
-              variants={{
-                hidden: { opacity: 0 },
-                visible: {
-                  opacity: 1,
-                  transition: {
-                    staggerChildren: 0.1
-                  }
-                }
-              }}
-              className="grid grid-cols-2 gap-0 border-t border-[#e5e5e5]"
-            >
-              {group.products.slice(0, 9).map((product, index) => {
-                // Repeating pattern: 2 items side-by-side (1col each), then 1 item full-width (2cols)
-                // Cycle of 3: [0: half, 1: half, 2: full]
-                const cyclePos = index % 3;
-                const isFullWidth = cyclePos === 2;
-                
-                return (
-                  <motion.div
-                    key={product.id}
-                    variants={{
-                      hidden: { opacity: 0, y: 30 },
-                      visible: { opacity: 1, y: 0 }
-                    }}
-                    className={cn(
-                      "bg-white relative overflow-hidden group/item border-b border-[#e5e5e5]",
-                      isFullWidth ? "col-span-2" : "col-span-1",
-                      !isFullWidth && cyclePos === 1 ? "border-l border-[#e5e5e5]" : ""
-                    )}
-                  >
-                    <div className="h-full">
-                      <ProductCard 
-                        {...product} 
-                        aspectRatio={isFullWidth ? 'square' : 'portrait'} 
-                        priority={index === 0} 
-                      />
-                    </div>
-                  </motion.div>
-                );
-              })}
-            </motion.div>
 
-            {group.products.length > 8 && (
-              <div className="mt-12 flex justify-center px-4">
+            {/* Scrollable list of first arrivals */}
+            <div className="flex gap-4 overflow-x-auto pb-4 no-scrollbar snap-x snap-mandatory -mx-6 px-6">
+              {products.slice(0, 6).map((product) => (
+                <div key={product.id} className="min-w-[190px] w-[190px] snap-start bg-white rounded-2xl p-2 border border-neutral-200/40 shadow-sm relative shrink-0">
+                  <ProductCard {...product} />
+                </div>
+              ))}
+            </div>
+          </section>
+
+          {/* Curated Spotlight: CRAFTED FOR YOU (Mockup card) */}
+          <section className="mb-12 px-4">
+            <div className="relative rounded-2xl overflow-hidden h-36 border border-neutral-200/20 shadow-sm">
+              <div className="absolute inset-0">
+                <img 
+                  src="https://images.unsplash.com/photo-1576016770956-debb63d900bb?auto=format&fit=crop&w=800&q=85" 
+                  alt="Spotlight texture" 
+                  className="w-full h-full object-cover brightness-[0.9] saturate-[0.8]"
+                />
+                <div className="absolute inset-0 bg-black/15" />
+              </div>
+              <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-4 space-y-1 z-10">
+                <span className="text-[8px] font-black tracking-[0.3em] text-white/70 uppercase">
+                  CRAFTED FOR YOU
+                </span>
+                <p className="font-serif italic text-xs text-white/95">
+                  Timeless pieces. Naturally made.
+                </p>
+                <div className="pt-2">
+                  <Link 
+                    to="/shop"
+                    onClick={() => triggerHaptic('light')}
+                    className="inline-block bg-white hover:bg-neutral-100 text-[#111] text-[7.5px] font-black uppercase tracking-widest px-6 py-2 rounded-sm transition-all active:scale-95"
+                  >
+                    SHOP COLLECTION
+                  </Link>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {/* Core Perks row: 4 neat minimalist blocks matching image */}
+          <section className="mb-14 px-6 border-y border-neutral-200/50 py-8 bg-[#FAF8F5]">
+            <div className="grid grid-cols-4 gap-2 text-center">
+              <div className="flex flex-col items-center space-y-2">
+                <div className="w-8 h-8 rounded-full bg-[#111]/5 flex items-center justify-center text-[#C5A059]">
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                  </svg>
+                </div>
+                <span className="text-[7.5px] font-black uppercase tracking-wider text-black leading-tight max-w-[70px]">
+                  PREMIUM QUALITY
+                </span>
+              </div>
+
+              <div className="flex flex-col items-center space-y-2">
+                <div className="w-8 h-8 rounded-full bg-[#111]/5 flex items-center justify-center text-[#C5A059]">
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707m0-12.728l.707.707m12.728 12.728l.707-.707M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                <span className="text-[7.5px] font-black uppercase tracking-wider text-black leading-tight max-w-[70px]">
+                  NATURAL FABRICS
+                </span>
+              </div>
+
+              <div className="flex flex-col items-center space-y-2">
+                <div className="w-8 h-8 rounded-full bg-[#111]/5 flex items-center justify-center text-[#C5A059]">
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.907c.961 0 1.36 1.248.58 1.8L16.8 12.98h-.001l-.001.001M16.8 12.98l1.518 4.674c.3.922-.755 1.688-1.538 1.11L13 15.82a1 1 0 00-1.176 0l-3.953 2.871c-.783.57-1.838-.197-1.538-1.11L7.86 12.98l-3.111-2.262c-.78-.553-.381-1.8.58-1.8h4.907a1 1 0 00.95-.69L11.049 2.927z" />
+                  </svg>
+                </div>
+                <span className="text-[7.5px] font-black uppercase tracking-wider text-black leading-tight max-w-[70px]">
+                  TIMELESS DESIGNS
+                </span>
+              </div>
+
+              <div className="flex flex-col items-center space-y-2">
+                <div className="w-8 h-8 rounded-full bg-[#111]/5 flex items-center justify-center text-[#C5A059]">
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.21 7.89M9 11l3-3 3 3m-3-3v12" />
+                  </svg>
+                </div>
+                <span className="text-[7.5px] font-black uppercase tracking-wider text-black leading-tight max-w-[70px]">
+                  EASY RETURNS
+                </span>
+              </div>
+            </div>
+          </section>
+
+          {/* Dynamic Sections populated from Firebase */}
+          {productsBySubcategory.map((group) => (
+            <section key={group.title} className="mb-14 px-6">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-xs font-black text-black uppercase tracking-[0.3em]">
+                  {group.title}
+                </h2>
                 <Link 
                   to={`/shop?subcategory=${encodeURIComponent(group.title)}`}
-                  className="group flex items-center gap-4 text-black font-black text-[10px] uppercase tracking-[0.3em] transition-all"
+                  className="text-[9px] font-black text-black/35 hover:text-black uppercase tracking-widest transition-colors"
                 >
-                  <span>Explore All {group.title}</span>
-                  <div className="w-12 h-[1px] bg-black/10 group-hover:w-20 group-hover:bg-[#C5A059] transition-all" />
-                  <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-all" />
+                  View All
                 </Link>
               </div>
-            )}
-          </section>
-        ))
+              
+              <div className="grid grid-cols-2 gap-0 border-t border-l border-[#e5e5e5]">
+                {group.products.slice(0, 4).map((product) => (
+                  <ProductCard key={product.id} {...product} />
+                ))}
+              </div>
+            </section>
+          ))}
+        </>
       )}
 
-      <BrandSignature variant="dark" className="mb-20 opacity-30" />
+      <BrandSignature variant="dark" className="mb-16 opacity-30" />
     </div>
   );
 }

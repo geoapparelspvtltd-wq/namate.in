@@ -503,23 +503,8 @@ export default function Cart() {
   }
 
   return (
-    <div className="bg-background min-h-screen pb-40">
-      <div className="px-6 py-8 max-w-7xl mx-auto">
-        <div className="flex items-center gap-4 mb-8">
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            onClick={() => navigate(-1)}
-            className="rounded-full bg-black/5"
-          >
-            <ChevronLeft className="w-6 h-6 text-black" />
-          </Button>
-          <div className="flex items-center justify-between flex-grow">
-            <h1 className="text-3xl font-black uppercase tracking-tighter text-black">My Cart</h1>
-            <span className="text-xs font-black text-black/40 uppercase tracking-widest">{items.length} Items</span>
-          </div>
-        </div>
-
+    <div className="bg-background min-h-screen pt-20 pb-40">
+      <div className="px-6 py-4 max-w-7xl mx-auto">
         {/* Cart Items List */}
         <div className="space-y-6">
           <AnimatePresence mode="popLayout">

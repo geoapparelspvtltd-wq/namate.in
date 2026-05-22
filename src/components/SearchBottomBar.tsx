@@ -70,13 +70,12 @@ const SearchBottomBar = memo(() => {
     }
   }, [searchQuery]);
   
-  const isReelMode = location.pathname.startsWith('/product/');
-  const visible = !isReelMode;
+  const visible = location.pathname !== '/';
 
   return (
     <AnimatePresence>
       {visible && (
-        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-[100] w-[94%] max-w-[380px] pointer-events-none">
+        <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-[100] w-[94%] max-w-[380px] pointer-events-none">
           {/* Dropdown Results */}
           <AnimatePresence>
             {isDropdownOpen && filteredResults.length > 0 && (

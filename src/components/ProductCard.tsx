@@ -65,6 +65,17 @@ const ProductCard = memo(({ id, name, price, originalPrice, image, images = [], 
   const [fetchedMedia, setFetchedMedia] = useState<any[]>([]);
   const [isInView, setIsInView] = useState(false);
 
+  const deliveryText = useMemo(() => {
+    const today = new Date();
+    const daysToAdd = props.deliveryDays || (id.charCodeAt(0) % 3) + 2; 
+    const deliveryDate = new Date();
+    deliveryDate.setDate(today.getDate() + daysToAdd);
+    const day = deliveryDate.getDate();
+    const month = deliveryDate.toLocaleString('en-IN', { month: 'short' });
+    const weekday = deliveryDate.toLocaleString('en-IN', { weekday: 'short' });
+    return `Express Delivery by ${weekday}, ${day} ${month}`;
+  }, [id, props.deliveryDays]);
+
   useEffect(() => {
     if (!cardRef.current) return;
     const observer = new IntersectionObserver(([entry]) => {
@@ -293,6 +304,17 @@ const ProductCard = memo(({ id, name, price, originalPrice, image, images = [], 
             </div>
           </>
         )}
+
+        {/* Myntra Rating Overlay on Image Bottom-Left */}
+        {props.averageRating > 0 && (
+          <div className="absolute bottom-2 left-2 z-20 bg-white/95 backdrop-blur-sm text-[8px] font-black text-black px-1.5 py-0.5 rounded flex items-center gap-0.5 shadow-sm border border-black/5">
+            <span>{props.averageRating.toFixed(1)}</span>
+            <Star className="w-2 h-2 fill-black text-black" />
+            <span className="text-black/30 text-[7px] border-l border-black/10 pl-1 ml-0.5">
+              {props.reviewCount || ((id.charCodeAt(0) % 40) + 12)}
+            </span>
+          </div>
+        )}
         
         {/* Badges */}
         <div className="absolute top-2 left-2 flex flex-col gap-1">
@@ -350,42 +372,84 @@ const ProductCard = memo(({ id, name, price, originalPrice, image, images = [], 
 
       {/* Content */}
       <div className={cn(
-        "flex flex-col p-2 sm:p-3 bg-white",
+        "flex flex-col p-2.5 sm:p-3.5 bg-white flex-grow justify-between gap-1",
         variant !== 'default' && "bg-transparent px-1"
       )}>
-        <div className="flex items-start justify-between gap-2 mb-1">
-          <Link to={`/product/${id}`} className="flex-grow">
-            <h3 className="font-medium text-black/70 text-[9px] sm:text-[10px] leading-tight uppercase tracking-[0.15em] line-clamp-2">
-              {name}
-            </h3>
-          </Link>
-          <button 
-            onClick={handleWishlistToggle}
-            className="flex-shrink-0 text-black/40 hover:text-black transition-colors"
-          >
-            <Heart className={cn("h-4 w-4", isInWishlist(id) && "fill-black text-black")} />
-          </button>
+        <div className="space-y-0.5">
+          {/* Brand Name */}
+          {props.brand && (
+            <div className="text-[7.5px] font-black uppercase tracking-[0.2em] text-[#C5A059]">
+              {props.brand}
+            </div>
+          )}
+
+          {/* Product Title / Link */}
+          <div className="flex items-start justify-between gap-2">
+            <Link to={`/product/${id}`} className="flex-grow">
+              <h3 className="font-bold text-black text-[9.5px] sm:text-[10px] leading-tight uppercase tracking-wider line-clamp-1">
+                {name}
+              </h3>
+            </Link>
+            <button 
+              onClick={handleWishlistToggle}
+              className="flex-shrink-0 text-black/40 hover:text-black transition-colors"
+            >
+              <Heart className={cn("h-4 w-4", isInWishlist(id) && "fill-black text-black")} />
+            </button>
+          </div>
+
+          {/* Short Description */}
+          {props.description && (
+            <p className="text-[8px] sm:text-[8.5px] text-black/45 line-clamp-1 font-medium italic">
+              {props.description}
+            </p>
+          )}
         </div>
         
-        <div className="flex items-center flex-wrap gap-2">
-          <span className="font-bold text-black text-[12px] sm:text-[13px]">₹{price}</span>
-          {originalPrice && (
-            <span className="text-[11px] text-gray-400 line-through font-normal">₹{originalPrice}</span>
-          )}
-          {props.badge && (
-            <span className="text-[8px] font-black text-[#C5A059] uppercase tracking-wider ml-auto">
-              {props.badge}
-            </span>
-          )}
-        </div>
-
-        {/* Rating Display - Minimal */}
-        {props.averageRating > 0 && (
-          <div className="flex items-center gap-1 mt-1 opacity-60">
-            <Star className="w-2.5 h-2.5 fill-black text-black" />
-            <span className="text-[9px] font-bold text-black">{props.averageRating.toFixed(1)}</span>
+        <div className="space-y-1.5 mt-1">
+          {/* Price Tag with original and discount percent indicator */}
+          <div className="flex items-center flex-wrap gap-1">
+            <span className="font-black text-black text-[11px] sm:text-[12px]">₹{price}</span>
+            {originalPrice && (
+              <>
+                <span className="text-[9px] text-[#A3A3A3] line-through font-normal">₹{originalPrice}</span>
+                {discount && (
+                  <span className="text-[8px] font-black text-[#5AA67B] uppercase tracking-tighter">
+                    ({discount}% OFF)
+                  </span>
+                )}
+              </>
+            )}
+            {props.badge && (
+              <span className="text-[7px] font-black text-[#C5A059] uppercase tracking-wider ml-auto">
+                {props.badge}
+              </span>
+            )}
           </div>
-        )}
+
+          {/* Available Sizes List */}
+          <div className="flex items-center gap-1">
+            <span className="text-[7px] font-black text-black/30 uppercase tracking-widest mr-1">Sizes:</span>
+            <div className="flex gap-1 overflow-x-auto no-scrollbar py-0.5">
+              {sizes.map((sz: string) => (
+                <span 
+                  key={sz} 
+                  className="text-[7px] font-bold bg-black/[0.04] text-black border border-black/[0.03] px-1 py-0.5 rounded-[3px] scale-90 origin-left"
+                >
+                  {sz}
+                </span>
+              ))}
+            </div>
+          </div>
+
+          {/* Delivery estimate timing tag */}
+          <div className="flex items-center gap-1 pt-1.5 border-t border-black/[0.03]">
+            <span className="w-1 h-1 bg-green-500 rounded-full animate-pulse" />
+            <span className="text-[7px] font-black text-[#3E8058] uppercase tracking-widest leading-none">
+              {deliveryText}
+            </span>
+          </div>
+        </div>
       </div>
     </motion.div>
   );
