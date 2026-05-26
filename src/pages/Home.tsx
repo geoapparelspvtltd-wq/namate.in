@@ -216,7 +216,14 @@ export default function Home() {
         };
       });
       
-      setProducts(firestoreProducts);
+      // Shuffle products randomly
+      const shuffled = [...firestoreProducts];
+      for (let i = shuffled.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+      }
+      
+      setProducts(shuffled);
       setIsLoading(false);
     }, (error) => {
       console.error("Error in Home.tsx products listener:", error);
@@ -224,8 +231,14 @@ export default function Home() {
       if (error.code === 'failed-precondition') {
         const fallbackQ = query(collection(db, 'products'), limit(40));
         onSnapshot(fallbackQ, (snapshot) => {
-          const products = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-          setProducts(products as any);
+          const rawProducts = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+          // Shuffle products randomly
+          const shuffledFallback = [...rawProducts];
+          for (let i = shuffledFallback.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [shuffledFallback[i], shuffledFallback[j]] = [shuffledFallback[j], shuffledFallback[i]];
+          }
+          setProducts(shuffledFallback as any);
           setIsLoading(false);
         });
       }

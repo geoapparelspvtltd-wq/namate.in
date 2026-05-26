@@ -75,12 +75,14 @@ interface AuthContextType {
   isMaintenanceMode: boolean;
   maintenanceLoading: boolean;
   isNative: boolean;
+  splashImageUrl: string;
   loginWithGoogle: () => Promise<void>;
   loginWithEmail: (identifier: string, password: string) => Promise<void>;
   signupWithEmail: (email: string, phone: string, password: string, name: string) => Promise<void>;
   logout: () => Promise<void>;
   awardPoints: (amount: number, description: string) => Promise<void>;
   toggleMaintenanceMode: (enabled: boolean) => Promise<void>;
+  updateSplashImage: (url: string) => Promise<void>;
   requestNativeLocation: () => void;
   requestNotificationToken: () => void;
   requestImagePick: (source: 'gallery' | 'camera', context?: string) => void;
@@ -96,6 +98,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isMaintenanceMode, setIsMaintenanceMode] = useState(false);
   const [maintenanceLoading, setMaintenanceLoading] = useState(true);
   const [isNative, setIsNative] = useState(false);
+  const [splashImageUrl, setSplashImageUrl] = useState<string>('');
 
   // Native detection & Bridge Listeners
   useEffect(() => {
@@ -234,10 +237,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const unsubscribe = onSnapshot(configRef, (snapshot) => {
       if (snapshot.exists()) {
         setIsMaintenanceMode(snapshot.data().isMaintenanceMode || false);
+        setSplashImageUrl(snapshot.data().splashImageUrl || '');
       } else {
         // Initialize if not exists
         setDoc(configRef, { 
           isMaintenanceMode: false,
+          splashImageUrl: '',
           updatedAt: serverTimestamp()
         }, { merge: true });
       }
@@ -318,6 +323,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch (error) {
       console.error("Error toggling maintenance mode:", error);
       toast.error("Failed to update status");
+    }
+  };
+
+  const updateSplashImage = async (url: string) => {
+    if (role !== 'admin') return;
+    try {
+      const configRef = doc(db, 'system_configs', 'main');
+      await setDoc(configRef, {
+        splashImageUrl: url,
+        updatedAt: serverTimestamp(),
+        updatedBy: user?.uid
+      }, { merge: true });
+      toast.success("Splash screen image updated successfully!");
+    } catch (error) {
+      console.error("Error updating splash image:", error);
+      toast.error("Failed to update splash image");
+      throw error;
     }
   };
 
@@ -623,12 +645,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       isMaintenanceMode,
       maintenanceLoading,
       isNative,
+      splashImageUrl,
       loginWithGoogle, 
       loginWithEmail,
       signupWithEmail,
       logout, 
       awardPoints,
       toggleMaintenanceMode,
+      updateSplashImage,
       requestNativeLocation,
       requestNotificationToken,
       requestImagePick

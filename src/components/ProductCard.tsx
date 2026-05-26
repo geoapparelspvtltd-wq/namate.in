@@ -427,20 +427,7 @@ const ProductCard = memo(({ id, name, price, originalPrice, image, images = [], 
             )}
           </div>
 
-          {/* Available Sizes List */}
-          <div className="flex items-center gap-1">
-            <span className="text-[7px] font-black text-black/30 uppercase tracking-widest mr-1">Sizes:</span>
-            <div className="flex gap-1 overflow-x-auto no-scrollbar py-0.5">
-              {sizes.map((sz: string) => (
-                <span 
-                  key={sz} 
-                  className="text-[7px] font-bold bg-black/[0.04] text-black border border-black/[0.03] px-1 py-0.5 rounded-[3px] scale-90 origin-left"
-                >
-                  {sz}
-                </span>
-              ))}
-            </div>
-          </div>
+
 
           {/* Delivery estimate timing tag */}
           <div className="flex items-center gap-1 pt-1.5 border-t border-black/[0.03]">

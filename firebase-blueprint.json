@@ -246,6 +246,7 @@
       "properties": {
         "isMaintenanceMode": { "type": "boolean", "description": "Whether the site is in maintenance mode" },
         "maintenanceMessage": { "type": "string", "description": "Custom message to display during maintenance" },
+        "splashImageUrl": { "type": "string", "description": "Custom splash image Base64 or URL" },
         "updatedAt": { "type": "string", "format": "date-time" },
         "updatedBy": { "type": "string" }
       },

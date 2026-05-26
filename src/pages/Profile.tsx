@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { User as UserIcon, Settings, ShoppingBag, Heart, LogOut, ChevronRight, Plus, LogIn, Shield, Package, Camera, Wallet, History, ArrowUpRight, ArrowDownLeft, X, Sparkles, Coins, Loader2, Layout, Bell } from 'lucide-react';
+import { User as UserIcon, Settings, ShoppingBag, Heart, LogOut, ChevronRight, Plus, LogIn, Shield, Package, Camera, Wallet, History, ArrowUpRight, ArrowDownLeft, X, Sparkles, Coins, Loader2, Layout, Bell, Trash2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Button } from '@/components/ui/button';
 import RegalDiamond from '@/components/RegalDiamond';
@@ -80,12 +80,17 @@ export default function Profile() {
     isMaintenanceMode, 
     toggleMaintenanceMode, 
     isNative,
-    requestImagePick
+    requestImagePick,
+    splashImageUrl,
+    updateSplashImage
   } = useAuth();
   const [orderCount, setOrderCount] = useState(0);
   const [transactions, setTransactions] = useState<any[]>([]);
   const [showTransactions, setShowTransactions] = useState(false);
   const [showRedemptionModal, setShowRedemptionModal] = useState(false);
+  const [showSplashModal, setShowSplashModal] = useState(false);
+  const [splashModalUploading, setSplashModalUploading] = useState(false);
+  const splashModalFileInputRef = useRef<HTMLInputElement>(null);
   const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
   const [authLoading, setAuthLoading] = useState(false);
   
@@ -102,6 +107,31 @@ export default function Profile() {
   const isSharing = useRef(false);
   const isPrimaryAdmin = user?.email?.toLowerCase().trim() === 'geoapparelspvtltd@gmail.com';
   const isAdmin = role === 'admin' || isPrimaryAdmin;
+
+  const handleSplashImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    
+    setSplashModalUploading(true);
+    const toastId = toast.loading("Compressing and updating splash screen image...");
+    try {
+      const file = files[0];
+      const reader = new FileReader();
+      const base64 = await new Promise<string>((resolve) => {
+        reader.onload = () => resolve(reader.result as string);
+        reader.readAsDataURL(file);
+      });
+
+      const compressed = await compressImage(base64, 1200, 1200, 0.6);
+      await updateSplashImage(compressed);
+      toast.success("Splash screen photo updated!", { id: toastId });
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to update custom splash photo", { id: toastId });
+    } finally {
+      setSplashModalUploading(false);
+    }
+  };
 
   const handleAuthSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -885,6 +915,24 @@ export default function Profile() {
               <ChevronRight className="w-6 h-6 text-black/20 group-hover:text-black transition-colors" />
             </Link>
 
+            <button 
+              onClick={() => setShowSplashModal(true)}
+              className="w-full flex items-center justify-between p-8 bg-black/5 border-2 border-black/5 text-black rounded-[32px] hover:border-black/20 transition-all group text-left"
+            >
+              <div className="flex items-center gap-6">
+                <div className="w-14 h-14 bg-black/10 rounded-2xl flex items-center justify-center group-hover:bg-black transition-colors">
+                  <Camera className="w-8 h-8 text-black group-hover:text-white" />
+                </div>
+                <div className="text-left">
+                  <h3 className="text-xl font-black uppercase tracking-tighter text-black">Splash Screen</h3>
+                  <p className="text-black/40 text-[10px] font-bold uppercase tracking-widest">
+                    {splashImageUrl ? 'Custom splash screen active' : 'Default direct load active'}
+                  </p>
+                </div>
+              </div>
+              <ChevronRight className="w-6 h-6 text-black/20 group-hover:text-black transition-colors" />
+            </button>
+
             {isPrimaryAdmin && (
               <Link 
                 to="/manage-admins"
@@ -914,6 +962,88 @@ export default function Profile() {
         </div>
       </div>
       <BrandSignature variant="dark" className="mb-20 opacity-20" />
+
+      {/* Splash Screen Modal */}
+      <AnimatePresence>
+        {showSplashModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-xl flex items-center justify-center p-4"
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 20 }}
+              className="bg-white w-full max-w-sm rounded-[40px] p-8 text-center relative overflow-hidden"
+            >
+              <button 
+                onClick={() => setShowSplashModal(false)}
+                className="absolute top-6 right-6 p-2 bg-black/5 rounded-full hover:bg-black/10 active:scale-95 transition-all text-black/60"
+              >
+                <X className="w-4 h-4" />
+              </button>
+
+              <div className="w-20 h-20 bg-[#C5A059]/10 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-xl shadow-[#C5A059]/5">
+                <Camera className="w-10 h-10 text-[#C5A059]" />
+              </div>
+              <h2 className="text-2xl font-black uppercase tracking-tighter text-black mb-2">Splash Screen</h2>
+              <p className="text-[10px] font-bold text-black/40 uppercase tracking-widest mb-6 border-b border-black/5 pb-2">Manage brand startup screen</p>
+              
+              {/* Visual preview slot */}
+              {splashImageUrl ? (
+                <div className="relative aspect-[3/4] w-40 rounded-3xl overflow-hidden mx-auto mb-6 shadow-2xl border border-black/5">
+                  <img src={splashImageUrl} className="w-full h-full object-cover" alt="Splash preview" referrerPolicy="no-referrer" />
+                  <button 
+                    onClick={async () => {
+                      if (confirm("Remove custom splash screen and load immediately?")) {
+                        await updateSplashImage('');
+                      }
+                    }}
+                    className="absolute bottom-2 right-2 p-2 bg-red-600 text-white rounded-full shadow-lg hover:bg-red-700 active:scale-95 transition-all"
+                    title="Remove custom splash photo"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              ) : (
+                <div className="bg-black/[0.03] rounded-3xl p-6 mb-6 text-left border border-dashed border-black/10 text-center flex flex-col justify-center items-center py-10">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-[#C5A059] mb-1">Direct Load Active</span>
+                  <span className="text-[9px] font-bold text-black/40 uppercase tracking-widest max-w-[180px] leading-relaxed">
+                    No photo set. Visitors bypass splash delays entirely.
+                  </span>
+                </div>
+              )}
+
+              <input 
+                type="file" 
+                ref={splashModalFileInputRef} 
+                onChange={handleSplashImageSelect} 
+                accept="image/*" 
+                className="hidden" 
+              />
+
+              <div className="flex gap-4">
+                <Button 
+                  variant="outline"
+                  onClick={() => setShowSplashModal(false)}
+                  className="flex-1 h-14 rounded-2xl font-black text-[10px] uppercase tracking-widest"
+                >
+                  Close
+                </Button>
+                <Button 
+                  onClick={() => splashModalFileInputRef.current?.click()}
+                  disabled={splashModalUploading}
+                  className="flex-1 h-14 bg-black text-white rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-black/90"
+                >
+                  {splashModalUploading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Set Photo'}
+                </Button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Redemption Modal */}
       <AnimatePresence>
