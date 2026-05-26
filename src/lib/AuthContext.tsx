@@ -98,7 +98,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isMaintenanceMode, setIsMaintenanceMode] = useState(false);
   const [maintenanceLoading, setMaintenanceLoading] = useState(true);
   const [isNative, setIsNative] = useState(false);
-  const [splashImageUrl, setSplashImageUrl] = useState<string>('');
+  const [splashImageUrl, setSplashImageUrl] = useState<string>(() => {
+    try {
+      return localStorage.getItem('splash_image_url') || '';
+    } catch (e) {
+      return '';
+    }
+  });
 
   // Native detection & Bridge Listeners
   useEffect(() => {
@@ -237,7 +243,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const unsubscribe = onSnapshot(configRef, (snapshot) => {
       if (snapshot.exists()) {
         setIsMaintenanceMode(snapshot.data().isMaintenanceMode || false);
-        setSplashImageUrl(snapshot.data().splashImageUrl || '');
+        const url = snapshot.data().splashImageUrl || '';
+        setSplashImageUrl(url);
+        try {
+          localStorage.setItem('splash_image_url', url);
+        } catch (e) {}
       } else {
         // Initialize if not exists
         setDoc(configRef, { 
@@ -329,6 +339,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const updateSplashImage = async (url: string) => {
     if (role !== 'admin') return;
     try {
+      setSplashImageUrl(url);
+      try {
+        localStorage.setItem('splash_image_url', url);
+      } catch (e) {}
       const configRef = doc(db, 'system_configs', 'main');
       await setDoc(configRef, {
         splashImageUrl: url,

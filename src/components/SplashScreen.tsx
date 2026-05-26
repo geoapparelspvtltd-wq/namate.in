@@ -53,9 +53,9 @@ export default function SplashScreen({ onComplete }: { onComplete: () => void })
     };
   }, [isVisible, onComplete]);
 
-  // Shield any initial load flicker using clean off-white background
-  if (!isLoaded) {
-    return <div className="fixed inset-0 z-[9999] bg-[#F7F4F0]" />;
+  // Shield any initial load flicker using clean background if we don't have a splash image yet
+  if (!isLoaded && !splashImageUrl) {
+    return <div className="fixed inset-0 z-[9999] bg-black" />;
   }
 
   // If no photo is set, skip rendering
