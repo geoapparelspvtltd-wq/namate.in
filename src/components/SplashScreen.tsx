@@ -102,8 +102,6 @@ export default function SplashScreen({ onComplete }: { onComplete: () => void })
     }
   };
 
-  const brandChars = ["N", "A", "M", "A", "T", "E"];
-
   return (
     <AnimatePresence>
       {isVisible && (
@@ -111,22 +109,19 @@ export default function SplashScreen({ onComplete }: { onComplete: () => void })
           initial={{ opacity: 1 }}
           exit={{ 
             opacity: 0, 
-            scale: 1.02,
-            filter: "blur(6px)",
-            transition: { duration: 0.5, ease: [0.16, 1, 0.3, 1] }
+            scale: 1,
+            filter: "blur(4px)",
+            transition: { duration: 0.4, ease: "easeOut" }
           }}
-          className="fixed inset-0 z-[9999] bg-black flex flex-col justify-between py-12 px-6 overflow-hidden select-none"
+          className="fixed inset-0 z-[9999] bg-black overflow-hidden select-none"
         >
-          {/* Blur ambient background of the actual splash image */}
-          <div className="absolute inset-0 z-0 pointer-events-none opacity-40">
-            <img 
-              src={splashImageUrl} 
-              className="w-full h-full object-cover blur-2xl scale-110" 
-              alt=""
-              referrerPolicy="no-referrer"
-            />
-          </div>
-          <div className="absolute inset-0 pointer-events-none bg-black/60 z-[1]" />
+          {/* Full Screen Splash Photo */}
+          <img 
+            src={splashImageUrl} 
+            className="absolute inset-0 w-full h-full object-cover" 
+            alt="Brand Splash"
+            referrerPolicy="no-referrer"
+          />
 
           {/* Admin controls container */}
           {isAdmin && (
@@ -141,7 +136,7 @@ export default function SplashScreen({ onComplete }: { onComplete: () => void })
               <button 
                 onClick={() => fileInputRef.current?.click()}
                 disabled={isUploading}
-                className="flex items-center gap-1.5 px-3 py-2 bg-white/95 backdrop-blur text-black rounded-full text-[9px] font-black uppercase tracking-widest hover:bg-white border border-black/5 shadow-lg active:scale-95 transition-all"
+                className="flex items-center gap-1.5 px-3 py-2 bg-white/90 backdrop-blur text-black rounded-full text-[9px] font-black uppercase tracking-widest hover:bg-white border border-black/5 shadow-lg active:scale-95 transition-all"
               >
                 {isUploading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Camera className="w-3 h-3 text-[#C5A059]" />}
                 Edit Splash Image
@@ -149,91 +144,13 @@ export default function SplashScreen({ onComplete }: { onComplete: () => void })
               <button 
                 onClick={handleRemovePhoto}
                 disabled={isUploading}
-                className="p-2 bg-red-600/95 backdrop-blur text-white rounded-full hover:bg-red-700 active:scale-95 transition-all shadow-lg border border-red-500/10"
+                className="p-2 bg-red-600/90 backdrop-blur text-white rounded-full hover:bg-red-700 active:scale-95 transition-all shadow-lg border border-red-500/10"
                 title="Remove Splash Image"
               >
                 <Trash2 className="w-3 h-3" />
               </button>
             </div>
           )}
-
-          {/* Minimal luxurious Header */}
-          <motion.div 
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, ease: "easeOut" }}
-            className="flex justify-between items-center w-full max-w-xs mx-auto z-10"
-          >
-            <span className="text-[7.5px] font-black uppercase tracking-[0.4em] text-white/40">PREMIUM COTTON & LINEN</span>
-            <span className="text-[7.5px] font-black uppercase tracking-[0.4em] text-white/40">EST. 2026</span>
-          </motion.div>
-
-          {/* Luxury Portrait Cards Core Canvas */}
-          <div className="flex flex-col items-center justify-center relative z-10 space-y-6">
-            <motion.div
-              initial={{ scale: 0.94, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              transition={{ duration: 1.1, ease: [0.16, 1, 0.3, 1] }}
-              className="w-[84%] max-w-[280px] aspect-[11/16] rounded-[32px] overflow-hidden shadow-[0_32px_80px_rgba(0,0,0,0.6)] bg-neutral-900 border border-white/10 relative group"
-            >
-              <img 
-                src={splashImageUrl} 
-                className="w-full h-full object-cover" 
-                alt="Brand Lifestyle Splash"
-                referrerPolicy="no-referrer"
-              />
-
-              {/* Seamless gradient overlay */}
-              <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/90 via-black/40 to-transparent" />
-
-              {/* Small branding labels positioned directly inside lookbook slide */}
-              <div className="absolute bottom-6 inset-x-0 px-6 text-center space-y-2">
-                <div className="flex items-center justify-center gap-1">
-                  {brandChars.map((char, index) => (
-                    <motion.span
-                      key={index}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.15 + (index * 0.05), duration: 0.6 }}
-                      className="text-white font-brand font-black text-xl tracking-[0.1em]"
-                    >
-                      {char}
-                    </motion.span>
-                  ))}
-                </div>
-                <p className="text-[8px] font-black uppercase tracking-[0.4em] text-[#C5A059] -mr-[0.4em]">
-                  HANDCRAFTED APPAREL
-                </p>
-              </div>
-            </motion.div>
-          </div>
-
-          {/* Progress loader and Slogan Footers */}
-          <div className="w-full max-w-xs mx-auto flex flex-col items-center space-y-5 relative z-10">
-            {/* Fine single-pixel line loader */}
-            <div className="w-full h-[1.5px] bg-white/10 rounded-full overflow-hidden relative">
-              <motion.div 
-                className="absolute left-0 top-0 h-full bg-[#C5A059]"
-                style={{ width: `${progress}%` }}
-                transition={{ ease: "easeOut" }}
-              />
-            </div>
-            
-            <motion.div 
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.6, duration: 0.8, ease: "easeOut" }}
-              className="flex flex-col items-center text-center space-y-2.5"
-            >
-              <span className="text-[8px] font-black uppercase tracking-[0.35em] text-white/55">
-                CRAFTED TO BE
-              </span>
-              <div className="w-8 h-[1px] bg-[#C5A059] opacity-75" />
-              <span className="text-[9px] font-black uppercase tracking-[0.25em] text-white">
-                YOUR NATURAL COMPANION.
-              </span>
-            </motion.div>
-          </div>
         </motion.div>
       )}
     </AnimatePresence>

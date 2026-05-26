@@ -8,6 +8,7 @@ import { db } from '@/lib/firebase';
 import { Search, X, Loader2, ArrowRight } from 'lucide-react';
 
 const SearchBottomBar = memo(() => {
+  return null;
   const { searchQuery, setSearchQuery } = useSearch();
   const location = useLocation();
   const navigate = useNavigate();
@@ -70,7 +71,7 @@ const SearchBottomBar = memo(() => {
     }
   }, [searchQuery]);
   
-  const visible = location.pathname !== '/';
+  const visible = location.pathname === '/';
 
   return (
     <AnimatePresence>

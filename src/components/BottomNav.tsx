@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { Search, Heart, ShoppingBag, User } from 'lucide-react';
+import { Compass, Heart, ShoppingBag, User } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { memo, useState } from 'react';
 import { motion } from 'motion/react';
@@ -72,7 +72,7 @@ const BottomNav = memo(() => {
 
         {/* Explore / Shop */}
         <NavLink to="/shop" label="Explore" isActive={location.pathname === '/shop'}>
-          <Search className="w-4 h-4" strokeWidth={2.2} />
+          <Compass className="w-4 h-4" strokeWidth={2.2} />
         </NavLink>
 
         {/* Wishlist */}

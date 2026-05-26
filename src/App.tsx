@@ -27,7 +27,6 @@ const TrialRoom = lazy(() => import('./pages/TrialRoom'));
 
 import Navbar from './components/Navbar';
 import BottomNav from './components/BottomNav';
-import SearchBottomBar from './components/SearchBottomBar';
 import FloatingCart from './components/FloatingCart';
 import FloatingBag from './components/FloatingBag';
 import { CartProvider, useCart } from './lib/CartContext';
@@ -242,7 +241,6 @@ function AppContent({ isLoading, setIsLoading }: { isLoading: boolean, setIsLoad
               <main className="flex-grow relative z-10 pb-32">
                 <AnimatedRoutes />
               </main>
-              <SearchBottomBar />
               <FloatingCart />
               <BottomNav />
               <Toaster position="top-center" expand={false} richColors />

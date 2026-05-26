@@ -670,9 +670,17 @@ export default function Shop() {
                     span === 3 ? "col-span-3" : span === 6 ? "col-span-6" : "col-span-2"
                   )}
                 >
-                  <button 
+                  <div 
                     onClick={() => setActiveCategory(cat)}
-                    className="flex flex-col h-full text-left"
+                    className="flex flex-col h-full text-left cursor-pointer"
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        setActiveCategory(cat);
+                      }
+                    }}
                   >
                     <div className={cn(
                       "relative overflow-hidden bg-gray-50 flex items-center justify-center",
@@ -751,7 +759,7 @@ export default function Shop() {
                         </div>
                       )}
                     </div>
-                  </button>
+                  </div>
                 </motion.div>
               );
             })}

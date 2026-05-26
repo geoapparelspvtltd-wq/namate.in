@@ -372,129 +372,213 @@ export default function ProductDetail() {
           )}
         </div>
 
-        {/* Right Hand: Product Information, Size selections, Pricing & Reviews */}
+        {/* Right Hand: Product Information, Size selections, Pricing, Delivery, Specs & Reviews united in one cohesive premium cards area */}
         <div className="space-y-6">
           
-          {/* Brand & Title Info header */}
-          <div className="space-y-1.5 bg-white p-6 rounded-3xl border border-neutral-100 shadow-sm">
-            <div className="text-xs font-black uppercase tracking-[0.25em] text-[#C5A059] flex items-center justify-between animate-fade-in">
-              {product.brand ? <span>{product.brand}</span> : <span />}
-              
-              {/* Rating Star overlay capsule */}
-              {(product.averageRating || 0) > 0 && (
-                <div className="bg-neutral-50 px-2.5 py-1 rounded-full border border-neutral-100 flex items-center gap-1.5 text-neutral-800 text-[10px] font-black shadow-smnormal">
-                  <span>{(product.averageRating || 4.2).toFixed(1)}</span>
-                  <Star className="w-3 h-3 fill-[#C5A059] text-[#C5A059]" />
-                  <span className="text-neutral-400 font-bold border-l border-neutral-200 pl-1.5 ml-0.5">
-                    {product.reviewCount || 18} Specs
-                  </span>
-                </div>
-              )}
-            </div>
-
-            <div className="flex justify-between items-start gap-4">
-              <h2 className="text-lg sm:text-2xl font-black text-black leading-tight uppercase tracking-tight flex-grow">
-                {product.name}
-              </h2>
-              <div className="flex items-center gap-2 flex-shrink-0">
-                {/* Share Action */}
-                <button 
-                  onClick={() => {
-                    triggerHaptic('light');
-                    handleShare();
-                  }}
-                  className="w-8 h-8 rounded-full flex items-center justify-center bg-black/5 hover:bg-black/10 transition-colors text-black"
-                  title="Share product"
-                >
-                  <Share2 className="w-3.5 h-3.5" />
-                </button>
-                {/* Wishlist Toggle */}
-                <button 
-                  onClick={handleWishlistAction}
-                  className="w-8 h-8 rounded-full flex items-center justify-center bg-black/5 hover:bg-black/10 transition-colors text-black"
-                  title="Add to wishlist"
-                >
-                  <Heart className={cn("w-3.5 h-3.5", isInWishlist(product.id) && "fill-black text-black")} />
-                </button>
-              </div>
-            </div>
-
-            {product.description && (
-              <p className="text-sm font-medium text-neutral-500 italic">
-                {product.description}
-              </p>
-            )}
-          </div>
-
-          {/* Price details and Coupon Box */}
-          <div className="bg-white p-6 rounded-3xl border border-neutral-100 shadow-sm space-y-4">
-            <div className="flex items-baseline gap-3">
-              <span className="text-2xl sm:text-3xl font-black text-black">
-                ₹{product.price}
-              </span>
-              {product.originalPrice && (
-                <>
-                  <span className="text-neutral-400 line-through text-md sm:text-lg font-bold">
-                    ₹{product.originalPrice}
-                  </span>
-                  {productMeta.discount > 0 && (
-                    <span className="text-[#5AA67B] font-black text-sm uppercase tracking-tight">
-                      ({productMeta.discount}% OFF)
-                    </span>
-                  )}
-                </>
-              )}
-            </div>
+          <div className="bg-white rounded-[32px] border border-neutral-100 shadow-[0_10px_35px_-10px_rgba(0,0,0,0.03)] overflow-hidden divide-y divide-neutral-100">
             
-            <p className="text-[10px] font-bold text-neutral-400 tracking-wide uppercase">
-              inclusive of all statutory taxes & duties
-            </p>
-
-            <div className="border-t border-dashed border-neutral-200 pt-4 flex gap-3 items-center">
-              <div className="p-2 bg-[#C5A059]/10 rounded-xl text-[#C5A059]">
-                <Sparkles className="w-5 h-5 text-[#C5A059]" />
-              </div>
-              <div>
-                <span className="text-xs font-black text-neutral-800 uppercase tracking-widest block">Tribe Rewards</span>
-                <span className="text-[10px] font-bold text-neutral-500 block">Buy today and earn <strong className="text-black">{(product.price * 10).toLocaleString()} coins</strong> toward your rewards chest.</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Sizes configuration selector card */}
-          {product.sizes?.length > 0 && (
-            <div className="bg-white p-6 rounded-3xl border border-neutral-100 shadow-sm space-y-4">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-black uppercase tracking-widest text-[#C5A059]">Select Size</span>
-                <button 
-                  onClick={() => setShowSizeChart(true)}
-                  className="text-xs font-black text-black hover:text-[#C5A059] hover:underline uppercase tracking-widest"
-                >
-                  Size Chart
-                </button>
+            {/* 1. Brand, Title, Description, and Rating Header */}
+            <div className="p-6 sm:p-8 space-y-4">
+              <div className="text-xs font-black uppercase tracking-[0.25em] text-[#C5A059] flex items-center justify-between animate-fade-in">
+                {product.brand ? <span>{product.brand}</span> : <span />}
+                
+                {/* Rating Star overlay capsule */}
+                {(product.averageRating || 0) > 0 && (
+                  <div className="bg-neutral-50 px-2.5 py-1 rounded-full border border-neutral-100 flex items-center gap-1.5 text-neutral-800 text-[10px] font-black shadow-smnormal">
+                    <span>{(product.averageRating || 4.2).toFixed(1)}</span>
+                    <Star className="w-3 h-3 fill-[#C5A059] text-[#C5A059]" />
+                    <span className="text-neutral-400 font-bold border-l border-neutral-200 pl-1.5 ml-0.5">
+                      {product.reviewCount || 18} Specs
+                    </span>
+                  </div>
+                )}
               </div>
 
-              <div className="flex flex-wrap gap-2.5">
-                {product.sizes.map((sz: string) => (
-                  <button
-                    key={sz}
+              <div className="flex justify-between items-start gap-4">
+                <h2 className="text-lg sm:text-2xl font-black text-black leading-tight uppercase tracking-tight flex-grow">
+                  {product.name}
+                </h2>
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  {/* Share Action */}
+                  <button 
                     onClick={() => {
                       triggerHaptic('light');
-                      setSelectedSize(sz);
+                      handleShare();
                     }}
-                    className={cn(
-                      "min-w-[48px] h-12 rounded-xl text-xs font-black uppercase tracking-wide border-2 transition-all flex items-center justify-center px-3",
-                      selectedSize === sz 
-                        ? "bg-black text-white border-black scale-105 shadow-md shadow-black/10"
-                        : "bg-white text-neutral-700 border-neutral-200 hover:border-black/20"
-                    )}
+                    className="w-8 h-8 rounded-full flex items-center justify-center bg-black/5 hover:bg-black/10 transition-colors text-black"
+                    title="Share product"
                   >
-                    {sz}
+                    <Share2 className="w-3.5 h-3.5" />
                   </button>
-                ))}
+                  {/* Wishlist Toggle */}
+                  <button 
+                    onClick={handleWishlistAction}
+                    className="w-8 h-8 rounded-full flex items-center justify-center bg-black/5 hover:bg-black/10 transition-colors text-black"
+                    title="Add to wishlist"
+                  >
+                    <Heart className={cn("w-3.5 h-3.5", isInWishlist(product.id) && "fill-black text-black")} />
+                  </button>
+                </div>
+              </div>
+
+              {product.description && (
+                <p className="text-sm font-medium text-neutral-500 italic leading-relaxed">
+                  {product.description}
+                </p>
+              )}
+            </div>
+
+            {/* 2. Price Details & Rewards Information */}
+            <div className="p-6 sm:p-8 space-y-4 bg-neutral-50/25">
+              <div className="flex items-baseline gap-3">
+                <span className="text-2xl sm:text-3xl font-black text-black">
+                  ₹{product.price}
+                </span>
+                {product.originalPrice && (
+                  <>
+                    <span className="text-neutral-400 line-through text-md sm:text-lg font-bold">
+                      ₹{product.originalPrice}
+                    </span>
+                    {productMeta.discount > 0 && (
+                      <span className="text-[#5AA67B] font-black text-sm uppercase tracking-tight">
+                        ({productMeta.discount}% OFF)
+                      </span>
+                    )}
+                  </>
+                )}
+              </div>
+              
+              <p className="text-[10px] font-bold text-neutral-400 tracking-wide uppercase">
+                inclusive of all statutory taxes & duties
+              </p>
+
+              <div className="border-t border-dashed border-neutral-200/60 pt-4 flex gap-3 items-center">
+                <div className="p-2 bg-[#C5A059]/10 rounded-xl text-[#C5A059]">
+                  <Sparkles className="w-5 h-5 text-[#C5A059]" />
+                </div>
+                <div>
+                  <span className="text-xs font-black text-neutral-800 uppercase tracking-widest block">Tribe Rewards</span>
+                  <span className="text-[10px] font-bold text-neutral-500 block">Buy today and earn <strong className="text-black">{(product.price * 10).toLocaleString()} coins</strong> toward your rewards chest.</span>
+                </div>
               </div>
             </div>
-          )}
+
+            {/* 3. Sizes Selector */}
+            {product.sizes?.length > 0 && (
+              <div className="p-6 sm:p-8 space-y-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-black uppercase tracking-widest text-[#C5A059]">Select Size</span>
+                  <button 
+                    onClick={() => setShowSizeChart(true)}
+                    className="text-xs font-black text-black hover:text-[#C5A059] hover:underline uppercase tracking-widest"
+                  >
+                    Size Chart
+                  </button>
+                </div>
+
+                <div className="flex flex-wrap gap-2.5">
+                  {product.sizes.map((sz: string) => (
+                    <button
+                      key={sz}
+                      onClick={() => {
+                        triggerHaptic('light');
+                        setSelectedSize(sz);
+                      }}
+                      className={cn(
+                        "min-w-[48px] h-12 rounded-xl text-xs font-black uppercase tracking-wide border-2 transition-all flex items-center justify-center px-3",
+                        selectedSize === sz 
+                          ? "bg-black text-white border-black scale-105 shadow-md shadow-black/10"
+                          : "bg-white text-neutral-700 border-neutral-200 hover:border-black/20"
+                      )}
+                    >
+                      {sz}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* 4. Delivery Estimation Details */}
+            <div className="p-6 sm:p-8 space-y-4">
+              <span className="text-xs font-black uppercase tracking-widest text-[#C5A059] block">Delivery Details</span>
+              
+              <form onSubmit={handlePincodeCheck} className="flex gap-2">
+                <div className="relative flex-grow">
+                  <MapPin className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
+                  <input 
+                    type="text" 
+                    value={pincode}
+                    onChange={(e) => setPincode(e.target.value)}
+                    maxLength={6}
+                    placeholder="Enter Pincode (6 digits)" 
+                    className="w-full bg-neutral-50 border border-neutral-200 rounded-xl py-3 px-10 text-xs font-black tracking-widest focus:outline-none focus:border-black placeholder:text-neutral-400"
+                  />
+                </div>
+                <Button 
+                  type="submit"
+                  disabled={pincodeStatus === 'checking'}
+                  className="bg-black hover:bg-neutral-900 text-white font-black text-[10px] uppercase tracking-wider py-3 px-6 rounded-xl flex-shrink-0"
+                >
+                  {pincodeStatus === 'checking' ? 'Checking...' : 'Check'}
+                </Button>
+              </form>
+
+              {pincodeStatus === 'serviceable' && (
+                <div className="flex items-center gap-2 text-emerald-800 text-xs font-bold bg-emerald-50 border border-emerald-100 p-3 rounded-xl animate-fade-in">
+                  <CheckCircle className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                  <span>Excellent! Pincode active. <strong>{deliveryEstimate}</strong></span>
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 text-[10px] text-neutral-500 font-bold uppercase tracking-wider">
+                <div className="flex items-center gap-2">
+                  <ShieldCheck className="w-4 h-4 text-[#C5A059]" />
+                  <span>Genuine guaranteed</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <RotateCcw className="w-4 h-4 text-[#C5A059]" />
+                  <span>Easy 14 day exchange</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Truck className="w-4 h-4 text-[#C5A059]" />
+                  <span>Free booking trial</span>
+                </div>
+              </div>
+            </div>
+
+            {/* 5. Product Specifications Grid */}
+            <div className="p-6 sm:p-8 space-y-4 bg-neutral-50/25">
+              <span className="text-xs font-black uppercase tracking-widest text-[#C5A059] block">Product Specifications</span>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div className="border-b border-neutral-100 pb-2">
+                  <span className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider block">Material/Fabric</span>
+                  <span className="text-xs font-black uppercase text-neutral-800 tracking-wide mt-0.5 block">{productMeta.fabric}</span>
+                </div>
+
+                <div className="border-b border-neutral-100 pb-2">
+                  <span className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider block">Theme / Pattern</span>
+                  <span className="text-xs font-black uppercase text-neutral-800 tracking-wide mt-0.5 block">{productMeta.pattern}</span>
+                </div>
+
+                <div className="border-b border-neutral-100 pb-2">
+                  <span className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider block">Care Method</span>
+                  <span className="text-xs font-black uppercase text-neutral-800 tracking-wide mt-0.5 block">Delicate Hand Wash Only</span>
+                </div>
+
+                <div className="border-b border-neutral-100 pb-2">
+                  <span className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider block">Production Fit</span>
+                  <span className="text-xs font-black uppercase text-neutral-800 tracking-wide mt-0.5 block">Bespoke Fit Cut</span>
+                </div>
+              </div>
+            </div>
+
+            {/* 6. Cohesive Reviews Inside Main Card */}
+            <div className="p-6 sm:p-8">
+              <ProductReviews productId={product.id} productName={product.name} />
+            </div>
+
+          </div>
 
           {/* Action Row Add to Bag & Try On Overlay buttons */}
           <div className="grid grid-cols-2 gap-3">
@@ -513,86 +597,6 @@ export default function ProductDetail() {
               <Wand2 className="w-4 h-4" />
               Virtual Try-On
             </Button>
-          </div>
-
-          {/* Delivery estimate estimator with user pincode inputs */}
-          <div className="bg-white p-6 rounded-3xl border border-neutral-100 shadow-sm space-y-4">
-            <span className="text-xs font-black uppercase tracking-widest text-[#C5A059] block">Delivery Details</span>
-            
-            <form onSubmit={handlePincodeCheck} className="flex gap-2">
-              <div className="relative flex-grow">
-                <MapPin className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
-                <input 
-                  type="text" 
-                  value={pincode}
-                  onChange={(e) => setPincode(e.target.value)}
-                  maxLength={6}
-                  placeholder="Enter Pincode (6 digits)" 
-                  className="w-full bg-neutral-50 border border-neutral-200 rounded-xl py-3 px-10 text-xs font-black tracking-widest focus:outline-none focus:border-black placeholder:text-neutral-400"
-                />
-              </div>
-              <Button 
-                type="submit"
-                disabled={pincodeStatus === 'checking'}
-                className="bg-black hover:bg-neutral-900 text-white font-black text-[10px] uppercase tracking-wider py-3 px-6 rounded-xl flex-shrink-0"
-              >
-                {pincodeStatus === 'checking' ? 'Checking...' : 'Check'}
-              </Button>
-            </form>
-
-            {pincodeStatus === 'serviceable' && (
-              <div className="flex items-center gap-2 text-emerald-800 text-xs font-bold bg-emerald-50 border border-emerald-100 p-3 rounded-xl animate-fade-in">
-                <CheckCircle className="w-4 h-4 text-emerald-600 flex-shrink-0" />
-                <span>Excellent! Pincode active. <strong>{deliveryEstimate}</strong></span>
-              </div>
-            )}
-
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 text-[10px] text-neutral-500 font-bold uppercase tracking-wider">
-              <div className="flex items-center gap-2">
-                <ShieldCheck className="w-4 h-4 text-[#C5A059]" />
-                <span>Genuine product guaranteed</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <RotateCcw className="w-4 h-4 text-[#C5A059]" />
-                <span>Easy 14 day exchanges</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Truck className="w-4 h-4 text-[#C5A059]" />
-                <span>Free trial room booking</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Product Specifications detailed catalog sheets */}
-          <div className="bg-white p-6 rounded-3xl border border-neutral-100 shadow-sm space-y-4">
-            <span className="text-xs font-black uppercase tracking-widest text-[#C5A059] block">Product Specifications</span>
-            
-            <div className="grid grid-cols-2 gap-4">
-              <div className="border-b border-neutral-100 pb-2">
-                <span className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider block">Material/Fabric</span>
-                <span className="text-xs font-black uppercase text-neutral-800 tracking-wide mt-0.5 block">{productMeta.fabric}</span>
-              </div>
-
-              <div className="border-b border-neutral-100 pb-2">
-                <span className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider block">Theme / Pattern</span>
-                <span className="text-xs font-black uppercase text-neutral-800 tracking-wide mt-0.5 block">{productMeta.pattern}</span>
-              </div>
-
-              <div className="border-b border-neutral-100 pb-2">
-                <span className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider block">Care Method</span>
-                <span className="text-xs font-black uppercase text-neutral-800 tracking-wide mt-0.5 block">Delicate Hand Wash Only</span>
-              </div>
-
-              <div className="border-b border-neutral-100 pb-2">
-                <span className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider block">Production Fit</span>
-                <span className="text-xs font-black uppercase text-neutral-800 tracking-wide mt-0.5 block">Bespoke Fit Cut</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Integrated reviews section inside the Myntra standard layout pages */}
-          <div className="bg-white p-6 rounded-3xl border border-neutral-100 shadow-sm">
-            <ProductReviews productId={product.id} productName={product.name} />
           </div>
 
         </div>
