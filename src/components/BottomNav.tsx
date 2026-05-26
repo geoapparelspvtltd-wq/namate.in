@@ -54,8 +54,8 @@ const BottomNav = memo(() => {
   );
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 max-w-md mx-auto z-[120] bg-[#F7F4F0]/95 backdrop-blur-md border-t border-neutral-200/50 shadow-[0_-8px_40px_rgba(0,0,0,0.02)] pb-safe">
-      <div className="max-w-md mx-auto flex items-center justify-between py-2.5 px-6">
+    <div className="fixed bottom-0 left-0 right-0 z-[120] bg-[#F7F4F0]/95 backdrop-blur-md border-t border-neutral-200/50 shadow-[0_-8px_40px_rgba(0,0,0,0.02)] pb-safe">
+      <div className="max-w-xl mx-auto flex items-center justify-between py-2.5 px-6 md:px-8">
         {/* Home */}
         <NavLink to="/" label="Home" isActive={location.pathname === '/'}>
           <img 

@@ -227,13 +227,13 @@ function AppContent({ isLoading, setIsLoading }: { isLoading: boolean, setIsLoad
             {showSplash && <SplashScreen onComplete={() => setIsLoading(false)} />}
             <div 
               className={cn(
-                "min-h-screen flex flex-col font-sans selection:bg-primary selection:text-primary-foreground relative overflow-hidden transition-opacity duration-300 w-full max-w-md mx-auto md:shadow-[0_0_100px_rgba(0,0,0,0.06)] md:border-x md:border-neutral-200/50",
+                "min-h-screen flex flex-col font-sans selection:bg-primary selection:text-primary-foreground relative overflow-hidden transition-opacity duration-300 w-full",
                 showSplash ? "opacity-0" : "opacity-100"
               )}
               style={{ backgroundColor: '#F7F4F0' }}
             >
               {/* Subtle natural linen grain feel */}
-              <div className="fixed inset-0 max-w-md mx-auto pointer-events-none opacity-[0.015] bg-[radial-gradient(#111_1px,transparent_1px)] [background-size:12px_12px] z-0" />
+              <div className="fixed inset-0 pointer-events-none opacity-[0.015] bg-[radial-gradient(#111_1px,transparent_1px)] [background-size:12px_12px] z-0" />
 
               <Navbar />
               <NativeAppBanner />

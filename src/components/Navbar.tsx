@@ -110,10 +110,10 @@ const Navbar = memo(() => {
   return (
     <>
       <nav className={cn(
-        "fixed top-0 left-0 right-0 max-w-md mx-auto z-[100] w-full transition-all duration-300 bg-transparent border-none",
+        "fixed top-0 left-0 right-0 z-[100] w-full transition-all duration-300 bg-transparent border-none",
         scrolled ? "py-2.5" : "py-4"
       )}>
-        <div className="max-w-md mx-auto px-6 h-12 flex items-center justify-between">
+        <div className="max-w-7xl mx-auto px-6 md:px-12 h-12 flex items-center justify-between">
           
           {/* Left Action Button */}
           <div className="w-10 flex items-center justify-start">

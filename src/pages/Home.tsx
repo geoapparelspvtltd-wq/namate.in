@@ -131,13 +131,17 @@ export default function Home() {
   // Sync cache when data changes
   useEffect(() => {
     if (products.length > 0) {
-      const dataToCache = {
-        gallery: galleryImages,
-        products: products,
-        subConfigs: subcategoryConfigs,
-        catConfigs: allCategoryConfigs
-      };
-      localStorage.setItem('home_data_cache', JSON.stringify(dataToCache));
+      try {
+        const dataToCache = {
+          gallery: galleryImages,
+          products: products,
+          subConfigs: subcategoryConfigs,
+          catConfigs: allCategoryConfigs
+        };
+        localStorage.setItem('home_data_cache', JSON.stringify(dataToCache));
+      } catch (error) {
+        console.warn("Storage quota exceeded or error occurred while updating home cache:", error);
+      }
     }
   }, [galleryImages, products, subcategoryConfigs, allCategoryConfigs]);
 
@@ -324,7 +328,20 @@ export default function Home() {
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.98 }}
                 transition={{ duration: 0.8, ease: "easeInOut" }}
-                className="absolute inset-0"
+                className="absolute inset-0 cursor-grab active:cursor-grabbing touch-pan-y"
+                drag="x"
+                dragConstraints={{ left: 0, right: 0 }}
+                dragElastic={0.2}
+                onDragEnd={(event, info) => {
+                  const swipeThreshold = 50;
+                  if (info.offset.x < -swipeThreshold) {
+                    setIsAutoPlay(false);
+                    handleNext();
+                  } else if (info.offset.x > swipeThreshold) {
+                    setIsAutoPlay(false);
+                    handlePrev();
+                  }
+                }}
               >
                 <img 
                   src={
@@ -337,7 +354,7 @@ export default function Home() {
                         ][currentGalleryIndex % 3]
                   } 
                   alt="Gallery Slide" 
-                  className="w-full h-full object-cover brightness-[0.93] contrast-[1.02]"
+                  className="w-full h-full object-cover brightness-[0.93] contrast-[1.02] pointer-events-none"
                   referrerPolicy="no-referrer"
                 />
               </motion.div>
@@ -345,45 +362,6 @@ export default function Home() {
             
             {/* Elegant vignette/gradient overlay */}
             <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-black/15 to-transparent pointer-events-none" />
-          </div>
-
-          {/* Auto/Manual Mode Selector Badge */}
-          <div className="absolute top-6 right-6 z-20 flex gap-2">
-            <button 
-              onClick={() => {
-                triggerHaptic('light');
-                setIsAutoPlay(!isAutoPlay);
-              }}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/40 hover:bg-black/60 text-white backdrop-blur-md shadow-sm border border-white/10 text-[8px] font-black tracking-widest uppercase transition-all"
-            >
-              <span className={cn("w-1.5 h-1.5 rounded-full", isAutoPlay ? "bg-emerald-400 animate-pulse" : "bg-neutral-500")} />
-              <span>{isAutoPlay ? 'AUTO ON' : 'AUTO OFF'}</span>
-            </button>
-          </div>
-
-          {/* Left/Right manual arrows for Manual navigation */}
-          <div className="absolute inset-x-4 top-1/2 -translate-y-1/2 z-20 flex justify-between pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-            <button
-              onClick={() => {
-                triggerHaptic('light');
-                setIsAutoPlay(false); // Switch to manual upon click!
-                handlePrev();
-              }}
-              className="w-9 h-9 rounded-full bg-black/20 hover:bg-black/40 border border-white/10 backdrop-blur-sm flex items-center justify-center text-white/90 active:scale-95 transition-all pointer-events-auto shadow-md"
-            >
-              <ChevronLeft className="w-5 h-5 stroke-[2.5]" />
-            </button>
-
-            <button
-              onClick={() => {
-                triggerHaptic('light');
-                setIsAutoPlay(false); // Switch to manual upon click!
-                handleNext();
-              }}
-              className="w-9 h-9 rounded-full bg-black/20 hover:bg-black/40 border border-white/10 backdrop-blur-sm flex items-center justify-center text-white/90 active:scale-95 transition-all pointer-events-auto shadow-md"
-            >
-              <ChevronRight className="w-5 h-5 stroke-[2.5]" />
-            </button>
           </div>
 
           {/* Bullet dots/indicators of slides */}

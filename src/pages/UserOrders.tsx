@@ -13,8 +13,11 @@ import {
   AlertCircle,
   RefreshCw,
   Check,
-  X
+  X,
+  Palmtree
 } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
+import { triggerHaptic } from '@/lib/haptics';
 import BrandSignature from '@/components/BrandSignature';
 import { 
   collection, 
@@ -126,6 +129,9 @@ export default function UserOrders() {
   const [targetSize, setTargetSize] = useState('M');
   const [returnStep, setReturnStep] = useState<'form' | 'success'>('form');
   const [isSubmittingReturn, setIsSubmittingReturn] = useState(false);
+
+  // Tracking modal state
+  const [selectedTrackingOrder, setSelectedTrackingOrder] = useState<Order | null>(null);
 
   const handleReturnSubmit = async () => {
     if (!returnOrder) return;
@@ -268,14 +274,25 @@ export default function UserOrders() {
                     ))}
                   </div>
 
-                  <div className="flex justify-between items-center pt-6 border-t border-white/5">
+                  <div className="flex justify-between items-center pt-6 border-t border-white/5 pb-2">
                     <span className="text-xs font-black uppercase tracking-widest text-white/40">Total Paid</span>
                     <span className="text-xl font-black">₹{order.total}</span>
                   </div>
 
-                  {order.status === 'delivered' && (
-                    <div className="mt-4 pt-4 border-t border-white/5">
-                      <Button
+                  <div className="mt-4 pt-4 border-t border-white/5 flex flex-col sm:flex-row gap-2.5">
+                    <button
+                      onClick={() => {
+                        setSelectedTrackingOrder(order);
+                        triggerHaptic('light');
+                      }}
+                      className="flex-1 bg-white hover:bg-neutral-200 text-black font-black text-[10px] uppercase tracking-widest h-11 rounded-2xl flex items-center justify-center gap-2 transition-all"
+                    >
+                      <Truck className="w-4 h-4" />
+                      Track Order
+                    </button>
+
+                    {order.status === 'delivered' && (
+                      <button
                         onClick={() => {
                           setReturnOrder(order);
                           setReturnReason('Size mismatch - too small');
@@ -283,13 +300,13 @@ export default function UserOrders() {
                           setReturnStep('form');
                           setTargetSize(order.items[0]?.size || 'M');
                         }}
-                        className="w-full bg-[#C5A059] hover:bg-[#d5b36e] text-black font-black text-[10px] uppercase tracking-widest h-11 rounded-2xl flex items-center justify-center gap-2"
+                        className="flex-1 bg-[#C5A059] hover:bg-[#d5b36e] text-black font-black text-[10px] uppercase tracking-widest h-11 rounded-2xl flex items-center justify-center gap-2 transition-all"
                       >
                         <RotateCcw className="w-4 h-4" />
                         Easy Return & Exchange
-                      </Button>
-                    </div>
-                  )}
+                      </button>
+                    )}
+                  </div>
 
                   {order.status === 'return_requested' && (
                     <div className="mt-4 pt-4 border-t border-white/5">
@@ -514,6 +531,265 @@ export default function UserOrders() {
           </div>
         </div>
       )}
+
+      {/* Absolute beautifully custom tracking sheet overlay */}
+      <AnimatePresence>
+        {selectedTrackingOrder && (() => {
+          const order = selectedTrackingOrder;
+          const orderDate = order.createdAt.toDate();
+          
+          const getFormattedOffsetDate = (daysOffset: number) => {
+            const d = new Date(orderDate);
+            d.setDate(d.getDate() + daysOffset);
+            return format(d, 'MMM dd, yyyy');
+          };
+
+          // Status & Headline logic mapping based on image:
+          let headline = "Your piece is being crafted.";
+          let subtitle = "We'll notify you when it's on the way.";
+          let activeIndex = 1; // Default to crafting/processing
+
+          if (order.status === 'pending') {
+            headline = "Your piece is confirmed.";
+            subtitle = "Starting our high-end crafting process shortly.";
+            activeIndex = 0;
+          } else if (order.status === 'processing') {
+            headline = "Your piece is being crafted.";
+            subtitle = "We'll notify you when it's on the way.";
+            activeIndex = 1;
+          } else if (order.status === 'shipped') {
+            headline = "Your piece has been dispatched.";
+            subtitle = "It is moving elegantly to your doorstep.";
+            activeIndex = 3;
+          } else if (order.status === 'delivered') {
+            headline = "Your piece has been delivered.";
+            subtitle = "Enjoy your high-end crafted attire.";
+            activeIndex = 4;
+          } else if (order.status === 'cancelled') {
+            headline = "This order was cancelled.";
+            subtitle = "The reservation has been voided.";
+            activeIndex = 0;
+          } else if (order.status === 'return_requested' || order.status === 'returned') {
+            headline = "Return/Exchange in progress.";
+            subtitle = "We are managing your reverse collection.";
+            activeIndex = 2;
+          }
+
+          // Let's create an elegant, responsive svg path matching the luxurious arc from the photo
+          const points = [
+            { x: 30, y: 55, active: activeIndex >= 0 },
+            { x: 92.5, y: 32, active: activeIndex >= 1 },
+            { x: 155, y: 20, active: activeIndex >= 2 }, // peak
+            { x: 217.5, y: 32, active: activeIndex >= 3 },
+            { x: 280, y: 55, active: activeIndex >= 4 },
+          ];
+
+          // Map points for active SVG representation path
+          let activePathD = "";
+          if (activeIndex === 0) {
+            activePathD = "M 30 55 L 30 55";
+          } else if (activeIndex === 1) {
+            activePathD = "M 30 55 Q 92.5 32 92.5 32";
+          } else if (activeIndex === 2) {
+            activePathD = "M 30 55 Q 92.5 32 155 20";
+          } else if (activeIndex === 3) {
+            activePathD = "M 30 55 Q 155 12 217.5 32";
+          } else if (activeIndex >= 4) {
+            activePathD = "M 30 55 Q 155 12 280 55";
+          }
+
+          const stepsList = [
+            { label: "Order Confirmed", date: getFormattedOffsetDate(0), completed: activeIndex >= 0, current: activeIndex === 0 },
+            { label: "Being Crafted", date: getFormattedOffsetDate(1), completed: activeIndex >= 1, current: activeIndex === 1 },
+            { label: "Packed & Prepared", date: getFormattedOffsetDate(3), completed: activeIndex >= 2, current: activeIndex === 2 },
+            { label: "Out for Delivery", date: getFormattedOffsetDate(5), completed: activeIndex >= 3, current: activeIndex === 3 },
+            { label: "Delivered", date: getFormattedOffsetDate(7), completed: activeIndex >= 4, current: activeIndex === 4 },
+          ];
+
+          return (
+            <motion.div 
+              className="fixed inset-0 z-[220] bg-black/70 backdrop-blur-md flex items-end sm:items-center justify-center p-0 sm:p-4"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+            >
+              <div className="absolute inset-0" onClick={() => setSelectedTrackingOrder(null)} />
+              
+              <motion.div 
+                className="bg-[#F7F4F0] text-black w-full max-w-md h-[95vh] sm:h-auto sm:max-h-[90vh] rounded-t-[40px] sm:rounded-[40px] overflow-hidden shadow-2xl relative flex flex-col z-10"
+                initial={{ y: "100%", opacity: 0.5 }}
+                animate={{ y: 0, opacity: 1 }}
+                exit={{ y: "100%", opacity: 0.5 }}
+                transition={{ type: "spring", damping: 25, stiffness: 220 }}
+              >
+                {/* Custom Elegant Header */}
+                <div className="pt-8 px-6 pb-4 flex items-center justify-between">
+                  <button 
+                    onClick={() => setSelectedTrackingOrder(null)}
+                    className="w-10 h-10 rounded-full border border-black/5 bg-white flex items-center justify-center active:scale-90 hover:bg-neutral-100 transition-all shadow-sm"
+                  >
+                    <ChevronLeft className="w-5 h-5 text-black" />
+                  </button>
+                  <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-neutral-800">Order Tracking</h3>
+                  <div className="w-10 h-10" /> {/* Spacer */}
+                </div>
+
+                {/* Subheader tracking number */}
+                <div className="px-6 text-center">
+                  <span className="inline-block px-3 py-1 rounded-full bg-black/5 text-[8px] font-black uppercase tracking-wider text-black/50">
+                    ID: #{order.id.slice(-12).toUpperCase()}
+                  </span>
+                </div>
+
+                <div className="flex-1 overflow-y-auto px-6 pb-8 pt-4 space-y-6">
+                  {/* Headline & Sub-headline */}
+                  <div className="text-center space-y-2 max-w-xs mx-auto">
+                    <h2 className="text-2xl font-black tracking-tight text-neutral-900 font-brand">
+                      {headline}
+                    </h2>
+                    <p className="text-xs font-bold text-neutral-500 uppercase tracking-wider leading-relaxed">
+                      {subtitle}
+                    </p>
+                  </div>
+
+                  {/* Elegant Graphic Area with Curve Arc and Palm Tree Symbol */}
+                  <div className="relative h-32 flex flex-col justify-end items-center mb-4">
+                    {/* SVG Curve */}
+                    <div className="absolute inset-x-0 top-0 h-full flex items-center justify-center">
+                      <svg width="310" height="90" viewBox="0 0 310 90" className="opacity-90">
+                        {/* Underlay passive light line */}
+                        <path 
+                          d="M 30 65 Q 155 15 280 65" 
+                          fill="none" 
+                          stroke="#EBE5DC" 
+                          strokeWidth="2.5" 
+                          strokeLinecap="round" 
+                        />
+                        {/* Overlay active dynamic dark line */}
+                        {activePathD && (
+                          <motion.path 
+                            d={activePathD} 
+                            fill="none" 
+                            stroke="#111" 
+                            strokeWidth="2.5" 
+                            strokeLinecap="round" 
+                            initial={{ pathLength: 0 }}
+                            animate={{ pathLength: 1 }}
+                            transition={{ duration: 1.2, ease: "easeOut" }}
+                          />
+                        )}
+
+                        {/* Plotted Dots on arc as small double rings */}
+                        {points.map((pt, i) => (
+                          <g key={i}>
+                            <circle 
+                              cx={pt.x} 
+                              cy={pt.y} 
+                              r="5" 
+                              fill={pt.active ? "#111" : "#FAF9F6"} 
+                              stroke={pt.active ? "#111" : "#D0C9BE"} 
+                              strokeWidth="1.5" 
+                            />
+                            {pt.active && (
+                              <circle 
+                                cx={pt.x} 
+                                cy={pt.y} 
+                                r="2.5" 
+                                fill="#fff" 
+                              />
+                            )}
+                          </g>
+                        ))}
+                      </svg>
+                    </div>
+
+                    {/* Highly polished Palm Tree centered silhouette perfectly matched to image */}
+                    <div className="absolute bottom-1 flex items-center justify-center">
+                      <div className="w-12 h-12 rounded-full bg-[#EFEBE4] flex items-center justify-center shadow-inner border border-black/[0.03]">
+                        <Palmtree className="w-6 h-6 text-black stroke-[1.5]" />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Vertical Timeline List perfectly matching design */}
+                  <div className="space-y-6 max-w-sm mx-auto px-4 relative mt-10">
+                    {/* Vertical connecting line background */}
+                    <div className="absolute left-[29px] top-3 bottom-3 w-[1.5px] bg-[#E4DFD6]" />
+
+                    {/* Timeline dynamic highlight */}
+                    <div 
+                      className="absolute left-[29px] top-3 w-[1.5px] bg-black transition-all duration-1000" 
+                      style={{ 
+                        height: `${
+                          activeIndex === 4 ? '100%' :
+                          activeIndex === 3 ? '75%' :
+                          activeIndex === 2 ? '50%' :
+                          activeIndex === 1 ? '25%' : '0%'
+                        }`
+                      }} 
+                    />
+
+                    {stepsList.map((step, idx) => {
+                      const isActive = step.completed || step.current;
+                      return (
+                        <div key={idx} className="flex items-center gap-5 relative z-10">
+                          {/* Timeline Circle with concentric ring styles */}
+                          <div className={cn(
+                            "w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all duration-500 bg-[#F7F4F0]",
+                            step.completed ? "border-black bg-black" : step.current ? "border-black scale-105" : "border-[#D0C9BE]"
+                          )}>
+                            <div className={cn(
+                              "w-2.5 h-2.5 rounded-full transition-all duration-300",
+                              step.completed ? "bg-white" : step.current ? "bg-black animate-pulse" : "bg-transparent"
+                            )} />
+                          </div>
+
+                          {/* Content Row */}
+                          <div className="flex-1 flex justify-between items-center py-1.5 border-b border-black/[0.04]">
+                            <span className={cn(
+                              "text-[11px] font-black uppercase tracking-wider",
+                              isActive ? "text-neutral-900" : "text-neutral-400"
+                            )}>
+                              {step.label}
+                            </span>
+                            <span className={cn(
+                              "text-[9.5px] font-bold uppercase tracking-wider text-black/40"
+                            )}>
+                              {step.date}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Sandy soft Estimated Delivery bottom frame */}
+                  <div className="max-w-sm mx-auto mt-10">
+                    <div className="bg-[#EAE4D9]/80 border border-black/[0.03] p-5 rounded-2xl text-center shadow-sm space-y-1">
+                      <span className="block text-[8.5px] text-black/40 font-black uppercase tracking-[0.3em]">
+                        Estimated Delivery
+                      </span>
+                      <span className="block text-base font-black uppercase tracking-[0.15em] text-neutral-800">
+                        {getFormattedOffsetDate(9)} - {getFormattedOffsetDate(14)}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Return window closer */}
+                <div className="p-6 bg-[#EFEBE4] border-t border-black/5">
+                  <button
+                    onClick={() => setSelectedTrackingOrder(null)}
+                    className="w-full bg-black hover:bg-neutral-800 text-white font-black uppercase tracking-widest text-xs h-14 rounded-2xl flex items-center justify-center shadow-lg"
+                  >
+                    CONTINUE SHOPPING
+                  </button>
+                </div>
+              </motion.div>
+            </motion.div>
+          );
+        })()}
+      </AnimatePresence>
     </div>
   );
 }
