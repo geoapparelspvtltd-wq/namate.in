@@ -272,7 +272,7 @@ export default function Gallery() {
         )}
       </AnimatePresence>
 
-      <div className="fixed bottom-0 left-0 right-0 py-12 pointer-events-none">
+      <div className="fixed bottom-0 left-0 right-0 md:left-1/2 md:-translate-x-1/2 md:max-w-md lg:max-w-lg py-12 pointer-events-none">
         <BrandSignature variant="dark" className="opacity-10" />
       </div>
     </div>

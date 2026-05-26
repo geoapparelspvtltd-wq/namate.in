@@ -227,7 +227,7 @@ function AppContent({ isLoading, setIsLoading }: { isLoading: boolean, setIsLoad
             {showSplash && <SplashScreen onComplete={() => setIsLoading(false)} />}
             <div 
               className={cn(
-                "min-h-screen flex flex-col font-sans selection:bg-primary selection:text-primary-foreground relative overflow-hidden transition-opacity duration-300 w-full",
+                "min-h-screen flex flex-col font-sans selection:bg-primary selection:text-primary-foreground relative overflow-hidden transition-opacity duration-300 w-full md:max-w-md lg:max-w-lg mx-auto md:shadow-[0_0_80px_rgba(0,0,0,0.06)] md:border-x md:border-black/[0.04]",
                 showSplash ? "opacity-0" : "opacity-100"
               )}
               style={{ backgroundColor: '#F7F4F0' }}
