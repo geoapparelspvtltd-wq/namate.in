@@ -631,6 +631,23 @@ export default function Shop() {
     </div>
   );
 
+  const rightmostIndices = (() => {
+    const indices: boolean[] = [];
+    let currentSum = 0;
+    availableCategories.forEach((cat, idx) => {
+      const pattern = [3, 3, 6, 2, 2, 2];
+      const span = pattern[idx % pattern.length];
+      currentSum += span;
+      if (currentSum === 6) {
+        indices.push(true);
+        currentSum = 0;
+      } else {
+        indices.push(false);
+      }
+    });
+    return indices;
+  })();
+
   return (
     <div className="bg-background min-h-screen pb-40 pt-28">
       {!activeCategory && !activeSubcategory && !searchQuery ? (
@@ -648,7 +665,7 @@ export default function Shop() {
               </Link>
             )}
           </div>
-          <div className="grid grid-cols-6 gap-0 border-t border-l border-[#e5e5e5]">
+          <div className="grid grid-cols-6 gap-0 border-t border-[#e5e5e5]">
             {availableCategories.map((cat, idx) => {
               const config = categoryConfigs.find(c => c.name === cat);
               const categoryImage = config?.imageUrl || products.find(p => p.category === cat)?.image;
@@ -666,7 +683,8 @@ export default function Shop() {
                   viewport={{ once: true }}
                   transition={{ delay: idx * 0.05 }}
                   className={cn(
-                    "group relative flex flex-col h-full bg-white border-r-[0.5px] border-b-[0.5px] border-[#e5e5e5]",
+                    "group relative flex flex-col h-full bg-white border-b-[0.5px] border-[#e5e5e5]",
+                    !rightmostIndices[idx] && "border-r-[0.5px] border-[#e5e5e5]",
                     span === 3 ? "col-span-3" : span === 6 ? "col-span-6" : "col-span-2"
                   )}
                 >
@@ -888,7 +906,7 @@ export default function Shop() {
                       </span>
                     </div>
                     
-                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-0 border-t border-l border-[#e5e5e5]">
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-0 border-t border-[#e5e5e5] [&>*:nth-child(2n)_.group]:border-r-0 md:[&>*:nth-child(2n)_.group]:border-r-[0.5px] md:[&>*:nth-child(3n)_.group]:border-r-0 lg:[&>*:nth-child(3n)_.group]:border-r-[0.5px] lg:[&>*:nth-child(4n)_.group]:border-r-0">
                       {group.products.map((product, index) => (
                         <motion.div
                           key={product.id}
@@ -907,7 +925,7 @@ export default function Shop() {
               </div>
             ) : (
               /* Flat Grid for Search Results */
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-0 border-t border-l border-[#e5e5e5]">
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-0 border-t border-[#e5e5e5] [&>*:nth-child(2n)_.group]:border-r-0 md:[&>*:nth-child(2n)_.group]:border-r-[0.5px] md:[&>*:nth-child(3n)_.group]:border-r-0 lg:[&>*:nth-child(3n)_.group]:border-r-[0.5px] lg:[&>*:nth-child(4n)_.group]:border-r-0">
                 {filteredProducts.map((product, index) => (
                   <motion.div
                     key={product.id}

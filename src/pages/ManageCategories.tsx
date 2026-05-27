@@ -247,6 +247,32 @@ export default function ManageCategories() {
     });
   };
 
+  const handleBulkToggle = async (showOnHome: boolean) => {
+    if (categories.length === 0) return;
+    const toastId = toast.loading(`${showOnHome ? 'Enabling' : 'Disabling'} all ${activeTab === 'main' ? 'categories' : 'subcategories'} for home...`);
+    try {
+      const configCollection = activeTab === 'main' ? 'category_configs' : 'subcategory_configs';
+      const batch = writeBatch(db);
+
+      for (const cat of categories) {
+        const docRef = doc(db, configCollection, cat.id);
+        batch.set(docRef, {
+          name: cat.name,
+          imageUrl: cat.imageUrl || '',
+          showOnHome: showOnHome,
+          order: cat.order,
+          updatedAt: serverTimestamp()
+        }, { merge: true });
+      }
+
+      await batch.commit();
+      toast.success(`Success: All items are now ${showOnHome ? 'visible' : 'hidden'} on Home!`, { id: toastId });
+    } catch (error) {
+      console.error("Bulk toggle error:", error);
+      toast.error("Failed to update visibility", { id: toastId });
+    }
+  };
+
   if (loading || (isAdmin && isLoading)) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-white">
@@ -309,6 +335,30 @@ export default function ManageCategories() {
               ? "Configure strips and order for Home Page subcategories"
               : "Set icons for the home page category boxes"}
           </h2>
+        </div>
+
+        {/* Bulk Action Controls */}
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-[#FAF9F6] border border-black/5 p-6 rounded-[32px] mb-8 shadow-sm">
+          <div>
+            <h3 className="text-xs font-black uppercase tracking-widest text-[#C5A059]">BULK ACTIONS</h3>
+            <p className="text-[10px] font-bold text-black/40 uppercase tracking-wider mt-0.5">Toggle live status for all listed items at once</p>
+          </div>
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            <button
+              onClick={() => handleBulkToggle(true)}
+              className="flex-1 sm:flex-none px-5 py-3 bg-black hover:bg-neutral-900 text-[#FAF9F6] text-[9.5px] font-black uppercase tracking-widest rounded-xl transition-all active:scale-95 shadow-md flex items-center justify-center gap-2"
+            >
+              <Check className="w-3.5 h-3.5 text-[#C5A059]" />
+              Select All (Show on Home)
+            </button>
+            <button
+              onClick={() => handleBulkToggle(false)}
+              className="flex-1 sm:flex-none px-5 py-3 bg-black/5 hover:bg-black/10 text-black text-[9.5px] font-black uppercase tracking-widest rounded-xl transition-all active:scale-95 flex items-center justify-center gap-2"
+            >
+              <X className="w-3.5 h-3.5 text-black/40" />
+              Deselect All (Hide List)
+            </button>
+          </div>
         </div>
 
         <div className="space-y-4">

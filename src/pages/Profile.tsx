@@ -281,14 +281,14 @@ export default function Profile() {
 
   const handleRedeemPoints = async () => {
     const points = userData?.namatePoints || 0;
-    if (points < 100) {
-      toast.error("Minimum 100 points required to convert");
+    if (points < 1) {
+      toast.error("Minimum 1 coin required to convert");
       return;
     }
 
     setIsRedeeming(true);
-    const amountToCredit = Math.floor(points / 100) * 10;
-    const pointsToDeduct = Math.floor(points / 100) * 100;
+    const amountToCredit = points;
+    const pointsToDeduct = points;
 
     const toastId = toast.loading("Converting points to credits...");
 
@@ -1064,7 +1064,7 @@ export default function Profile() {
                 <Coins className="w-10 h-10 text-[#C5A059]" />
               </div>
               <h2 className="text-2xl font-black uppercase tracking-tighter text-black mb-2">Point Conversion</h2>
-              <p className="text-[10px] font-bold text-black/40 uppercase tracking-widest mb-8">100 Points = ₹10 Credit</p>
+              <p className="text-[10px] font-bold text-black/40 uppercase tracking-widest mb-8">1 Coin = ₹1 Credit</p>
               
               <div className="bg-black/5 rounded-3xl p-6 mb-8 text-left">
                 <div className="flex justify-between mb-4">
@@ -1073,7 +1073,7 @@ export default function Profile() {
                 </div>
                 <div className="flex justify-between pt-4 border-t border-black/5">
                   <span className="text-[10px] font-black uppercase tracking-widest text-black/20">Convertible</span>
-                  <span className="font-brand font-medium tracking-tighter text-green-600 text-xl">₹{Math.floor((userData?.namatePoints || 0) / 100) * 10}</span>
+                  <span className="font-brand font-medium tracking-tighter text-green-600 text-xl">₹{userData?.namatePoints || 0}</span>
                 </div>
               </div>
 
@@ -1087,7 +1087,7 @@ export default function Profile() {
                 </Button>
                 <Button 
                   onClick={handleRedeemPoints}
-                  disabled={isRedeeming || (userData?.namatePoints || 0) < 100}
+                  disabled={isRedeeming || (userData?.namatePoints || 0) < 1}
                   className="flex-1 h-14 bg-black text-white rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-black/90"
                 >
                   {isRedeeming ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Convert'}

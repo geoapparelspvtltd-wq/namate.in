@@ -2,7 +2,7 @@ import React, { useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { cn } from '@/lib/utils';
-import { ChevronRight, Edit2, ChevronLeft } from 'lucide-react';
+import { ChevronRight, Edit2, ChevronLeft, Image as ImageIcon } from 'lucide-react';
 import { triggerHaptic } from '@/lib/haptics';
 
 interface CategoryQuickNavProps {
@@ -13,6 +13,14 @@ interface CategoryQuickNavProps {
   }[];
   isAdmin?: boolean;
 }
+
+const toTitleCase = (str: string) => {
+  if (!str) return '';
+  return str
+    .split(' ')
+    .map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+    .join(' ');
+};
 
 const CategoryQuickNav = ({ categories, isAdmin }: CategoryQuickNavProps) => {
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -32,7 +40,7 @@ const CategoryQuickNav = ({ categories, isAdmin }: CategoryQuickNavProps) => {
 
   return (
     <div className="mb-14 px-4 sm:px-6">
-      <div className="mb-5 flex items-end justify-between">
+      <div className="mb-6 flex items-end justify-between">
         <div className="flex flex-col">
           <h2 className="text-xs font-black text-black uppercase tracking-[0.25em]">Shop by Category</h2>
           <span className="text-[9px] text-black/40 font-bold uppercase tracking-widest mt-0.5">Slide to explore collections</span>
@@ -71,10 +79,13 @@ const CategoryQuickNav = ({ categories, isAdmin }: CategoryQuickNavProps) => {
       <div className="relative group">
         <div 
           ref={scrollRef}
-          className="flex items-stretch overflow-x-auto gap-4 py-2 px-1 scrollbar-none snap-x snap-mandatory"
+          className="flex items-stretch overflow-x-auto gap-6 sm:gap-8 py-2 px-1 scrollbar-none snap-x snap-mandatory"
           style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
         >
           {categories.map((cat, idx) => {
+            const displayTitle = toTitleCase(cat.name);
+            const isFashion = cat.name.toLowerCase() === 'fashion';
+            
             return (
               <motion.div
                 key={cat.name}
@@ -89,18 +100,18 @@ const CategoryQuickNav = ({ categories, isAdmin }: CategoryQuickNavProps) => {
                   onClick={() => triggerHaptic('light')}
                   className="flex flex-col items-center group/card"
                 >
-                  {/* Small Box Container */}
-                  <div className="relative w-20 h-20 sm:w-24 sm:h-24 rounded-2xl overflow-hidden bg-white border border-black/5 hover:border-black/15 shadow-sm hover:shadow transition-all duration-500 flex items-center justify-center p-2">
+                  {/* Small Rounded-3xl Box Container matching mockup exactly */}
+                  <div className="relative w-20 h-20 sm:w-24 sm:h-24 rounded-[28px] sm:rounded-[32px] overflow-hidden bg-[#FAF9F6] border border-black/[0.04] transition-all duration-500 flex items-center justify-center p-1 cursor-pointer shadow-sm group-hover/card:shadow-md group-hover/card:border-black/10">
                     {cat.imageUrl ? (
                       <img 
                         src={cat.imageUrl} 
                         alt={cat.name} 
-                        className="w-full h-full object-cover transition-transform duration-700 group-hover/card:scale-110"
+                        className="w-full h-full object-cover rounded-[22px] sm:rounded-[26px] transition-transform duration-700 group-hover/card:scale-105"
                         referrerPolicy="no-referrer"
                       />
                     ) : (
                       <div className={cn(
-                        "w-full h-full rounded-2xl flex items-center justify-center font-black uppercase text-2xl transition-transform duration-700 group-hover/card:scale-110",
+                        "w-full h-full rounded-[22px] sm:rounded-[26px] flex items-center justify-center font-black uppercase text-2xl transition-transform duration-700 group-hover/card:scale-105",
                         idx % 3 === 0 ? "bg-gradient-to-br from-[#FFDEE9] to-[#B5FFFC]" : 
                         idx % 3 === 1 ? "bg-gradient-to-br from-[#8BC6EC] to-[#9599E2]" :
                         "bg-gradient-to-br from-[#FBAB7E] to-[#F7CE68]",
@@ -110,14 +121,19 @@ const CategoryQuickNav = ({ categories, isAdmin }: CategoryQuickNavProps) => {
                       </div>
                     )}
                     
-                    {/* View Overlay */}
-                    <div className="absolute inset-0 bg-black/0 group-hover/card:bg-black/5 rounded-2xl transition-colors duration-300" />
+                    {/* Subtle View Overlay */}
+                    <div className="absolute inset-0 bg-black/0 group-hover/card:bg-black/[0.02] rounded-[28px] sm:rounded-[32px] transition-colors duration-300" />
                   </div>
                   
-                  {/* Name Label */}
-                  <div className="mt-2 text-center px-1 max-w-[96px] sm:max-w-[112px]">
-                    <span className="block text-[10px] sm:text-[11px] font-bold uppercase tracking-[0.18em] text-neutral-800 transition-colors group-hover/card:text-black truncate">
-                      {cat.name}
+                  {/* Title-cased Beautiful Label */}
+                  <div className="mt-3 text-center px-1 max-w-[96px] sm:max-w-[112px]">
+                    <span className={cn(
+                      "block text-xs sm:text-sm tracking-wide transition-all duration-300 truncate",
+                      isFashion 
+                        ? "text-[#E92C5E] font-extrabold scale-105" 
+                        : "text-neutral-700 group-hover/card:text-black font-medium"
+                    )}>
+                      {displayTitle}
                     </span>
                   </div>
                 </Link>

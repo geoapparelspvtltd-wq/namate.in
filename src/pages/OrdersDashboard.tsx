@@ -167,7 +167,13 @@ export default function OrdersDashboard() {
 
       if (newStatus === 'delivered' && !orderData.pointsAwarded) {
         const batch = writeBatch(db);
-        const coinsToAward = Math.floor(orderData.total / 1000) * 100;
+        
+        // Fetch customer profile to check tribe membership
+        const userRef = doc(db, 'users', orderData.userId);
+        const userSnap = await getDoc(userRef);
+        const customerData = userSnap.exists() ? userSnap.data() : null;
+        const isTribeMember = customerData?.isTribeMember || false;
+        const coinsToAward = orderData.total <= 0 ? 0 : (isTribeMember ? Math.floor(orderData.total / 10) : 5);
 
         // 1. Update Order Status
         batch.update(orderRef, { 

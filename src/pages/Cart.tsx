@@ -104,10 +104,10 @@ export default function Cart() {
   const subtotal = items.reduce((acc, item) => acc + (item.price * item.quantity), 0);
   const shipping = 0;
   
-  // Points logic: 100 points = ₹10 => 1 point = ₹0.1
-  const maxPointsPossible = Math.min(userData?.namatePoints || 0, subtotal * 10);
-  const pointsDiscount = usePoints ? Math.floor(maxPointsPossible / 100) * 10 : 0;
-  const pointsToSpend = usePoints ? Math.floor(maxPointsPossible / 100) * 100 : 0;
+  // Points logic: 1 Namate Coin = 1 Rs
+  const maxPointsPossible = Math.min(userData?.namatePoints || 0, subtotal);
+  const pointsDiscount = usePoints ? maxPointsPossible : 0;
+  const pointsToSpend = usePoints ? maxPointsPossible : 0;
   
   const total = Math.max(0, subtotal + shipping - pointsDiscount);
 
@@ -364,7 +364,8 @@ export default function Cart() {
       const orderId = doc(collection(db, 'orders')).id;
       const orderRef = doc(db, 'orders', orderId);
       
-      const coinsToAward = Math.floor(total / 1000) * 100;
+      const isTribeMember = userData?.isTribeMember || false;
+      const coinsToAward = total <= 0 ? 0 : (isTribeMember ? Math.floor(total / 10) : 5);
       const paymentStatus = forceStatus || ((total === 0 || paymentMethod === 'online') ? 'paid' : 'unpaid');
       const shouldAwardNow = paymentStatus === 'paid' && coinsToAward > 0;
 
@@ -807,13 +808,13 @@ export default function Cart() {
                 Cash on Delivery
               </button>
             </div>
-            {paymentMethod === 'online' && total >= 1000 && (
+            {paymentMethod === 'online' && total > 0 && (
               <p className="mt-4 text-[10px] font-black text-green-600 uppercase tracking-widest flex items-center gap-2">
                 <Sparkles className="w-3 h-3" />
-                Pay now to earn {Math.floor(total / 1000) * 100} Namate Coins immediately!
+                Pay now to earn {userData?.isTribeMember ? Math.floor(total / 10) : 5} Namate Coins immediately!
               </p>
             )}
-            {paymentMethod === 'cod' && total >= 1000 && (
+            {paymentMethod === 'cod' && total > 0 && (
               <p className="mt-4 text-[10px] font-black text-black/40 uppercase tracking-widest">
                 Coins will be credited after successful delivery.
               </p>
@@ -821,7 +822,7 @@ export default function Cart() {
           </div>
 
           {/* Loyalty Points Merge Option */}
-          {userData && (userData.namatePoints || 0) >= 100 && (
+          {userData && (userData.namatePoints || 0) >= 1 && (
             <div className={cn(
               "p-6 rounded-[32px] border-2 transition-all",
               usePoints ? "bg-black border-black" : "bg-black/5 border-black/5"

@@ -457,8 +457,10 @@ export default function ProductDetail() {
                   <Sparkles className="w-5 h-5 text-[#C5A059]" />
                 </div>
                 <div>
-                  <span className="text-xs font-black text-neutral-800 uppercase tracking-widest block">Tribe Rewards</span>
-                  <span className="text-[10px] font-bold text-neutral-500 block">Buy today and earn <strong className="text-black">{(product.price * 10).toLocaleString()} coins</strong> toward your rewards chest.</span>
+                  <span className="text-xs font-black text-neutral-800 uppercase tracking-widest block font-brand">Tribe Rewards</span>
+                  <span className="text-[10px] font-bold text-neutral-500 block">
+                    Buy today and earn <strong className="text-black">{(userData?.isTribeMember ? Math.floor(product.price / 10) : 5)} coins</strong> toward your rewards chest.
+                  </span>
                 </div>
               </div>
             </div>

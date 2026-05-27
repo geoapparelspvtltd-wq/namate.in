@@ -17,6 +17,7 @@ import CategoryQuickNav from '@/components/CategoryQuickNav';
 import { useWishlist } from '@/lib/WishlistContext';
 import { useSearch } from '@/lib/SearchContext';
 import { useAuth } from '@/lib/AuthContext';
+import { safeLocalStorage } from '@/lib/storage';
 
 import { triggerHaptic } from '@/lib/haptics';
 
@@ -93,27 +94,35 @@ export default function Home() {
   const searchParallax = useTransform(scrollY, [0, 500], [0, 50]);
   const heroRotateX = useTransform(scrollY, [0, 600], [0, 20]);
 
+  const getSlidesCount = () => {
+    return galleryImages.length > 0 ? galleryImages.length : 3;
+  };
+
   // Auto-rotate gallery
   useEffect(() => {
-    if (galleryImages.length <= 1 || !isAutoPlay) return;
+    const count = getSlidesCount();
+    if (count <= 1 || !isAutoPlay) return;
     const interval = setInterval(() => {
-      setCurrentGalleryIndex(prev => (prev + 1) % galleryImages.length);
+      setCurrentGalleryIndex(prev => (prev + 1) % count);
     }, 5000);
     return () => clearInterval(interval);
-  }, [galleryImages.length, currentGalleryIndex, isAutoPlay]);
+  }, [galleryImages, currentGalleryIndex, isAutoPlay]);
 
   // Preload next gallery image
   useEffect(() => {
-    if (galleryImages.length > 1) {
-      const nextIndex = (currentGalleryIndex + 1) % galleryImages.length;
-      const img = new Image();
-      img.src = galleryImages[nextIndex].url;
+    const count = getSlidesCount();
+    if (galleryImages.length > 1 && count > 1) {
+      const nextIndex = (currentGalleryIndex + 1) % count;
+      if (galleryImages[nextIndex]) {
+        const img = new Image();
+        img.src = galleryImages[nextIndex].url;
+      }
     }
   }, [currentGalleryIndex, galleryImages]);
 
   // Load cache on mount for superfast initial render
   useEffect(() => {
-    const cachedData = localStorage.getItem('home_data_cache');
+    const cachedData = safeLocalStorage.getItem('home_data_cache');
     if (cachedData) {
       try {
         const { gallery, products, subConfigs, catConfigs } = JSON.parse(cachedData);
@@ -138,7 +147,7 @@ export default function Home() {
           subConfigs: subcategoryConfigs,
           catConfigs: allCategoryConfigs
         };
-        localStorage.setItem('home_data_cache', JSON.stringify(dataToCache));
+        safeLocalStorage.setItem('home_data_cache', JSON.stringify(dataToCache));
       } catch (error) {
         console.warn("Storage quota exceeded or error occurred while updating home cache:", error);
       }
@@ -146,15 +155,17 @@ export default function Home() {
   }, [galleryImages, products, subcategoryConfigs, allCategoryConfigs]);
 
   const handleNext = () => {
-    if (galleryImages.length <= 1) return;
+    const count = getSlidesCount();
+    if (count <= 1) return;
     triggerHaptic('medium');
-    setCurrentGalleryIndex(prev => (prev + 1) % galleryImages.length);
+    setCurrentGalleryIndex(prev => (prev + 1) % count);
   };
 
   const handlePrev = () => {
-    if (galleryImages.length <= 1) return;
+    const count = getSlidesCount();
+    if (count <= 1) return;
     triggerHaptic('medium');
-    setCurrentGalleryIndex(prev => (prev === 0 ? galleryImages.length - 1 : prev - 1));
+    setCurrentGalleryIndex(prev => (prev === 0 ? count - 1 : prev - 1));
   };
 
   useEffect(() => {
@@ -317,9 +328,9 @@ export default function Home() {
         </div>
         <div className="px-4 space-y-4">
           <div className="h-4 w-32 bg-black/5 animate-pulse" />
-          <div className="grid grid-cols-2 gap-0 border-t border-l border-[#e5e5e5]">
+          <div className="grid grid-cols-2 gap-0 border-t border-[#e5e5e5]">
             {[1, 2, 3, 4].map(i => (
-              <div key={i} className="aspect-[3/4] bg-black/5 animate-pulse border-r border-b border-[#e5e5e5]" />
+              <div key={i} className="aspect-[3/4] bg-black/5 animate-pulse border-r border-b border-[#e5e5e5] even:border-r-0" />
             ))}
           </div>
         </div>
@@ -329,9 +340,9 @@ export default function Home() {
 
   return (
     <div className="bg-[#F7F4F0] min-h-screen pb-40">
-      {/* Immersive Gallery Hero Section (Mockup-style) */}
-      <section ref={heroRef} className="relative px-4 pt-4 mb-10">
-        <div className="relative h-[65vh] md:h-[75vh] w-full rounded-2xl overflow-hidden shadow-sm group">
+      {/* Immersive Gallery Hero Section (Edge to Edge) */}
+      <section ref={heroRef} className="relative w-full mb-10">
+        <div className="relative h-[65vh] md:h-[75vh] w-full overflow-hidden shadow-sm group">
           {/* Main Slide/Fade Gallery with AnimatePresence */}
           <div className="absolute inset-0 overflow-hidden">
             <AnimatePresence initial={false} mode="wait">
@@ -379,7 +390,7 @@ export default function Home() {
 
           {/* Bullet dots/indicators of slides */}
           <div className="absolute bottom-6 right-8 z-20 flex gap-1.5">
-            {Array.from({ length: Math.max(galleryImages.length, 3) }).map((_, idx) => {
+            {Array.from({ length: getSlidesCount() }).map((_, idx) => {
               const isActive = currentGalleryIndex === idx;
               return (
                 <button
@@ -399,26 +410,54 @@ export default function Home() {
           </div>
 
           {/* Texts overlay matching mockup exactly */}
-          <div className="absolute inset-x-0 bottom-0 p-8 sm:p-12 flex flex-col items-start text-white space-y-2 z-10">
-            <span className="text-[10px] font-black uppercase tracking-[0.3em] text-[#F7F4F0]/80">
-              NEW DROP
-            </span>
-            <h2 className="text-3xl sm:text-5xl font-brand font-black uppercase tracking-[0.1em] text-[#F7F4F0]">
-              LINEN SHIRTS
-            </h2>
-            <p className="font-serif italic text-sm sm:text-base text-[#F7F4F0]/90">
-              Crafted for Breathability.
-            </p>
-            <div className="pt-4">
-              <Link 
-                to="/shop" 
-                onClick={() => triggerHaptic('medium')}
-                className="inline-block bg-black hover:bg-neutral-900 text-[#F7F4F0] text-[9px] font-black uppercase tracking-widest px-8 py-3.5 rounded-sm transition-all shadow-md active:scale-95"
-              >
-                EXPLORE NOW
-              </Link>
-            </div>
-          </div>
+          {(() => {
+            const currentSlide = galleryImages && galleryImages[currentGalleryIndex];
+            const slideCategory = currentSlide?.category && currentSlide.category !== 'NONE' 
+              ? currentSlide.category 
+              : "NEW DROP";
+            const slideCaption = currentSlide?.caption || (
+              currentGalleryIndex === 0 ? "LINEN SHIRTS" :
+              currentGalleryIndex === 1 ? "ESSENTIAL LINEN" :
+              "PREMIUM APPAREL"
+            );
+            const slideSubcategory = currentSlide?.subcategory 
+              ? `Collection: ${currentSlide.subcategory}`
+              : "Crafted for Breathability.";
+
+            const targetCategory = currentSlide?.category;
+            const targetSubcategory = currentSlide?.subcategory;
+
+            let exploreUrl = '/shop';
+            if (targetCategory && targetCategory !== 'NONE') {
+              exploreUrl = `/shop?category=${encodeURIComponent(targetCategory)}`;
+              if (targetSubcategory) {
+                exploreUrl += `&subcategory=${encodeURIComponent(targetSubcategory)}`;
+              }
+            }
+
+            return (
+              <div className="absolute inset-x-0 bottom-0 p-8 sm:p-12 flex flex-col items-start text-white space-y-2 z-10 bg-gradient-to-t from-black/60 via-black/20 to-transparent">
+                <span className="text-[10px] font-black uppercase tracking-[0.3em] text-[#F7F4F0]/80">
+                  {slideCategory}
+                </span>
+                <h2 className="text-3xl sm:text-5xl font-brand font-black uppercase tracking-[0.1em] text-[#F7F4F0]">
+                  {slideCaption}
+                </h2>
+                <p className="font-serif italic text-sm sm:text-base text-[#F7F4F0]/90">
+                  {slideSubcategory}
+                </p>
+                <div className="pt-4">
+                  <Link 
+                    to={exploreUrl} 
+                    onClick={() => triggerHaptic('medium')}
+                    className="inline-block bg-black hover:bg-neutral-900 text-[#F7F4F0] text-[9px] font-black uppercase tracking-widest px-8 py-3.5 rounded-sm transition-all shadow-md active:scale-95 animate-pulse-slow"
+                  >
+                    EXPLORE NOW
+                  </Link>
+                </div>
+              </div>
+            );
+          })()}
         </div>
       </section>
 
@@ -468,7 +507,7 @@ export default function Home() {
                   }
                 }
               }}
-              className="grid grid-cols-2 md:grid-cols-4 gap-0 border-t border-l border-[#e5e5e5]"
+              className="grid grid-cols-2 md:grid-cols-4 gap-0 border-t border-[#e5e5e5] [&>*:nth-child(2n)_.group]:border-r-0 md:[&>*:nth-child(2n)_.group]:border-r-[0.5px] md:[&>*:nth-child(4n)_.group]:border-r-0"
             >
               {filteredAndSortedProducts.map((product) => (
                 <motion.div
@@ -626,7 +665,7 @@ export default function Home() {
                 </Link>
               </div>
               
-              <div className="grid grid-cols-2 gap-0 border-t border-l border-[#e5e5e5]">
+              <div className="grid grid-cols-2 gap-0 border-t border-[#e5e5e5] [&>*:nth-child(2n)]:border-r-0">
                 {group.products.slice(0, 4).map((product) => (
                   <ProductCard key={product.id} {...product} />
                 ))}

@@ -1,7 +1,7 @@
 import { Link, useLocation } from 'react-router-dom';
-import { Compass, Heart, ShoppingBag, User } from 'lucide-react';
+import { Compass, Heart, ShoppingBag, User, Home } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { memo, useState } from 'react';
+import { memo } from 'react';
 import { motion } from 'motion/react';
 import { useCart } from '@/lib/CartContext';
 import { useWishlist } from '@/lib/WishlistContext';
@@ -11,15 +11,6 @@ const BottomNav = memo(() => {
   const location = useLocation();
   const { items } = useCart();
   const { wishlist } = useWishlist();
-
-  const [logoIndex, setLogoIndex] = useState(0);
-  const logoSrcs = [
-    "https://i.postimg.cc/wTBMVB6g/Gemini-Generated-Image-22c90822c90822c9-copy.png"
-  ];
-
-  const handleLogoError = () => {
-    // Already using the correct direct link
-  };
 
   const itemCount = items.reduce((acc, item) => acc + item.quantity, 0);
 
@@ -58,16 +49,7 @@ const BottomNav = memo(() => {
       <div className="max-w-xl mx-auto flex items-center justify-between py-2.5 px-6 md:px-8">
         {/* Home */}
         <NavLink to="/" label="Home" isActive={location.pathname === '/'}>
-          <img 
-            src={logoSrcs[logoIndex]} 
-            onError={handleLogoError} 
-            className={cn(
-              "w-5 h-5 object-contain transition-all duration-300 mix-blend-multiply",
-              location.pathname === '/' ? "opacity-100 scale-105" : "opacity-65 grayscale hover:grayscale-0 hover:opacity-100"
-            )}
-            alt="Home"
-            referrerPolicy="no-referrer"
-          />
+          <Home className="w-4 h-4" strokeWidth={2.2} />
         </NavLink>
 
         {/* Explore / Shop */}

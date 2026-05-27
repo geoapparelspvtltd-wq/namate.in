@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback, use
 import { useAuth } from './AuthContext';
 import { db } from './firebase';
 import { collection, doc, setDoc, deleteDoc, onSnapshot, serverTimestamp } from 'firebase/firestore';
+import { safeLocalStorage } from './storage';
 
 interface WishlistItem {
   id: string;
@@ -28,7 +29,7 @@ export function WishlistProvider({ children }: { children: React.ReactNode }) {
 
   // Load from local storage initially, then sync with firestore if logged in
   useEffect(() => {
-    const saved = localStorage.getItem('wishlist');
+    const saved = safeLocalStorage.getItem('wishlist');
     if (saved) {
       setWishlist(JSON.parse(saved));
     }
@@ -44,7 +45,7 @@ export function WishlistProvider({ children }: { children: React.ReactNode }) {
   // Sync from Firestore when user logs in
   useEffect(() => {
     if (!user) {
-      const saved = localStorage.getItem('wishlist');
+      const saved = safeLocalStorage.getItem('wishlist');
       setWishlist(saved ? JSON.parse(saved) : []);
       return;
     }
@@ -73,7 +74,7 @@ export function WishlistProvider({ children }: { children: React.ReactNode }) {
         ...doc.data() as WishlistItem
       }));
       setWishlist(firestoreItems);
-      localStorage.setItem('wishlist', JSON.stringify(firestoreItems));
+      safeLocalStorage.setItem('wishlist', JSON.stringify(firestoreItems));
     });
 
     return () => unsubscribe();
@@ -82,7 +83,7 @@ export function WishlistProvider({ children }: { children: React.ReactNode }) {
   // Persist to local storage for guests
   useEffect(() => {
     if (!user) {
-      localStorage.setItem('wishlist', JSON.stringify(wishlist));
+      safeLocalStorage.setItem('wishlist', JSON.stringify(wishlist));
     }
   }, [wishlist, user]);
 

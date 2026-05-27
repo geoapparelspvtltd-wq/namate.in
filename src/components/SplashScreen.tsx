@@ -37,15 +37,15 @@ export default function SplashScreen({ onComplete }: { onComplete: () => void })
           clearInterval(interval);
           return 100;
         }
-        return prev + 2.5;
+        return prev + 2;
       });
-    }, 45);
+    }, 14); // 14ms * 50 steps = 700ms
 
     // Elegant timer to fade out and call completion callback
     const timer = setTimeout(() => {
       setIsVisible(false);
-      setTimeout(onComplete, 450);
-    }, 2400);
+      setTimeout(onComplete, 300);
+    }, 700);
 
     return () => {
       clearInterval(interval);
@@ -111,7 +111,7 @@ export default function SplashScreen({ onComplete }: { onComplete: () => void })
             opacity: 0, 
             scale: 1,
             filter: "blur(4px)",
-            transition: { duration: 0.4, ease: "easeOut" }
+            transition: { duration: 0.3, ease: "easeOut" }
           }}
           className="fixed inset-0 z-[9999] bg-black overflow-hidden select-none"
         >

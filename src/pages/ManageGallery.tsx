@@ -45,7 +45,24 @@ export default function ManageGallery() {
   const [subcategory, setSubcategory] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const allCategories = ['T-Shirts', 'Shirts', 'Hoodies', 'Joggers', 'Accessories', 'Jackets', 'Footwear'];
+  const [allCategories, setAllCategories] = useState<string[]>([
+    'T-Shirts', 'Shirts', 'Hoodies', 'Joggers', 'Accessories', 'Jackets', 'Footwear'
+  ]);
+
+  useEffect(() => {
+    const fetchCats = async () => {
+      try {
+        const snapshot = await getDocs(collection(db, 'category_configs'));
+        const dbCats = snapshot.docs.map(doc => doc.id);
+        if (dbCats.length > 0) {
+          setAllCategories(prev => Array.from(new Set([...dbCats, ...prev])));
+        }
+      } catch (error) {
+        console.error("Error fetching categories for gallery selection:", error);
+      }
+    };
+    fetchCats();
+  }, []);
 
   useEffect(() => {
     if (!isAdmin && !loading) {
@@ -252,8 +269,14 @@ export default function ManageGallery() {
             </div>
 
             {editingImage && (
-              <div className="w-24 h-32 rounded-2xl overflow-hidden mb-2">
-                <img src={editingImage.url} alt="Preview" className="w-full h-full object-cover" />
+              <div className="px-5 py-4 bg-black/5 rounded-3xl flex items-center gap-4 border border-black/5">
+                <div className="w-12 h-12 rounded-2xl bg-[#C5A059]/10 flex items-center justify-center text-[#C5A059]">
+                  <ImageIcon className="w-6 h-6" />
+                </div>
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-widest text-[#C5A059]">EDITING SELECTION</p>
+                  <p className="text-xs font-bold text-black uppercase mt-0.5">{editingImage.caption || "Lifestyle Shot"}</p>
+                </div>
               </div>
             )}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
@@ -280,6 +303,7 @@ export default function ManageGallery() {
                     </SelectTrigger>
                     <SelectContent className="rounded-2xl border-2 border-black/10 bg-white text-black">
                       <SelectItem value="NONE" className="font-bold py-3 hover:bg-black/5 text-black/40">No Category</SelectItem>
+                      <SelectItem value="ALL" className="font-bold py-3 hover:bg-black/5 text-[#C5A059]">ALL</SelectItem>
                       {allCategories.map(cat => (
                         <SelectItem key={cat} value={cat} className="font-bold py-3 hover:bg-black/5">{cat}</SelectItem>
                       ))}
@@ -379,32 +403,28 @@ export default function ManageGallery() {
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.9 }}
-                className="group relative aspect-[4/5] rounded-[32px] overflow-hidden bg-black/5 border border-black/5 hover:border-black/20 transition-all shadow-sm hover:shadow-xl duration-500"
+                className="group relative aspect-[4/5] rounded-[32px] overflow-hidden bg-[#FAF9F6] border-2 border-dashed border-black/10 hover:border-black/30 transition-all shadow-sm hover:shadow-md duration-500 p-6 flex flex-col justify-between"
               >
-                <img 
-                  src={img.url} 
-                  alt={img.caption} 
-                  className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-700"
-                  referrerPolicy="no-referrer"
-                />
-
-                {/* Permanent Overlay for Quick Actions / Always Visible on Admin View */}
-                <div className="absolute top-4 left-4 right-4 flex items-center justify-between z-20 pointer-events-none">
-                  <div className="flex gap-1.5">
-                    {img.category && (
-                      <span className="text-[8px] font-black uppercase tracking-widest bg-black/50 backdrop-blur-md text-white px-2.5 py-1 rounded-full shadow-sm">
-                        {img.category}
+                {/* Top actions/category info */}
+                <div className="flex items-start justify-between">
+                  <div className="flex flex-col gap-1">
+                    <span className="text-[9px] font-black uppercase tracking-[0.2em] bg-black/5 text-[#C5A059] px-2.5 py-1 rounded-full w-fit">
+                      {img.category && img.category !== 'NONE' ? img.category : "NO LINKED CAT"}
+                    </span>
+                    {img.subcategory && (
+                      <span className="text-[7.5px] font-bold uppercase tracking-widest text-black/40 pl-1 mt-0.5">
+                        {img.subcategory}
                       </span>
                     )}
                   </div>
-                  
-                  <div className="flex items-center gap-1.5 pointer-events-auto">
+
+                  <div className="flex items-center gap-1.5 shrink-0">
                     <button 
                       onClick={(e) => {
                         e.stopPropagation();
                         handleEdit(img);
                       }}
-                      className="w-8 h-8 rounded-full bg-white/90 backdrop-blur text-black hover:bg-black hover:text-white flex items-center justify-center shadow-lg transition-all active:scale-95"
+                      className="w-8 h-8 rounded-full bg-white text-black hover:bg-black hover:text-white flex items-center justify-center shadow-md border border-black/5 transition-all active:scale-95"
                       title="Edit details"
                     >
                       <Type className="w-3.5 h-3.5" />
@@ -414,29 +434,28 @@ export default function ManageGallery() {
                         e.stopPropagation();
                         handleDelete(img.id);
                       }}
-                      className="w-8 h-8 rounded-full bg-red-500 text-white hover:bg-red-600 flex items-center justify-center shadow-lg transition-all active:scale-95"
+                      className="w-8 h-8 rounded-full bg-red-500 text-white hover:bg-red-600 flex items-center justify-center shadow-md transition-all active:scale-95"
                       title="Delete image"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
                   </div>
                 </div>
-                
-                {/* Overlay with details */}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-transparent to-transparent md:opacity-0 md:group-hover:opacity-100 opacity-100 transition-opacity p-6 flex flex-col justify-end pointer-events-none">
-                  <div className="mb-1.5 flex flex-wrap gap-1.5">
-                    {img.subcategory && (
-                      <span className="text-[8px] font-black uppercase tracking-widest bg-white/10 backdrop-blur text-white/90 px-2 py-0.5 rounded border border-white/10">
-                        {img.subcategory}
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-white font-black uppercase tracking-tighter text-base leading-tight mb-3">
-                    {img.caption}
-                  </p>
-                  
-                  {/* Subtle date display */}
-                  <div className="text-[8px] font-bold text-white/50 uppercase tracking-widest">
+
+                {/* Aesthetic middle indicator representing the uploaded image */}
+                <div className="my-4 flex flex-col justify-center items-center py-5 bg-black/[0.02] rounded-2xl border border-black/5">
+                  <ImageIcon className="w-5 h-5 text-black/25 mb-1" />
+                  <span className="text-[7.5px] font-black uppercase tracking-[0.25em] text-black/30 text-center">
+                    PHOTO STREAM READY
+                  </span>
+                </div>
+
+                {/* Bottom details description */}
+                <div>
+                  <h4 className="text-black font-black uppercase tracking-tight text-sm leading-tight mb-2">
+                    {img.caption || "Lifestyle Shot"}
+                  </h4>
+                  <div className="text-[8.5px] font-black text-black/30 uppercase tracking-widest">
                     Added {img.createdAt instanceof Date ? img.createdAt.toLocaleDateString() : 'recently'}
                   </div>
                 </div>

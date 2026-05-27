@@ -7,6 +7,7 @@ import { collection, query, orderBy, limit, onSnapshot, addDoc, serverTimestamp,
 import { ref, uploadString, getDownloadURL } from 'firebase/storage';
 import { db, auth, storage } from '@/lib/firebase';
 import { useAuth } from '@/lib/AuthContext';
+import { safeLocalStorage } from '@/lib/storage';
 import ProductCard from '@/components/ProductCard';
 import { cn } from '@/lib/utils';
 
@@ -90,7 +91,7 @@ export default function TrialRoom() {
         setCartoonHistory(history);
       });
     } else {
-      const saved = localStorage.getItem('namate_trial_room_history');
+      const saved = safeLocalStorage.getItem('namate_trial_room_history');
       if (saved) {
         try {
           const parsed = JSON.parse(saved);
@@ -155,7 +156,7 @@ export default function TrialRoom() {
     if (!auth.currentUser) {
       const updatedHistory = [newEntry, ...cartoonHistory].slice(0, 10);
       setCartoonHistory(updatedHistory);
-      localStorage.setItem('namate_trial_room_history', JSON.stringify(updatedHistory));
+      safeLocalStorage.setItem('namate_trial_room_history', JSON.stringify(updatedHistory));
     }
   };
 

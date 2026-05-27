@@ -114,7 +114,7 @@ export default function Sale() {
           </p>
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-0 border-t border-l border-[#e5e5e5]">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-0 border-t border-[#e5e5e5] [&>*:nth-child(2n)_.group]:border-r-0 md:[&>*:nth-child(2n)_.group]:border-r-[0.5px] md:[&>*:nth-child(3n)_.group]:border-r-0 lg:[&>*:nth-child(3n)_.group]:border-r-[0.5px] lg:[&>*:nth-child(4n)_.group]:border-r-0">
           {allSaleItems.map((product) => (
             <div key={product.id} className="bg-white">
               <ProductCard {...product} />

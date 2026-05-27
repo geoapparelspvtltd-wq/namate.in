@@ -36,7 +36,7 @@ export default function Wishlist() {
             <BrandSignature variant="light" className="opacity-20" />
           </div>
         ) : (
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-0 border-t border-l border-[#e5e5e5]">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-0 border-t border-[#e5e5e5] [&>*:nth-child(2n)_.group]:border-r-0 lg:[&>*:nth-child(2n)_.group]:border-r-[0.5px] lg:[&>*:nth-child(4n)_.group]:border-r-0">
             <AnimatePresence mode="popLayout">
               {wishlist.map((item) => (
                 <motion.div 
