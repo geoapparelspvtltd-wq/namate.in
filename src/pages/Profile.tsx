@@ -82,7 +82,9 @@ export default function Profile() {
     isNative,
     requestImagePick,
     splashImageUrl,
-    updateSplashImage
+    updateSplashImage,
+    splashDuration,
+    updateSplashDuration
   } = useAuth();
   const [orderCount, setOrderCount] = useState(0);
   const [transactions, setTransactions] = useState<any[]>([]);
@@ -1031,6 +1033,30 @@ export default function Profile() {
                   </span>
                 </div>
               )}
+
+              {/* stay duration slider */}
+              <div className="mb-6 bg-black/[0.02] p-4 rounded-3xl border border-black/5 text-left">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-[9px] font-black uppercase tracking-widest text-black/40">Stay Duration</span>
+                  <span className="text-xs font-black text-[#C5A059] font-mono">{(splashDuration / 1000).toFixed(1)} seconds</span>
+                </div>
+                <input 
+                  type="range"
+                  min="0.5"
+                  max="10.0"
+                  step="0.5"
+                  value={splashDuration / 1000}
+                  onChange={async (e) => {
+                    const sec = parseFloat(e.target.value);
+                    const ms = Math.round(sec * 1000);
+                    await updateSplashDuration(ms);
+                  }}
+                  className="w-full accent-[#C5A059] cursor-pointer"
+                />
+                <p className="text-[7.5px] font-bold text-black/30 uppercase tracking-widest mt-2 leading-relaxed">
+                  Adjust how long the splash screen presents to visitors. Minimum 0.5s for seamless visuals.
+                </p>
+              </div>
 
               <input 
                 type="file" 

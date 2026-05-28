@@ -6,7 +6,7 @@ import { compressImage } from '@/lib/utils';
 import { toast } from 'sonner';
 
 export default function SplashScreen({ onComplete }: { onComplete: () => void }) {
-  const { isNative, splashImageUrl, updateSplashImage, role, user, loading: authLoading, maintenanceLoading } = useAuth();
+  const { isNative, splashImageUrl, splashDuration, updateSplashImage, role, user, loading: authLoading, maintenanceLoading } = useAuth();
   const [isVisible, setIsVisible] = useState(true);
   const [progress, setProgress] = useState(0);
   const [isUploading, setIsUploading] = useState(false);
@@ -24,7 +24,7 @@ export default function SplashScreen({ onComplete }: { onComplete: () => void })
     if (!isVisible || !readyToStart) return;
 
     // Elegant and premium timeline for progress
-    const duration = 1200; // 1.2 seconds for presentation of the uploaded creative image
+    const duration = splashDuration || 1200; // custom duration from admin
     const stepTime = 12;
     const totalSteps = duration / stepTime;
     
@@ -47,7 +47,7 @@ export default function SplashScreen({ onComplete }: { onComplete: () => void })
       clearInterval(interval);
       clearTimeout(timer);
     };
-  }, [isVisible, isLoaded, onComplete]);
+  }, [isVisible, isLoaded, onComplete, splashDuration]);
 
   const handleUpdatePhoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;

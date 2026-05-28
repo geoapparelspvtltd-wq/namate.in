@@ -76,6 +76,7 @@ interface AuthContextType {
   maintenanceLoading: boolean;
   isNative: boolean;
   splashImageUrl: string;
+  splashDuration: number;
   loginWithGoogle: () => Promise<void>;
   loginWithEmail: (identifier: string, password: string) => Promise<void>;
   signupWithEmail: (email: string, phone: string, password: string, name: string) => Promise<void>;
@@ -83,6 +84,7 @@ interface AuthContextType {
   awardPoints: (amount: number, description: string) => Promise<void>;
   toggleMaintenanceMode: (enabled: boolean) => Promise<void>;
   updateSplashImage: (url: string) => Promise<void>;
+  updateSplashDuration: (durationMs: number) => Promise<void>;
   requestNativeLocation: () => void;
   requestNotificationToken: () => void;
   requestImagePick: (source: 'gallery' | 'camera', context?: string) => void;
@@ -103,6 +105,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return localStorage.getItem('splash_image_url') || '';
     } catch (e) {
       return '';
+    }
+  });
+  const [splashDuration, setSplashDuration] = useState<number>(() => {
+    try {
+      const stored = localStorage.getItem('splash_duration');
+      return stored ? parseInt(stored, 10) : 1200;
+    } catch (e) {
+      return 1200;
     }
   });
 
@@ -245,14 +255,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setIsMaintenanceMode(snapshot.data().isMaintenanceMode || false);
         const url = snapshot.data().splashImageUrl || '';
         setSplashImageUrl(url);
+        const duration = snapshot.data().splashDuration || 1200;
+        setSplashDuration(duration);
         try {
           localStorage.setItem('splash_image_url', url);
+          localStorage.setItem('splash_duration', String(duration));
         } catch (e) {}
       } else {
         // Initialize if not exists
         setDoc(configRef, { 
           isMaintenanceMode: false,
           splashImageUrl: '',
+          splashDuration: 1200,
           updatedAt: serverTimestamp()
         }, { merge: true });
       }
@@ -353,6 +367,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch (error) {
       console.error("Error updating splash image:", error);
       toast.error("Failed to update splash image");
+      throw error;
+    }
+  };
+
+  const updateSplashDuration = async (durationMs: number) => {
+    if (role !== 'admin') return;
+    try {
+      setSplashDuration(durationMs);
+      try {
+        localStorage.setItem('splash_duration', String(durationMs));
+      } catch (e) {}
+      const configRef = doc(db, 'system_configs', 'main');
+      await setDoc(configRef, {
+        splashDuration: durationMs,
+        updatedAt: serverTimestamp(),
+        updatedBy: user?.uid
+      }, { merge: true });
+      toast.success("Splash duration updated successfully!");
+    } catch (error) {
+      console.error("Error updating splash duration:", error);
+      toast.error("Failed to update splash duration");
       throw error;
     }
   };
@@ -660,6 +695,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       maintenanceLoading,
       isNative,
       splashImageUrl,
+      splashDuration,
       loginWithGoogle, 
       loginWithEmail,
       signupWithEmail,
@@ -667,6 +703,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       awardPoints,
       toggleMaintenanceMode,
       updateSplashImage,
+      updateSplashDuration,
       requestNativeLocation,
       requestNotificationToken,
       requestImagePick
