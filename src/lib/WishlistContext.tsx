@@ -3,6 +3,7 @@ import { useAuth } from './AuthContext';
 import { db } from './firebase';
 import { collection, doc, setDoc, deleteDoc, onSnapshot, serverTimestamp } from 'firebase/firestore';
 import { safeLocalStorage } from './storage';
+import { toast } from 'sonner';
 
 interface WishlistItem {
   id: string;
@@ -22,7 +23,7 @@ interface WishlistContextType {
 const WishlistContext = createContext<WishlistContextType | undefined>(undefined);
 
 export function WishlistProvider({ children }: { children: React.ReactNode }) {
-  const { user } = useAuth();
+  const { user, loginWithGoogle } = useAuth();
   const [wishlist, setWishlist] = useState<WishlistItem[]>([]);
   const isSyncing = useRef(false);
   const guestWishlistBuffer = useRef<WishlistItem[]>([]);
@@ -88,6 +89,12 @@ export function WishlistProvider({ children }: { children: React.ReactNode }) {
   }, [wishlist, user]);
 
   const addToWishlist = useCallback(async (product: WishlistItem) => {
+    if (!user) {
+      toast.info("Please login to add items to your wishlist");
+      loginWithGoogle();
+      return;
+    }
+
     setWishlist(prev => {
       if (prev.find(item => item.id === product.id)) return prev;
       return [...prev, product];
@@ -107,7 +114,7 @@ export function WishlistProvider({ children }: { children: React.ReactNode }) {
         isSyncing.current = false;
       }
     }
-  }, [user]);
+  }, [user, loginWithGoogle]);
 
   const removeFromWishlist = useCallback(async (productId: string) => {
     setWishlist(prev => {
@@ -134,6 +141,11 @@ export function WishlistProvider({ children }: { children: React.ReactNode }) {
     if (isInWishlist(product.id)) {
       removeFromWishlist(product.id);
     } else {
+      if (!user) {
+        toast.info("Please login to add items to your wishlist");
+        loginWithGoogle();
+        return;
+      }
       addToWishlist(product);
     }
   };

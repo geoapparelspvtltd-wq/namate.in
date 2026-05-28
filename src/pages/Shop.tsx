@@ -727,7 +727,17 @@ export default function Shop() {
   })();
 
   return (
-    <div className="bg-[#F7F4F0] min-h-screen pb-48 pt-28 relative">
+    <div className="bg-[#F7F4F0] min-h-screen pb-48 pt-24 relative">
+      {/* Explore Collection Title (Goes up with page when scrolled) */}
+      <div className="px-4 mb-6 text-center animate-fade-in select-none">
+        <h1 className="text-[12px] font-black tracking-[0.3em] text-[#111] uppercase">
+          Explore Collection
+        </h1>
+        <p className="text-[7px] text-[#C5A059] font-black uppercase tracking-[0.2em] mt-1.5">
+          Curated Premium Looks
+        </p>
+      </div>
+
       {/* 1. Curated Looks Category Circles at the Top */}
           <div className="px-4 mb-4">
             <div className="flex items-center justify-between mb-2">
@@ -997,69 +1007,6 @@ export default function Shop() {
                   {activeSubcategory || activeCategory || 'Vibe Search'}
                 </h2>
               </div>
-              
-              <div className="flex items-center gap-3">
-                {/* Sort By Selector */}
-                <div className="relative flex items-center gap-1.5">
-                  <select
-                    value={sortBy}
-                    onChange={(e) => {
-                      triggerHaptic('light');
-                      setSortBy(e.target.value);
-                    }}
-                    className="appearance-none bg-black/5 hover:bg-black/10 text-[10px] font-black uppercase tracking-widest text-black pl-4 pr-8 py-2 rounded-full cursor-pointer focus:outline-none transition-all border-none"
-                    style={{
-                      backgroundImage: `url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='currentColor'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2.5' d='M19 9l-7 7-7-7'/%3E%3C/svg%3E")`,
-                      backgroundPosition: 'right 0.75rem center',
-                      backgroundSize: '1em 1em',
-                      backgroundRepeat: 'no-repeat'
-                    }}
-                  >
-                    <option value="relevance">Sort: Relevance</option>
-                    <option value="discount">Sort: Better Discount</option>
-                    <option value="priceLow">Sort: Price Low-High</option>
-                    <option value="priceHigh">Sort: Price High-Low</option>
-                    <option value="rating">Sort: Top Rated</option>
-                  </select>
-                </div>
-
-                <Sheet open={isFilterOpen} onOpenChange={setIsFilterOpen}>
-                  <SheetTrigger>
-                    <div className="flex items-center gap-1 text-[10px] font-black uppercase tracking-widest text-black bg-black/5 px-4 py-2 rounded-full hover:bg-black/10 transition-all cursor-pointer">
-                      <SlidersHorizontal className="h-3 w-3" />
-                      Filter
-                      {(priceFilters.length > 0 || selectedSizes.length > 0 || minRating > 0 || selectedPatterns.length > 0 || selectedFabrics.length > 0 || minDiscount > 0 || onlyExpress) && (
-                        <span className="ml-1 w-1.5 h-1.5 bg-[#C5A059] rounded-full" />
-                      )}
-                    </div>
-                  </SheetTrigger>
-                  <SheetContent side="bottom" className="h-[85vh] rounded-t-[40px] px-8 bg-white border-black/10 overflow-y-auto no-scrollbar">
-                    <div className="mt-8 pb-32">
-                      <div className="w-12 h-1.5 bg-black/10 rounded-full mx-auto mb-8" />
-                      <div className="flex items-center justify-between mb-8">
-                        <h2 className="text-2xl font-black uppercase tracking-tighter text-black">Filter Your Vibe</h2>
-                        <button 
-                          onClick={() => setIsFilterOpen(false)}
-                          className="w-10 h-10 rounded-full bg-black/5 flex items-center justify-center text-black"
-                        >
-                          <ChevronDown className="w-6 h-6" />
-                        </button>
-                      </div>
-                      
-                      <FilterContent />
-                      
-                      <div className="fixed bottom-0 left-0 right-0 p-8 bg-gradient-to-t from-white via-white to-transparent pt-12">
-                        <Button 
-                          onClick={() => setIsFilterOpen(false)}
-                          className="w-full bg-black text-white font-black py-7 rounded-2xl shadow-2xl shadow-black/20 hover:bg-black/90 active:scale-[0.98] transition-all"
-                        >
-                          VIEW {filteredProducts.length} PRODUCTS
-                        </Button>
-                      </div>
-                    </div>
-                  </SheetContent>
-                </Sheet>
-              </div>
             </div>
 
             {activeOffer && (
@@ -1222,17 +1169,19 @@ export default function Shop() {
 
           {/* Filtering trigger inside floating capsule */}
           <Sheet open={isFilterOpen} onOpenChange={setIsFilterOpen}>
-            <SheetTrigger>
-              <button 
-                onClick={() => triggerHaptic('light')}
-                className="flex items-center justify-center gap-1.5 text-[8.5px] font-black uppercase tracking-widest text-[#C5A059] px-3 py-1.5 hover:opacity-85 transition-opacity cursor-pointer whitespace-nowrap bg-transparent border-none outline-none"
-              >
-                <SlidersHorizontal className="h-2.5 w-2.5" strokeWidth={2.5} />
-                Filters
-                {(priceFilters.length > 0 || selectedSizes.length > 0 || minRating > 0 || selectedPatterns.length > 0 || selectedFabrics.length > 0 || minDiscount > 0 || onlyExpress) && (
-                  <span className="w-1 h-1 bg-[#C5A059] rounded-full animate-ping" />
-                )}
-              </button>
+            <SheetTrigger
+              render={
+                <button 
+                  onClick={() => triggerHaptic('light')}
+                  className="flex items-center justify-center gap-1.5 text-[8.5px] font-black uppercase tracking-widest text-[#C5A059] px-3 py-1.5 hover:opacity-85 transition-opacity cursor-pointer whitespace-nowrap bg-transparent border-none outline-none"
+                />
+              }
+            >
+              <SlidersHorizontal className="h-2.5 w-2.5" strokeWidth={2.5} />
+              Filters
+              {(priceFilters.length > 0 || selectedSizes.length > 0 || minRating > 0 || selectedPatterns.length > 0 || selectedFabrics.length > 0 || minDiscount > 0 || onlyExpress) && (
+                <span className="w-1 h-1 bg-[#C5A059] rounded-full animate-ping" />
+              )}
             </SheetTrigger>
             <SheetContent side="bottom" className="h-[85vh] rounded-t-[40px] px-8 bg-white border-black/10 overflow-y-auto no-scrollbar">
               <div className="mt-8 pb-32">

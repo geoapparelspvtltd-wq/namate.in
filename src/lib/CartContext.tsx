@@ -27,7 +27,7 @@ interface CartContextType {
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
 export function CartProvider({ children }: { children: React.ReactNode }) {
-  const { user } = useAuth();
+  const { user, loginWithGoogle } = useAuth();
   const [items, setItems] = useState<CartItem[]>([]);
   const [isAnimating, setIsAnimating] = useState(false);
   const [animationPos, setAnimationPos] = useState<{ x: number, y: number } | null>(null);
@@ -79,14 +79,21 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   }, [user]);
 
   const addToCart = useCallback(async (product: any, size?: string, startPos?: { x: number, y: number }) => {
+    if (!user) {
+      toast.info("Please login to add items to your cart");
+      loginWithGoogle();
+      return;
+    }
+
     const newItem = { ...product, size, quantity: 1 };
     
     setItems(prev => {
       const existingIdx = prev.findIndex(item => item.id === product.id && item.size === size);
       if (existingIdx > -1) {
         const updated = [...prev];
-        updated[existingIdx] = { ...updated[existingIdx], quantity: updated[existingIdx].quantity + 1 };
-        return updated;
+        updated[existingIdx] = { ...updated[updated.length - 1], quantity: updated[existingIdx].quantity + 1 }; // Safer mapping
+        // Let's actually map it perfectly:
+        return prev.map((item, idx) => idx === existingIdx ? { ...item, quantity: item.quantity + 1 } : item);
       }
       return [...prev, newItem];
     });
@@ -125,7 +132,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       setAnimationPos(null);
       setAnimationImage(null);
     }, 1200);
-  }, [user, items]);
+  }, [user, items, loginWithGoogle]);
 
   const updateQuantity = useCallback(async (id: string, size: string | undefined, delta: number) => {
     let updatedItem: CartItem | undefined;

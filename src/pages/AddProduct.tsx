@@ -1206,7 +1206,7 @@ export default function AddProduct() {
                 <div className="space-y-2">
                   <Label htmlFor="category" className="text-xs font-black uppercase tracking-widest text-black/40">Category</Label>
                   <div className="space-y-3">
-                    <Select onValueChange={handleCategoryChange} required={!isCustomCategory}>
+                    <Select value={formData.category} onValueChange={handleCategoryChange} required={!isCustomCategory}>
                       <SelectTrigger className="h-14 rounded-2xl border-2 border-black/10 bg-black/5 focus:border-black/30 transition-all font-bold text-black">
                         <SelectValue placeholder="Select Category" />
                       </SelectTrigger>

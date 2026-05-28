@@ -98,7 +98,7 @@ const Navbar = memo(() => {
     headerTitle = ""; // Center product title handled internally or empty
     rightAction = null;
   } else if (location.pathname === '/shop') {
-    headerTitle = "EXPLORE COLLECTION";
+    headerTitle = "";
   } else if (location.pathname === '/my-orders') {
     headerTitle = "MY ORDERS";
   } else {

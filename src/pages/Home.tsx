@@ -690,22 +690,21 @@ export default function Home() {
 
           {/* BEST SELLERS SECTION */}
           <section className="mb-12">
-            <div className="flex flex-col mb-6 px-4">
+            <div className="flex items-center justify-between mb-4 px-4">
               <div className="flex items-center gap-2">
                 <TrendingUp className="w-5 h-5 text-amber-500" />
-                <h2 className="text-2xl font-brand font-black uppercase tracking-tight text-neutral-900">
+                <h2 className="text-2xl font-brand font-semibold tracking-tight text-neutral-900">
                   Best Sellers
                 </h2>
               </div>
-              <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest mt-1">
-                Our most coveted natural pieces, highly matching the highest standards of the tribe
-              </p>
             </div>
 
             {bestSellers.length > 0 ? (
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-0 border-t border-b border-neutral-200/40">
+              <div className="flex gap-4 overflow-x-auto pb-4 no-scrollbar snap-x snap-mandatory px-4">
                 {bestSellers.map((product) => (
-                  <ProductCard key={product.id} {...product} />
+                  <div key={product.id} className="min-w-[190px] w-[190px] snap-start bg-white rounded-2xl p-2 border border-neutral-200/40 shadow-sm relative shrink-0">
+                    <ProductCard {...product} />
+                  </div>
                 ))}
               </div>
             ) : (
