@@ -50,7 +50,7 @@ export default function QuickAddSheet({ product, isOpen, onOpenChange, startPos 
           </div>
           <div className="flex flex-col justify-center">
             <h3 className="text-xl font-black uppercase tracking-tighter leading-tight mb-2">{product.name}</h3>
-            <p className="text-2xl font-black text-black">₹{product.price}</p>
+            <p className="text-3xl font-black text-black">₹{product.price}</p>
           </div>
         </div>
 

@@ -323,14 +323,6 @@ const ProductCard = memo(({ id, name, price, originalPrice, image, images = [], 
               -{discount}%
             </div>
           )}
-          
-          <button 
-            onClick={handleTryOn}
-            className="flex items-center gap-1.5 bg-black/80 backdrop-blur-sm text-white px-2 py-1 rounded-full hover:bg-black transition-all border-none shadow-md"
-          >
-            <Wand2 className="h-2.5 w-2.5" />
-            <span className="text-[7px] font-black uppercase tracking-tighter">Try On</span>
-          </button>
         </div>
 
         {/* Admin Delete Button */}
@@ -408,19 +400,19 @@ const ProductCard = memo(({ id, name, price, originalPrice, image, images = [], 
         
         <div className="space-y-1.5 mt-1">
           {/* Price Tag with original and discount percent indicator */}
-          <div className="flex items-center flex-wrap gap-1">
-            <span className="font-black text-black text-[11px] sm:text-[12px]">₹{price}</span>
+          <div className="flex items-center flex-wrap gap-1.5">
+            <span className="font-black text-black text-sm sm:text-[14.5px]">₹{price}</span>
             {originalPrice && (
               <>
-                <span className="text-[9px] text-[#A3A3A3] line-through font-normal">₹{originalPrice}</span>
+                <span className="text-[10px] sm:text-[11px] text-neutral-400 line-through font-normal">₹{originalPrice}</span>
                 {discount && (
-                  <span className="text-[8px] font-black text-[#5AA67B] uppercase tracking-tighter">
-                    ({discount}% OFF)
+                  <span className="text-[8px] font-black bg-black text-white px-1.5 py-0.5 rounded uppercase tracking-tighter">
+                    {discount}% OFF
                   </span>
                 )}
               </>
             )}
-            {props.badge && (
+            {props.badge && props.badge.toLowerCase().trim() !== "new collection" && (
               <span className="text-[7px] font-black text-[#C5A059] uppercase tracking-wider ml-auto">
                 {props.badge}
               </span>
@@ -429,13 +421,6 @@ const ProductCard = memo(({ id, name, price, originalPrice, image, images = [], 
 
 
 
-          {/* Delivery estimate timing tag */}
-          <div className="flex items-center gap-1 pt-1.5 border-t border-black/[0.03]">
-            <span className="w-1 h-1 bg-green-500 rounded-full animate-pulse" />
-            <span className="text-[7px] font-black text-[#3E8058] uppercase tracking-widest leading-none">
-              {deliveryText}
-            </span>
-          </div>
         </div>
       </div>
     </motion.div>

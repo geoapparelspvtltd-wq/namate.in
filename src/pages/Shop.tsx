@@ -817,9 +817,9 @@ export default function Shop() {
             </div>
           </div>
 
-          <div className="max-w-7xl mx-auto px-4 py-6">
+          <div className="max-w-7xl mx-auto py-6">
             {/* Toolbar */}
-            <div className="flex justify-between items-center mb-10">
+            <div className="flex justify-between items-center mb-10 px-4">
               <div className="flex items-center gap-2">
                 <TrendingUp className="w-5 h-5 text-black/60" />
                 <h2 className="text-xs font-bold text-black uppercase tracking-[0.3em]">
@@ -896,7 +896,7 @@ export default function Shop() {
               <div className="space-y-16">
                 {productsBySubcategory.map((group) => (
                   <section key={group.title} className="relative">
-                    <div className="flex items-center gap-3 mb-6">
+                    <div className="flex items-center gap-3 mb-6 px-4">
                       <div className="w-1 h-8 bg-black rounded-full" />
                       <h3 className="text-xs font-bold text-black uppercase tracking-[0.3em]">
                         {group.title}

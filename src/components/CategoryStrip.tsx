@@ -161,12 +161,12 @@ const CategoryProductCard = ({ product }: { product: any }) => {
           <p className="text-[10px] text-gray-400 font-bold tracking-tight">Men's Comfort Essentials</p>
         </Link>
         <div className="mt-auto flex flex-wrap items-center gap-2">
-          <span className="text-[16px] font-black text-black">₹{product.price}</span>
+          <span className="text-[18px] font-black text-black">₹{product.price}</span>
           {product.originalPrice && (
-            <span className="text-[11px] text-gray-300 line-through font-bold">₹{product.originalPrice}</span>
+            <span className="text-[11.5px] text-gray-400 line-through font-bold">₹{product.originalPrice}</span>
           )}
           {discount > 0 && (
-            <span className="text-[11px] font-black text-[#3EBBA4]">{discount}% OFF</span>
+            <span className="bg-black text-white text-[8px] font-black px-1.5 py-0.5 rounded uppercase tracking-tighter">{discount}% OFF</span>
           )}
         </div>
       </div>

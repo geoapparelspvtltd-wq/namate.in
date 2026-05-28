@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { Compass, Heart, ShoppingBag, User, Home } from 'lucide-react';
+import { Compass, Heart, ShoppingBag, User } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { memo } from 'react';
 import { motion } from 'motion/react';
@@ -46,10 +46,21 @@ const BottomNav = memo(() => {
 
   return (
     <div className="fixed bottom-0 left-0 right-0 md:left-1/2 md:-translate-x-1/2 z-[120] w-full md:max-w-md lg:max-w-lg bg-[#F7F4F0]/95 backdrop-blur-md border-t border-neutral-200/50 shadow-[0_-8px_40px_rgba(0,0,0,0.02)] pb-safe">
-      <div className="max-w-xl mx-auto flex items-center justify-between py-2.5 px-6 md:px-8">
-        {/* Home */}
-        <NavLink to="/" label="Home" isActive={location.pathname === '/'}>
-          <Home className="w-4 h-4" strokeWidth={2.2} />
+      <div className="max-w-xl mx-auto flex items-center justify-between py-2 px-2">
+        {/* Home replaced with Namate Logo */}
+        <NavLink to="/" label="Namate" isActive={location.pathname === '/'}>
+          <div 
+            className="w-6 h-6 bg-current"
+            style={{ 
+              WebkitMaskImage: "url('https://i.ibb.co/rG66vw6q/Chat-GPT-Image-Apr-10-2026-12-40-57-AM.png')",
+              maskImage: "url('https://i.ibb.co/rG66vw6q/Chat-GPT-Image-Apr-10-2026-12-40-57-AM.png')",
+              WebkitMaskSize: "contain",
+              maskSize: "contain",
+              WebkitMaskRepeat: "no-repeat",
+              maskRepeat: "no-repeat",
+              WebkitMaskPosition: "center",
+            }}
+          />
         </NavLink>
 
         {/* Explore / Shop */}

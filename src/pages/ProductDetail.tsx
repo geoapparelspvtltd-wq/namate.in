@@ -286,22 +286,6 @@ export default function ProductDetail() {
             className="w-full relative h-[450px] sm:h-[600px] bg-white border border-neutral-100 rounded-3xl overflow-hidden shadow-sm group select-none"
             onClick={handleImageDoubleTap}
           >
-            {/* Try-On Launch Overlay floating top action badge */}
-            <div className="absolute top-4 left-4 z-40 flex gap-2">
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleTryOnAction();
-                }}
-                className="flex items-center gap-2 bg-[#C5A059] text-white py-2 px-4 rounded-full text-[9px] font-black uppercase tracking-widest shadow-lg shadow-[#C5A059]/15"
-              >
-                <Wand2 className="w-3.5 h-3.5" />
-                <span>AI Try-On</span>
-              </motion.button>
-            </div>
-
             {/* Pagination Floating Capsule */}
             <div className="absolute bottom-4 right-4 z-40 bg-black/60 backdrop-blur-md px-3 py-1 rounded-full text-white text-[9px] font-black tracking-widest">
               {activeImageIndex + 1} / {galleryImages.length}
@@ -430,18 +414,18 @@ export default function ProductDetail() {
 
             {/* 2. Price Details & Rewards Information */}
             <div className="p-6 sm:p-8 space-y-4 bg-neutral-50/25">
-              <div className="flex items-baseline gap-3">
-                <span className="text-2xl sm:text-3xl font-black text-black">
+              <div className="flex items-center gap-3 flex-wrap">
+                <span className="text-3xl sm:text-4xl font-black text-black">
                   ₹{product.price}
                 </span>
                 {product.originalPrice && (
                   <>
-                    <span className="text-neutral-400 line-through text-md sm:text-lg font-bold">
+                    <span className="text-neutral-400 line-through text-lg sm:text-xl font-bold">
                       ₹{product.originalPrice}
                     </span>
                     {productMeta.discount > 0 && (
-                      <span className="text-[#5AA67B] font-black text-sm uppercase tracking-tight">
-                        ({productMeta.discount}% OFF)
+                      <span className="bg-black text-white text-[10px] sm:text-xs font-black px-2.5 py-1 rounded uppercase tracking-wider">
+                        {productMeta.discount}% OFF
                       </span>
                     )}
                   </>

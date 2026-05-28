@@ -72,6 +72,72 @@ function handleFirestoreError(error: unknown, operationType: OperationType, path
   // Don't throw here to avoid crashing the component
 }
 
+// Helper functions to prune cache size and avoid QuotaExceededError in localStorage
+const pruneProductsForCache = (prodList: any[]) => {
+  if (!Array.isArray(prodList)) return [];
+  return prodList.map(p => ({
+    id: p.id || '',
+    name: p.name || '',
+    price: p.price || 0,
+    originalPrice: p.originalPrice || 0,
+    image: p.image || '',
+    images: Array.isArray(p.images) ? p.images.slice(0, 2) : [],
+    category: p.category || '',
+    subcategory: p.subcategory || '',
+    isNew: !!p.isNew,
+    isUpcoming: !!p.isUpcoming,
+    isTribeExclusive: !!p.isTribeExclusive,
+    discount: p.discount || 0,
+    sizes: Array.isArray(p.sizes) ? p.sizes : [],
+    videoUrl: p.videoUrl || '',
+    rating: p.rating || 0,
+    reviewsCount: p.reviewsCount || 0,
+    isPremium: !!p.isPremium
+  }));
+};
+
+const pruneCategoryConfigs = (catList: any[]) => {
+  if (!Array.isArray(catList)) return [];
+  return catList.map(c => ({
+    id: c.id || '',
+    name: c.name || '',
+    imageUrl: c.imageUrl || '',
+    order: c.order || 0,
+    showOnHome: !!c.showOnHome,
+    subtitle: c.subtitle || ''
+  }));
+};
+
+const pruneSubcategoryConfigs = (subList: any[]) => {
+  if (!Array.isArray(subList)) return [];
+  return subList.map(s => ({
+    id: s.id || '',
+    name: s.name || '',
+    categoryName: s.categoryName || ''
+  }));
+};
+
+const pruneGalleryImages = (galleryList: any[]) => {
+  if (!Array.isArray(galleryList)) return [];
+  return galleryList.map(g => ({
+    id: g.id || '',
+    url: g.url || '',
+    title: g.title || '',
+    description: g.description || '',
+    link: g.link || '',
+    linkText: g.linkText || ''
+  }));
+};
+
+const toTitleCase = (str: string): string => {
+  if (!str) return '';
+  return str
+    .toLowerCase()
+    .split(' ')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+};
+
 export default function Home() {
   const { searchQuery, setSearchQuery } = useSearch();
   const { role, user } = useAuth();
@@ -137,15 +203,15 @@ export default function Home() {
     }
   }, []);
 
-  // Sync cache when data changes
+  // Sync cache when data changes with pruned structures to prevent QuotaExceededErrors
   useEffect(() => {
     if (products.length > 0) {
       try {
         const dataToCache = {
-          gallery: galleryImages,
-          products: products,
-          subConfigs: subcategoryConfigs,
-          catConfigs: allCategoryConfigs
+          gallery: pruneGalleryImages(galleryImages),
+          products: pruneProductsForCache(products),
+          subConfigs: pruneSubcategoryConfigs(subcategoryConfigs),
+          catConfigs: pruneCategoryConfigs(allCategoryConfigs)
         };
         safeLocalStorage.setItem('home_data_cache', JSON.stringify(dataToCache));
       } catch (error) {
@@ -436,7 +502,7 @@ export default function Home() {
             }
 
             return (
-              <div className="absolute inset-x-0 bottom-0 p-8 sm:p-12 flex flex-col items-start text-white space-y-2 z-10 bg-gradient-to-t from-black/60 via-black/20 to-transparent">
+              <div className="absolute inset-x-0 bottom-0 p-8 sm:p-12 flex flex-col items-start text-white space-y-2 z-10 bg-gradient-to-t from-black/60 via-black/20 to-transparent pointer-events-none">
                 <span className="text-[10px] font-black uppercase tracking-[0.3em] text-[#F7F4F0]/80">
                   {slideCategory}
                 </span>
@@ -446,7 +512,7 @@ export default function Home() {
                 <p className="font-serif italic text-sm sm:text-base text-[#F7F4F0]/90">
                   {slideSubcategory}
                 </p>
-                <div className="pt-4">
+                <div className="pt-4 pointer-events-auto">
                   <Link 
                     to={exploreUrl} 
                     onClick={() => triggerHaptic('medium')}
@@ -472,14 +538,14 @@ export default function Home() {
           <motion.div 
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="flex items-center justify-between px-6 mb-8"
+            className="flex items-center justify-between px-4 mb-8"
           >
             <div>
-              <div className="flex items-center gap-3 mb-1">
-                <Search className="w-4 h-4 text-black/30" />
-                <h2 className="text-xs font-bold text-black uppercase tracking-[0.3em]">Search Results</h2>
+              <div className="flex items-center gap-2 mb-1">
+                <Search className="w-5 h-5 text-black/40" />
+                <h2 className="text-2xl font-brand font-semibold tracking-tight text-neutral-900">Search Results</h2>
               </div>
-              <p className="text-[9px] font-bold text-black/35 uppercase tracking-[0.1em] pl-7">
+              <p className="text-xs text-neutral-500 pl-7">
                 Showing {filteredAndSortedProducts.length} items for "{searchQuery}"
               </p>
             </div>
@@ -547,21 +613,21 @@ export default function Home() {
       ) : (
         <>
           {/* NEW ARRIVALS Section with Horizontal Scroll exactly matches mockup */}
-          <section className="mb-12 px-6">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xs font-black text-black uppercase tracking-[0.3em]">
-                NEW ARRIVALS
+          <section className="mb-12">
+            <div className="flex items-center justify-between mb-4 px-4">
+              <h2 className="text-2xl font-brand font-semibold tracking-tight text-neutral-900">
+                New Arrivals
               </h2>
               <Link 
                 to="/shop"
-                className="text-[9px] font-black text-black/35 hover:text-black uppercase tracking-widest transition-colors"
+                className="text-xs font-brand font-medium text-neutral-500 hover:text-black transition-colors"
               >
                 View All
               </Link>
             </div>
 
             {/* Scrollable list of first arrivals */}
-            <div className="flex gap-4 overflow-x-auto pb-4 no-scrollbar snap-x snap-mandatory -mx-6 px-6">
+            <div className="flex gap-4 overflow-x-auto pb-4 no-scrollbar snap-x snap-mandatory px-4">
               {products.slice(0, 6).map((product) => (
                 <div key={product.id} className="min-w-[190px] w-[190px] snap-start bg-white rounded-2xl p-2 border border-neutral-200/40 shadow-sm relative shrink-0">
                   <ProductCard {...product} />
@@ -652,14 +718,14 @@ export default function Home() {
 
           {/* Dynamic Sections populated from Firebase */}
           {productsBySubcategory.map((group) => (
-            <section key={group.title} className="mb-14 px-6">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xs font-black text-black uppercase tracking-[0.3em]">
-                  {group.title}
+            <section key={group.title} className="mb-14">
+              <div className="flex items-center justify-between mb-4 px-4">
+                <h2 className="text-2xl font-brand font-semibold tracking-tight text-neutral-900">
+                  {toTitleCase(group.title)}
                 </h2>
                 <Link 
                   to={`/shop?subcategory=${encodeURIComponent(group.title)}`}
-                  className="text-[9px] font-black text-black/35 hover:text-black uppercase tracking-widest transition-colors"
+                  className="text-xs font-brand font-semibold text-neutral-500 hover:text-black transition-colors"
                 >
                   View All
                 </Link>
