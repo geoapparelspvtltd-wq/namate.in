@@ -19,6 +19,7 @@ const UserOrders = lazy(() => import('./pages/UserOrders'));
 const ManageProducts = lazy(() => import('./pages/ManageProducts'));
 const Gallery = lazy(() => import('./pages/Gallery'));
 const ManageGallery = lazy(() => import('./pages/ManageGallery'));
+const ManageOffers = lazy(() => import('./pages/ManageOffers'));
 const ManageWallets = lazy(() => import('./pages/ManageWallets'));
 const ManageCategories = lazy(() => import('./pages/ManageCategories'));
 const ManageNotifications = lazy(() => import('./pages/ManageNotifications'));
@@ -75,6 +76,7 @@ function AnimatedRoutes() {
             <Route path="/manage-products" element={<PageWrapper><ManageProducts /></PageWrapper>} />
             <Route path="/gallery" element={<PageWrapper><Gallery /></PageWrapper>} />
             <Route path="/manage-gallery" element={<PageWrapper><ManageGallery /></PageWrapper>} />
+            <Route path="/manage-offers" element={<PageWrapper><ManageOffers /></PageWrapper>} />
             <Route path="/manage-wallets" element={<PageWrapper><ManageWallets /></PageWrapper>} />
             <Route path="/manage-categories" element={<PageWrapper><ManageCategories /></PageWrapper>} />
             <Route path="/manage-notifications" element={<PageWrapper><ManageNotifications /></PageWrapper>} />
@@ -224,26 +226,30 @@ function AppContent({ isLoading, setIsLoading }: { isLoading: boolean, setIsLoad
             <GlobalCartAnimation />
             <AdminMaintenanceBadge />
             {showSplash && <SplashScreen onComplete={() => setIsLoading(false)} />}
-            <div 
-              className={cn(
-                "min-h-screen flex flex-col font-sans selection:bg-primary selection:text-primary-foreground relative overflow-hidden transition-opacity duration-300 w-full md:max-w-md lg:max-w-lg mx-auto md:shadow-[0_0_80px_rgba(0,0,0,0.06)] md:border-x md:border-black/[0.04]",
-                showSplash ? "opacity-0" : "opacity-100"
-              )}
-              style={{ backgroundColor: '#F7F4F0' }}
-            >
-              {/* Subtle natural linen grain feel */}
-              <div className="fixed inset-0 pointer-events-none opacity-[0.015] bg-[radial-gradient(#111_1px,transparent_1px)] [background-size:12px_12px] z-0" />
+            
+            {/* Elegant Studio Workspace Backdrop for locking responsive mobile view on Desktop browsers */}
+            <div className="min-h-screen w-full bg-[#FAF8F5] md:bg-[#EAE5DF] transition-colors duration-300 flex justify-center">
+              <div 
+                className={cn(
+                  "min-h-screen flex flex-col font-sans selection:bg-primary selection:text-primary-foreground relative overflow-hidden transition-opacity duration-300 w-full md:max-w-[430px] shadow-none md:shadow-[0_0_100px_rgba(0,0,0,0.08)] md:border-x md:border-black/[0.04]",
+                  showSplash ? "opacity-0" : "opacity-100"
+                )}
+                style={{ backgroundColor: '#F7F4F0' }}
+              >
+                {/* Subtle natural linen grain feel */}
+                <div className="absolute inset-0 pointer-events-none opacity-[0.015] bg-[radial-gradient(#111_1px,transparent_1px)] [background-size:12px_12px] z-0" />
 
-              <Navbar />
-              <NativeAppBanner />
-              <NotificationBridge />
+                <Navbar />
+                <NativeAppBanner />
+                <NotificationBridge />
 
-              <main className="flex-grow relative z-10 pb-32">
-                <AnimatedRoutes />
-              </main>
-              <FloatingCart />
-              <BottomNav />
-              <Toaster position="top-center" expand={false} richColors />
+                <main className="flex-grow relative z-10 pb-32">
+                  <AnimatedRoutes />
+                </main>
+                <FloatingCart />
+                <BottomNav />
+                <Toaster position="top-center" expand={false} richColors />
+              </div>
             </div>
           </CartProvider>
         </WishlistProvider>

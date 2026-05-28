@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
 import ProductCard from '@/components/ProductCard';
-import { collection, onSnapshot, query, orderBy, limit, getDocs } from 'firebase/firestore';
+import { collection, onSnapshot, query, orderBy, limit, getDocs, doc } from 'firebase/firestore';
 import { db, auth } from '@/lib/firebase';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -86,6 +86,7 @@ const pruneProductsForCache = (prodList: any[]) => {
     subcategory: p.subcategory || '',
     isNew: !!p.isNew,
     isUpcoming: !!p.isUpcoming,
+    isBestSeller: !!p.isBestSeller,
     isTribeExclusive: !!p.isTribeExclusive,
     discount: p.discount || 0,
     sizes: Array.isArray(p.sizes) ? p.sizes : [],
@@ -150,6 +151,13 @@ export default function Home() {
   const [isAutoPlay, setIsAutoPlay] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
   const { wishlist } = useWishlist();
+  const [secondGallery, setSecondGallery] = useState<any>({
+    imageUrl: "https://images.unsplash.com/photo-1576016770956-debb63d900bb?auto=format&fit=crop&w=800&q=85",
+    title: "CRAFTED FOR YOU",
+    subtitle: "Timeless pieces. Naturally made.",
+    buttonText: "SHOP COLLECTION",
+    linkType: "shop"
+  });
 
   const heroRef = useRef(null);
   const { scrollY } = useScroll();
@@ -241,6 +249,15 @@ export default function Home() {
       setGalleryImages(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
     }, (error) => {
       console.error("Gallery Sync Error:", error);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    const unsubscribe = onSnapshot(doc(db, 'configs', 'second_gallery'), (docSnap) => {
+      if (docSnap.exists()) {
+        setSecondGallery(docSnap.data());
+      }
     });
     return () => unsubscribe();
   }, []);
@@ -382,6 +399,10 @@ export default function Home() {
   }, [products, allCategoryConfigs]);
 
   const isAdmin = role === 'admin' || user?.email?.toLowerCase().trim() === 'geoapparelspvtltd@gmail.com';
+
+  const bestSellers = useMemo(() => {
+    return products.filter(p => !!p.isBestSeller);
+  }, [products]);
 
   if (isLoading && products.length === 0) {
     return (
@@ -636,35 +657,76 @@ export default function Home() {
             </div>
           </section>
 
-          {/* Curated Spotlight: CRAFTED FOR YOU (Mockup card) */}
+          {/* Curated Spotlight: CRAFTED FOR YOU (Dynamic lookbook banner) */}
           <section className="mb-12 px-4">
-            <div className="relative rounded-2xl overflow-hidden h-36 border border-neutral-200/20 shadow-sm">
+            <div className="relative rounded-2xl overflow-hidden h-36 border border-neutral-200/25 shadow-sm">
               <div className="absolute inset-0">
                 <img 
-                  src="https://images.unsplash.com/photo-1576016770956-debb63d900bb?auto=format&fit=crop&w=800&q=85" 
-                  alt="Spotlight texture" 
+                  src={secondGallery.imageUrl || "https://images.unsplash.com/photo-1576016770956-debb63d900bb?auto=format&fit=crop&w=800&q=85"} 
+                  alt={secondGallery.title || "Spotlight texture"} 
                   className="w-full h-full object-cover brightness-[0.9] saturate-[0.8]"
                 />
                 <div className="absolute inset-0 bg-black/15" />
               </div>
               <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-4 space-y-1 z-10">
                 <span className="text-[8px] font-black tracking-[0.3em] text-white/70 uppercase">
-                  CRAFTED FOR YOU
+                  {secondGallery.title || 'CRAFTED FOR YOU'}
                 </span>
-                <p className="font-serif italic text-xs text-white/95">
-                  Timeless pieces. Naturally made.
+                <p className="font-serif italic text-xs text-white/95 text-shadow-sm">
+                  {secondGallery.subtitle || 'Timeless pieces. Naturally made.'}
                 </p>
                 <div className="pt-2">
                   <Link 
-                    to="/shop"
+                    to={secondGallery.linkType === 'offer' && secondGallery.offerId ? `/shop?offerId=${secondGallery.offerId}` : '/shop'}
                     onClick={() => triggerHaptic('light')}
                     className="inline-block bg-white hover:bg-neutral-100 text-[#111] text-[7.5px] font-black uppercase tracking-widest px-6 py-2 rounded-sm transition-all active:scale-95"
                   >
-                    SHOP COLLECTION
+                    {secondGallery.buttonText || 'SHOP COLLECTION'}
                   </Link>
                 </div>
               </div>
             </div>
+          </section>
+
+          {/* BEST SELLERS SECTION */}
+          <section className="mb-12">
+            <div className="flex flex-col mb-6 px-4">
+              <div className="flex items-center gap-2">
+                <TrendingUp className="w-5 h-5 text-amber-500" />
+                <h2 className="text-2xl font-brand font-black uppercase tracking-tight text-neutral-900">
+                  Best Sellers
+                </h2>
+              </div>
+              <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest mt-1">
+                Our most coveted natural pieces, highly matching the highest standards of the tribe
+              </p>
+            </div>
+
+            {bestSellers.length > 0 ? (
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-0 border-t border-b border-neutral-200/40">
+                {bestSellers.map((product) => (
+                  <ProductCard key={product.id} {...product} />
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-20 px-4 bg-white/60 mx-4 rounded-3xl border-2 border-dashed border-neutral-300">
+                <div className="w-14 h-14 bg-black/5 rounded-full flex items-center justify-center mx-auto mb-4 animate-bounce">
+                  <Sparkles className="w-6 h-6 text-amber-500" />
+                </div>
+                <h3 className="text-xs font-black uppercase tracking-[0.2em] mb-2 text-neutral-800">No Best Sellers Promoted</h3>
+                <p className="text-neutral-500 uppercase tracking-widest text-[9px] max-w-xs mx-auto mb-6">
+                  Admins can push any product to Best Sellers from the seller inventory dashboard.
+                </p>
+                {isAdmin && (
+                  <Link 
+                    to="/manage-products"
+                    className="inline-block bg-black hover:bg-neutral-900 text-white text-[9.5px] font-black uppercase tracking-widest px-8 py-3.5 rounded-sm transition-all shadow-md active:scale-95"
+                  >
+                    Go To Manage Inventory
+                  </Link>
+                )}
+              </div>
+            )}
           </section>
 
           {/* Core Perks row: 4 neat minimalist blocks matching image */}
@@ -716,28 +778,7 @@ export default function Home() {
             </div>
           </section>
 
-          {/* Dynamic Sections populated from Firebase */}
-          {productsBySubcategory.map((group) => (
-            <section key={group.title} className="mb-14">
-              <div className="flex items-center justify-between mb-4 px-4">
-                <h2 className="text-2xl font-brand font-semibold tracking-tight text-neutral-900">
-                  {toTitleCase(group.title)}
-                </h2>
-                <Link 
-                  to={`/shop?subcategory=${encodeURIComponent(group.title)}`}
-                  className="text-xs font-brand font-semibold text-neutral-500 hover:text-black transition-colors"
-                >
-                  View All
-                </Link>
-              </div>
-              
-              <div className="grid grid-cols-2 gap-0 border-t border-[#e5e5e5] [&>*:nth-child(2n)]:border-r-0">
-                {group.products.slice(0, 4).map((product) => (
-                  <ProductCard key={product.id} {...product} />
-                ))}
-              </div>
-            </section>
-          ))}
+          {/* Dynamic subcategory sections removed as per user request */}
         </>
       )}
 

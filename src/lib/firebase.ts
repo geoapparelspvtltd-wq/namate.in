@@ -1,6 +1,6 @@
 import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
-import { getFirestore, doc, getDocFromServer } from "firebase/firestore";
+import { getFirestore, doc, getDocFromServer, enableIndexedDbPersistence } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
 import { getAnalytics, isSupported } from "firebase/analytics";
 import firebaseConfig from "../../firebase-applet-config.json";
@@ -13,8 +13,21 @@ export const auth = getAuth(app);
 export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
 export const storage = getStorage(app);
 
-// Connection test
+// Enable Offline Persistence for Instant Loads and Scalability
 if (typeof window !== 'undefined') {
+  enableIndexedDbPersistence(db)
+    .then(() => {
+      console.log("Firestore offline persistence successfully activated.");
+    })
+    .catch((err) => {
+      if (err.code === 'failed-precondition') {
+        console.warn("Firestore offline persistence failed: multiple tabs open.");
+      } else if (err.code === 'unimplemented') {
+        console.warn("Firestore offline persistence is not supported by this browser.");
+      }
+    });
+
+  // Connection test
   getDocFromServer(doc(db, '_connection_test_', 'test'))
     .then(() => console.log("Firestore connection successful"))
     .catch(err => {

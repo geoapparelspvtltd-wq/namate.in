@@ -10,6 +10,7 @@ import {
   Package,
   ExternalLink,
   Crown,
+  TrendingUp,
   Loader2,
   Settings2
 } from 'lucide-react';
@@ -29,6 +30,7 @@ export default function ManageProducts() {
   const [searchQuery, setSearchQuery] = useState('');
   const [isDeleting, setIsDeleting] = useState<string | null>(null);
   const [isPromoting, setIsPromoting] = useState<string | null>(null);
+  const [isTogglingBest, setIsTogglingBest] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   const isAdmin = role === 'admin' || user?.email?.toLowerCase().trim() === 'geoapparelspvtltd@gmail.com';
@@ -117,6 +119,25 @@ export default function ManageProducts() {
       toast.error("Failed to update product status");
     } finally {
       setIsPromoting(null);
+    }
+  };
+
+  const handleToggleBestSeller = async (productId: string, currentStatus: boolean) => {
+    setIsTogglingBest(productId);
+    try {
+      await updateDoc(doc(db, 'products', productId), {
+        isBestSeller: !currentStatus
+      });
+      
+      // Update local state isBestSeller nicely so list updates reactively
+      setProducts(prev => prev.map(p => p.id === productId ? { ...p, isBestSeller: !currentStatus } : p));
+      
+      toast.success(currentStatus ? "Removed from Best Sellers list" : "Pushed to Best Sellers list");
+    } catch (error: any) {
+      console.error("Best seller toggle error:", error);
+      toast.error("Failed to update best seller status");
+    } finally {
+      setIsTogglingBest(null);
     }
   };
 
@@ -232,6 +253,12 @@ export default function ManageProducts() {
                       <span className="text-[8px] font-black uppercase tracking-widest text-black">Regal</span>
                     </div>
                   )}
+                  {product.isBestSeller && (
+                    <div className="flex items-center gap-1 bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full">
+                      <TrendingUp className="w-2.5 h-2.5 text-amber-600" />
+                      <span className="text-[8px] font-black uppercase tracking-widest text-amber-800">Best Seller</span>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -265,6 +292,23 @@ export default function ManageProducts() {
                     <Loader2 className="w-4 h-4 animate-spin" />
                   ) : (
                     <Crown className="w-4 h-4" />
+                  )}
+                </button>
+                <button 
+                  onClick={() => handleToggleBestSeller(product.id, product.isBestSeller)}
+                  disabled={isTogglingBest === product.id}
+                  className={cn(
+                    "w-10 h-10 rounded-full flex items-center justify-center transition-all disabled:opacity-50",
+                    product.isBestSeller 
+                      ? "bg-amber-500 text-white shadow-[0_0_15px_rgba(245,158,11,0.3)] animate-pulse-slow" 
+                      : "bg-black/5 text-black/40 hover:bg-amber-100 hover:text-amber-800"
+                  )}
+                  title={product.isBestSeller ? "Remove from Best Sellers" : "Push to Best Sellers"}
+                >
+                  {isTogglingBest === product.id ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <TrendingUp className="w-4 h-4" />
                   )}
                 </button>
                 <button 

@@ -23,6 +23,7 @@ import { useAuth } from '@/lib/AuthContext';
 import { Link, useSearchParams } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { Edit2 } from 'lucide-react';
+import { safeLocalStorage } from '@/lib/storage';
 
 import { triggerHaptic } from '@/lib/haptics';
 
@@ -111,6 +112,8 @@ export default function Shop() {
   const [searchParams, setSearchParams] = useSearchParams();
   const activeCategory = searchParams.get('category');
   const activeSubcategory = searchParams.get('subcategory');
+  const activeOfferId = searchParams.get('offerId');
+  const [activeOffer, setActiveOffer] = useState<any>(null);
   
   const [products, setProducts] = useState<any[]>([]);
   const [categoryConfigs, setCategoryConfigs] = useState<any[]>([]);
@@ -186,6 +189,21 @@ export default function Shop() {
     );
   }, [products]);
 
+  // Superfast initial load from cache
+  useEffect(() => {
+    const cachedData = safeLocalStorage.getItem('shop_page_cache');
+    if (cachedData) {
+      try {
+        const { products: cachedProducts, configs: cachedConfigs } = JSON.parse(cachedData);
+        if (cachedProducts) setProducts(cachedProducts);
+        if (cachedConfigs) setCategoryConfigs(cachedConfigs);
+        setIsLoading(false);
+      } catch (error) {
+        console.error("Cache parsing error in Shop.tsx:", error);
+      }
+    }
+  }, []);
+
   useEffect(() => {
     const fetchProducts = async () => {
       try {
@@ -198,6 +216,30 @@ export default function Shop() {
         
         setProducts(firestoreProducts);
         setIsLoading(false);
+        
+        // Save to cache
+        try {
+          // Prune cached sizes to keep local storage below limits
+          const prunedProducts = firestoreProducts.map((p: any) => ({
+            id: p.id,
+            name: p.name,
+            price: p.price,
+            originalPrice: p.originalPrice,
+            image: p.image,
+            category: p.category,
+            subcategory: p.subcategory,
+            sizes: p.sizes || [],
+            discount: p.discount || 0,
+            rating: p.rating || 0
+          }));
+          const dataToCache = {
+            products: prunedProducts,
+            configs: categoryConfigs
+          };
+          safeLocalStorage.setItem('shop_page_cache', JSON.stringify(dataToCache));
+        } catch (cacheErr) {
+          console.warn("Storage quota exceeded on shop cache:", cacheErr);
+        }
       } catch (error) {
         handleFirestoreError(error, OperationType.LIST, 'products');
       }
@@ -206,7 +248,19 @@ export default function Shop() {
     const fetchConfigs = async () => {
       try {
         const snapshot = await getDocs(collection(db, 'category_configs'));
-        setCategoryConfigs(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+        const configs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        setCategoryConfigs(configs);
+        
+        // Save to cache
+        try {
+          const dataToCache = {
+            products: [], // Loaded independently
+            configs: configs
+          };
+          safeLocalStorage.setItem('shop_page_cache', JSON.stringify(dataToCache));
+        } catch (cacheErr) {
+          console.warn("Storage quota exceeded on shop cache configs:", cacheErr);
+        }
       } catch (error) {
         console.error("Error fetching configs:", error);
       }
@@ -216,8 +270,32 @@ export default function Shop() {
     fetchConfigs();
   }, []);
 
+  useEffect(() => {
+    if (activeOfferId) {
+      const fetchOfferMetadata = async () => {
+        try {
+          const { doc, getDoc } = await import('firebase/firestore');
+          const docSnap = await getDoc(doc(db, 'offers', activeOfferId));
+          if (docSnap.exists()) {
+            setActiveOffer({ id: docSnap.id, ...docSnap.data() });
+          } else {
+            setActiveOffer({ id: activeOfferId, title: "Special Deal Collection", discountPercent: 10 });
+          }
+        } catch (error) {
+          console.error("Error fetching offer metadata:", error);
+        }
+      };
+      fetchOfferMetadata();
+    } else {
+      setActiveOffer(null);
+    }
+  }, [activeOfferId]);
+
   const filteredProducts = useMemo(() => {
     let result = products;
+    if (activeOfferId) {
+      result = result.filter(p => p.offerId === activeOfferId);
+    }
     if (activeCategory) {
       result = result.filter(p => p.category === activeCategory);
     }
@@ -308,7 +386,7 @@ export default function Shop() {
     }
 
     return sortedResult;
-  }, [products, activeCategory, activeSubcategory, searchQuery, priceFilters, selectedSizes, minRating, sortBy, selectedPatterns, selectedFabrics, minDiscount, onlyExpress]);
+  }, [products, activeCategory, activeSubcategory, searchQuery, priceFilters, selectedSizes, minRating, sortBy, selectedPatterns, selectedFabrics, minDiscount, onlyExpress, activeOfferId]);
 
   const productsBySubcategory = useMemo(() => {
     if (!activeCategory) return [];
@@ -649,11 +727,134 @@ export default function Shop() {
   })();
 
   return (
-    <div className="bg-background min-h-screen pb-40 pt-28">
-      {!activeCategory && !activeSubcategory && !searchQuery ? (
-        /* Categories Grid View */
-        <div className="py-6">
-          <div className="px-4 mb-8 flex items-center justify-between">
+    <div className="bg-[#F7F4F0] min-h-screen pb-48 pt-28 relative">
+      {/* 1. Curated Looks Category Circles at the Top */}
+          <div className="px-4 mb-4">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-[9px] font-black tracking-[0.25em] text-[#C5A059] uppercase block">
+                Top Categories
+              </span>
+              {isAdmin && (
+                <Link 
+                  to="/manage-categories"
+                  onClick={() => triggerHaptic('light')}
+                  className="flex items-center gap-1.5 text-[9px] font-black text-[#C5A059] uppercase tracking-widest hover:opacity-80 transition-opacity"
+                >
+                  <Edit2 className="w-2.5 h-2.5" />
+                  Edit
+                </Link>
+              )}
+            </div>
+            
+            <div className="flex items-center gap-4 overflow-x-auto no-scrollbar py-2 -mx-4 px-4 scroll-smooth">
+              {/* ALL Looks Category option */}
+              <div 
+                onClick={() => {
+                  triggerHaptic('light');
+                  setActiveCategory(null);
+                  setActiveSubcategory(null);
+                }}
+                className="flex flex-col items-center gap-1.5 flex-shrink-0 cursor-pointer group"
+              >
+                <div className={cn(
+                  "w-16 h-16 rounded-full flex items-center justify-center transition-all bg-black/[0.03] border-2",
+                  (!activeCategory && !activeSubcategory)
+                    ? "border-black scale-105 shadow-md bg-white"
+                    : "border-transparent bg-neutral-100 group-hover:border-black/10"
+                )}>
+                  <div className="w-[52px] h-[52px] rounded-full bg-black/5 flex items-center justify-center font-black text-[9px] uppercase tracking-widest text-[#C5A059]">
+                    ALL
+                  </div>
+                </div>
+                <span className={cn(
+                  "text-[8px] font-black tracking-wider uppercase text-center transition-colors",
+                  (!activeCategory && !activeSubcategory) ? "text-[#C5A059] font-black" : "text-black/40"
+                )}>
+                  All Looks
+                </span>
+              </div>
+
+              {availableCategories.map((cat, idx) => {
+                const config = categoryConfigs.find(c => c.name === cat);
+                const categoryImage = config?.imageUrl || products.find(p => p.category === cat)?.image;
+                const isSelected = activeCategory === cat;
+
+                return (
+                  <div 
+                    key={cat}
+                    onClick={() => {
+                      triggerHaptic('light');
+                      setActiveCategory(isSelected ? null : cat);
+                      setActiveSubcategory(null);
+                    }}
+                    className="flex flex-col items-center gap-1.5 flex-shrink-0 cursor-pointer group"
+                  >
+                    <div className={cn(
+                      "w-16 h-16 rounded-full flex items-center justify-center transition-all border-2 overflow-hidden bg-white/50",
+                      isSelected
+                        ? "border-black scale-105 shadow-md bg-white"
+                        : "border-transparent group-hover:border-black/10"
+                    )}>
+                      {categoryImage ? (
+                        <img 
+                          src={categoryImage} 
+                          alt={cat} 
+                          className="w-[52px] h-[52px] rounded-full object-cover"
+                          referrerPolicy="no-referrer"
+                        />
+                      ) : (
+                        <div className="w-[52px] h-[52px] rounded-full bg-gradient-to-br from-[#FFDEE9] to-[#B5FFFC] flex items-center justify-center font-black text-white text-xs">
+                          {cat.charAt(0)}
+                        </div>
+                      )}
+                    </div>
+                    <span className={cn(
+                      "text-[8px] font-black tracking-wider uppercase text-center transition-colors",
+                      isSelected ? "text-black font-black" : "text-black/40"
+                    )}>
+                      {cat}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* 2. Subcategories horizontal filter badges (always present, category-specific or overall) */}
+          <div className="flex items-center gap-2 px-4 py-1.5 overflow-x-auto no-scrollbar scroll-smooth mb-4 border-b border-black/5 pb-3">
+            <button 
+              onClick={() => {
+                triggerHaptic('light');
+                setActiveSubcategory(null);
+              }}
+              className={cn(
+                "whitespace-nowrap text-[8px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full transition-all border",
+                !activeSubcategory ? "bg-black text-white border-black" : "text-black/50 border-black/5 hover:border-black/20"
+              )}
+            >
+              {activeCategory ? `All ${activeCategory}` : 'All Looks'}
+            </button>
+            
+            {(activeCategory ? subcategoriesByCategory[activeCategory] || [] : allAvailableSubcategories).map(sub => (
+              <button
+                key={sub}
+                onClick={() => {
+                  triggerHaptic('light');
+                  setActiveSubcategory(sub);
+                }}
+                className={cn(
+                  "whitespace-nowrap text-[8px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full transition-all border",
+                  activeSubcategory === sub ? "bg-black text-white border-black" : "text-black/50 border-black/5 hover:border-black/20"
+                )}
+              >
+                {sub}
+              </button>
+            ))}
+          </div>
+
+          {/* Hide the old grid layout so we don't have visual duplicate */}
+          <div className="hidden">
+            <div className="px-4 mb-8 flex items-center justify-between">
             <h2 className="text-xs font-bold text-black uppercase tracking-[0.3em]">Shop by Category</h2>
             {isAdmin && (
               <Link 
@@ -783,39 +984,9 @@ export default function Shop() {
             })}
           </div>
         </div>
-      ) : (
-        /* Products View */
-        <>
-          {/* Horizontal Categories (Breadcrumb style) */}
-          <div className="sticky top-28 z-40 bg-white/80 backdrop-blur-md border-b border-black/5">
-            <div className="flex items-center gap-2 py-4 px-4 overflow-x-auto no-scrollbar scroll-smooth">
-              <button 
-                onClick={() => {
-                  setActiveCategory(null);
-                  setActiveSubcategory(null);
-                }}
-                className={cn(
-                  "whitespace-nowrap text-[10px] font-black uppercase tracking-widest px-4 py-2 rounded-full transition-all border",
-                  !activeCategory && !activeSubcategory ? "bg-black text-white border-black" : "text-black/40 border-black/5 hover:border-black/20"
-                )}
-              >
-                All
-              </button>
-              
-              {allAvailableSubcategories.map(sub => (
-                <button
-                  key={sub}
-                  onClick={() => setActiveSubcategory(sub)}
-                  className={cn(
-                    "whitespace-nowrap text-[10px] font-black uppercase tracking-widest px-4 py-2 rounded-full transition-all border",
-                    activeSubcategory === sub ? "bg-black text-white border-black" : "text-black/40 border-black/5 hover:border-black/20"
-                  )}
-                >
-                  {sub}
-                </button>
-              ))}
-            </div>
-          </div>
+
+      {/* Products View */}
+
 
           <div className="max-w-7xl mx-auto py-6">
             {/* Toolbar */}
@@ -890,6 +1061,42 @@ export default function Shop() {
                 </Sheet>
               </div>
             </div>
+
+            {activeOffer && (
+              <div className="mx-4 mb-8 p-6 rounded-2xl bg-gradient-to-r from-neutral-900 to-neutral-850 text-white relative overflow-hidden shadow-md">
+                <div className="absolute right-[-20px] bottom-[-30px] text-9xl font-black text-white/5 pointer-events-none select-none">
+                  {activeOffer.discountPercent || 10}%
+                </div>
+                <div className="flex items-start justify-between relative z-10">
+                  <div className="text-left">
+                    <span className="text-[8px] font-black tracking-[0.25em] text-[#C5A059] uppercase block mb-1">
+                      ACTIVE PROMOTION
+                    </span>
+                    <h2 className="text-xl font-brand font-black uppercase tracking-tight text-white mb-1">
+                      {activeOffer.title}
+                    </h2>
+                    {activeOffer.description && (
+                      <p className="text-[10px] text-white/60 font-medium max-w-sm sm:max-w-md">
+                        {activeOffer.description}
+                      </p>
+                    )}
+                    <span className="inline-block mt-3 bg-white/10 px-3 py-1 text-[9px] font-black uppercase tracking-widest rounded-full">
+                      FLAT {activeOffer.discountPercent}% OFF ON THESE SELECTED LOOKS
+                    </span>
+                  </div>
+                  <button
+                    onClick={() => {
+                      const params = new URLSearchParams(searchParams);
+                      params.delete('offerId');
+                      setSearchParams(params);
+                    }}
+                    className="p-1 px-3 bg-white/12 hover:bg-white/20 transition-all text-white text-[9px] font-black uppercase tracking-widest rounded-full flex items-center gap-1"
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+            )}
 
             {/* Subcategory Grouped View (If Category selected) or Flat Grid (If Subcategory selected) */}
             {activeCategory && !activeSubcategory && !searchQuery ? (
@@ -984,8 +1191,78 @@ export default function Shop() {
               </motion.div>
             )}
           </div>
-        </>
-      )}
+      {/* 5. Custom Floating Controls Bar Docked Above Bottom Navigation (Filter & Sort by) */}
+      <div className="fixed bottom-[74px] left-1/2 -translate-x-1/2 z-[40] w-full max-w-[340px] px-4 pointer-events-none animate-fade-in">
+        <div className="bg-black/95 backdrop-blur-md text-white py-2 px-3.5 rounded-full shadow-2xl flex items-center justify-between pointer-events-auto border border-white/10 select-none">
+          {/* Custom Sort by trigger inside floating capsule */}
+          <div className="relative flex items-center gap-1 flex-1 pr-1">
+            <select
+              value={sortBy}
+              onChange={(e) => {
+                triggerHaptic('light');
+                setSortBy(e.target.value);
+              }}
+              className="appearance-none bg-transparent text-[8.5px] font-black uppercase tracking-widest text-white pl-2 pr-6 py-1.5 cursor-pointer focus:outline-none transition-all border-none w-full"
+              style={{
+                backgroundImage: `url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='white'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2.5' d='M19 9l-7 7-7-7'/%3E%3C/svg%3E")`,
+                backgroundPosition: 'right 0.25rem center',
+                backgroundSize: '0.8em 0.8em',
+                backgroundRepeat: 'no-repeat'
+              }}
+            >
+              <option value="relevance" className="bg-[#111] text-white">RELEVANCE</option>
+              <option value="discount" className="bg-[#111] text-white">DISCOUNT</option>
+              <option value="priceLow" className="bg-[#111] text-white">PRICE: LOW-HIGH</option>
+              <option value="priceHigh" className="bg-[#111] text-white">PRICE: HIGH-LOW</option>
+              <option value="rating" className="bg-[#111] text-white">TOP RATED</option>
+            </select>
+          </div>
+
+          <div className="w-[1px] h-4 bg-white/20 mx-1.5" />
+
+          {/* Filtering trigger inside floating capsule */}
+          <Sheet open={isFilterOpen} onOpenChange={setIsFilterOpen}>
+            <SheetTrigger>
+              <button 
+                onClick={() => triggerHaptic('light')}
+                className="flex items-center justify-center gap-1.5 text-[8.5px] font-black uppercase tracking-widest text-[#C5A059] px-3 py-1.5 hover:opacity-85 transition-opacity cursor-pointer whitespace-nowrap bg-transparent border-none outline-none"
+              >
+                <SlidersHorizontal className="h-2.5 w-2.5" strokeWidth={2.5} />
+                Filters
+                {(priceFilters.length > 0 || selectedSizes.length > 0 || minRating > 0 || selectedPatterns.length > 0 || selectedFabrics.length > 0 || minDiscount > 0 || onlyExpress) && (
+                  <span className="w-1 h-1 bg-[#C5A059] rounded-full animate-ping" />
+                )}
+              </button>
+            </SheetTrigger>
+            <SheetContent side="bottom" className="h-[85vh] rounded-t-[40px] px-8 bg-white border-black/10 overflow-y-auto no-scrollbar">
+              <div className="mt-8 pb-32">
+                <div className="w-12 h-1.5 bg-black/10 rounded-full mx-auto mb-8" />
+                <div className="flex items-center justify-between mb-8">
+                  <h2 className="text-2xl font-black uppercase tracking-tighter text-black">Filter Your Vibe</h2>
+                  <button 
+                    onClick={() => setIsFilterOpen(false)}
+                    className="w-10 h-10 rounded-full bg-black/5 flex items-center justify-center text-black"
+                  >
+                    <ChevronDown className="w-6 h-6" />
+                  </button>
+                </div>
+                
+                <FilterContent />
+                
+                <div className="fixed bottom-0 left-0 right-0 p-8 bg-gradient-to-t from-white via-white to-transparent pt-12">
+                  <Button 
+                    onClick={() => setIsFilterOpen(false)}
+                    className="w-full bg-black text-white font-black py-7 rounded-2xl shadow-2xl shadow-black/20 hover:bg-[#C5A059] hover:text-black active:scale-[0.98] transition-all"
+                  >
+                    VIEW {filteredProducts.length} PRODUCTS
+                  </Button>
+                </div>
+              </div>
+            </SheetContent>
+          </Sheet>
+        </div>
+      </div>
+
       <BrandSignature variant="dark" className="mt-12 mb-20 opacity-30" />
     </div>
   );

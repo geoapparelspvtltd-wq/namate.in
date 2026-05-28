@@ -15,6 +15,7 @@ import {
   Trash2,
   Settings2,
   Crown,
+  TrendingUp,
   MoveUp,
   MoveDown,
   Crop as CropIcon,
@@ -223,6 +224,7 @@ export default function AddProduct() {
       galleryMedia: [], // Will be fetched below
       isPremium: product.isPremium || false,
       isUpcoming: product.isUpcoming || false,
+      isBestSeller: product.isBestSeller || false,
       isTribeExclusive: product.isTribeExclusive || false,
       tribeReleaseDate: product.tribeReleaseDate || ''
     });
@@ -279,6 +281,7 @@ export default function AddProduct() {
       galleryMedia: [],
       isPremium: false,
       isUpcoming: false,
+      isBestSeller: false,
       isTribeExclusive: false,
       tribeReleaseDate: ''
     }));
@@ -341,6 +344,7 @@ export default function AddProduct() {
     galleryMedia: [] as { id: string, type: 'image', url: string }[],
     isPremium: false,
     isUpcoming: false,
+    isBestSeller: false,
     isTribeExclusive: false,
     tribeReleaseDate: ''
   });
@@ -648,6 +652,7 @@ export default function AddProduct() {
         sizes: selectedSizes,
         isPremium: formData.isPremium,
         isUpcoming: formData.isUpcoming,
+        isBestSeller: formData.isBestSeller || false,
         isTribeExclusive: formData.isTribeExclusive,
         tribeReleaseDate: formData.tribeReleaseDate,
         updatedAt: serverTimestamp()
@@ -1297,6 +1302,32 @@ export default function AddProduct() {
                     )} />
                   </button>
                 </div>
+              </div>
+
+              {/* Best Seller Checkbox/Switch */}
+              <div className="bg-black/5 border-2 border-black/10 rounded-[32px] p-6 flex items-center justify-between group hover:border-black/30 transition-all">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-2xl bg-black/10 flex items-center justify-center">
+                    <TrendingUp className="w-6 h-6 text-black" />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-black uppercase tracking-tight text-black">Best Seller</h4>
+                    <p className="text-[10px] font-bold text-black/40 uppercase tracking-widest">Push to Home Screen</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setFormData(prev => ({ ...prev, isBestSeller: !prev.isBestSeller }))}
+                  className={cn(
+                    "w-14 h-8 rounded-full relative transition-all duration-300",
+                    formData.isBestSeller ? "bg-black" : "bg-black/10"
+                  )}
+                >
+                  <div className={cn(
+                    "absolute top-1 w-6 h-6 rounded-full bg-white transition-all duration-300 shadow-lg",
+                    formData.isBestSeller ? "left-7" : "left-1"
+                  )} />
+                </button>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

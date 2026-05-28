@@ -10,7 +10,6 @@ export default function SplashScreen({ onComplete }: { onComplete: () => void })
   const [isVisible, setIsVisible] = useState(true);
   const [progress, setProgress] = useState(0);
   const [isUploading, setIsUploading] = useState(false);
-  const [imageLoaded, setImageLoaded] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const isAdmin = role === 'admin' || user?.email?.toLowerCase().trim() === 'geoapparelspvtltd@gmail.com';
@@ -18,31 +17,15 @@ export default function SplashScreen({ onComplete }: { onComplete: () => void })
   // Config check is fully loaded
   const isLoaded = !authLoading && !maintenanceLoading;
 
-  // Preload custom splash image if present
+  // Start countdown directly and dynamically as soon as isLoaded is true
   useEffect(() => {
-    if (!splashImageUrl) {
-      setImageLoaded(false);
-      return;
-    }
-    const img = new Image();
-    img.src = splashImageUrl;
-    img.onload = () => {
-      setImageLoaded(true);
-    };
-    img.onerror = () => {
-      // Fallback in case of image load error
-      setImageLoaded(true);
-    };
-  }, [splashImageUrl]);
-
-  useEffect(() => {
-    // Wait until Firestore is loaded and (if splashImageUrl is set) wait for browser to finish downloading the image bytes
-    const readyToStart = isLoaded && (!splashImageUrl || imageLoaded);
+    // Wait until Firestore is loaded
+    const readyToStart = isLoaded;
     if (!isVisible || !readyToStart) return;
 
     // Elegant and premium timeline for progress
-    const duration = 1600; // 1.6 seconds for premium presentation of the uploaded creative image
-    const stepTime = 16;
+    const duration = 1200; // 1.2 seconds for presentation of the uploaded creative image
+    const stepTime = 12;
     const totalSteps = duration / stepTime;
     
     const interval = setInterval(() => {
@@ -64,7 +47,7 @@ export default function SplashScreen({ onComplete }: { onComplete: () => void })
       clearInterval(interval);
       clearTimeout(timer);
     };
-  }, [isVisible, isLoaded, imageLoaded, splashImageUrl, onComplete]);
+  }, [isVisible, isLoaded, onComplete]);
 
   const handleUpdatePhoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -118,22 +101,13 @@ export default function SplashScreen({ onComplete }: { onComplete: () => void })
           }}
           className="fixed inset-0 z-[9999] bg-[#0A0A09] overflow-hidden select-none"
         >
-          {/* While still checking Firestore or preloading image, show a minimal loading spinner to avoid layout jumps */}
-          {(!isLoaded || (splashImageUrl && !imageLoaded)) ? (
-            <div className="absolute inset-0 flex flex-col items-center justify-center bg-[#0C0A09]">
-              <div className="flex flex-col items-center gap-4">
-                <Loader2 className="w-8 h-8 text-[#C5A059] animate-spin opacity-40" />
-                <p className="text-[9px] font-black text-white/30 uppercase tracking-[0.4em] pl-[0.4em]">
-                  NAMATE
-                </p>
-              </div>
-            </div>
-          ) : splashImageUrl ? (
+          {/* If splashImageUrl is present, render the image immediately to avoid layout jumps or loader spinner delays */}
+          {splashImageUrl ? (
             <div className="absolute inset-0 w-full h-full">
               <motion.img 
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                transition={{ duration: 0.5, ease: "easeOut" }}
+                transition={{ duration: 0.3, ease: "easeOut" }}
                 src={splashImageUrl} 
                 className="absolute inset-0 w-full h-full object-cover" 
                 alt="Brand Splash"
@@ -147,6 +121,15 @@ export default function SplashScreen({ onComplete }: { onComplete: () => void })
                   transition={{ duration: 0.05 }}
                   className="h-full bg-[#C5A059] rounded-full"
                 />
+              </div>
+            </div>
+          ) : !isLoaded ? (
+            <div className="absolute inset-0 flex flex-col items-center justify-center bg-[#0C0A09]">
+              <div className="flex flex-col items-center gap-4">
+                <Loader2 className="w-8 h-8 text-[#C5A059] animate-spin opacity-40" />
+                <p className="text-[9px] font-black text-white/30 uppercase tracking-[0.4em] pl-[0.4em]">
+                  NAMATE
+                </p>
               </div>
             </div>
           ) : (
