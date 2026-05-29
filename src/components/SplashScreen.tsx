@@ -19,24 +19,9 @@ export default function SplashScreen({ onComplete }: { onComplete: () => void })
 
   // Start countdown directly and dynamically as soon as isLoaded is true
   useEffect(() => {
-    // Wait until Firestore is loaded
-    const readyToStart = isLoaded;
-    if (!isVisible || !readyToStart) return;
+    if (!isVisible) return;
 
-    // Elegant and premium timeline for progress
     const duration = splashDuration || 1200; // custom duration from admin
-    const stepTime = 12;
-    const totalSteps = duration / stepTime;
-    
-    const interval = setInterval(() => {
-      setProgress(prev => {
-        if (prev >= 100) {
-          clearInterval(interval);
-          return 100;
-        }
-        return prev + (100 / totalSteps);
-      });
-    }, stepTime);
 
     const timer = setTimeout(() => {
       setIsVisible(false);
@@ -44,10 +29,9 @@ export default function SplashScreen({ onComplete }: { onComplete: () => void })
     }, duration);
 
     return () => {
-      clearInterval(interval);
       clearTimeout(timer);
     };
-  }, [isVisible, isLoaded, onComplete, splashDuration]);
+  }, [isVisible, onComplete, splashDuration]);
 
   const handleUpdatePhoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -101,44 +85,26 @@ export default function SplashScreen({ onComplete }: { onComplete: () => void })
           }}
           className="fixed inset-0 z-[9999] bg-[#0A0A09] overflow-hidden select-none"
         >
-          {/* If splashImageUrl is present, render the image immediately to avoid layout jumps or loader spinner delays */}
+          {/* Direct load layout: no spinners, no progress lines */}
           {splashImageUrl ? (
             <div className="absolute inset-0 w-full h-full">
               <motion.img 
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                transition={{ duration: 0.3, ease: "easeOut" }}
+                transition={{ duration: 0.25, ease: "easeOut" }}
                 src={splashImageUrl} 
                 className="absolute inset-0 w-full h-full object-cover" 
                 alt="Brand Splash"
                 referrerPolicy="no-referrer"
               />
-              {/* Luxury Progress Bar centered horizontally on custom image */}
-              <div className="absolute bottom-16 left-1/2 -translate-x-1/2 w-48 h-[1px] bg-black/10 backdrop-blur-md rounded-full overflow-hidden border border-white/10">
-                <motion.div 
-                  initial={{ width: "0%" }}
-                  animate={{ width: `${progress}%` }}
-                  transition={{ duration: 0.05 }}
-                  className="h-full bg-[#C5A059] rounded-full"
-                />
-              </div>
-            </div>
-          ) : !isLoaded ? (
-            <div className="absolute inset-0 flex flex-col items-center justify-center bg-[#0C0A09]">
-              <div className="flex flex-col items-center gap-4">
-                <Loader2 className="w-8 h-8 text-[#C5A059] animate-spin opacity-40" />
-                <p className="text-[9px] font-black text-white/30 uppercase tracking-[0.4em] pl-[0.4em]">
-                  NAMATE
-                </p>
-              </div>
             </div>
           ) : (
             <div className="absolute inset-0 flex flex-col items-center justify-center bg-[#0C0A09]">
               <div className="flex flex-col items-center gap-5">
                 <motion.div 
-                  initial={{ scale: 0.9, opacity: 0 }}
+                  initial={{ scale: 0.95, opacity: 0 }}
                   animate={{ scale: 1, opacity: 1 }}
-                  transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+                  transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
                   className="w-20 h-20 bg-white/[0.03] rounded-[24px] flex items-center justify-center p-4 shadow-3xl border border-white/10"
                 >
                   <img
@@ -151,9 +117,9 @@ export default function SplashScreen({ onComplete }: { onComplete: () => void })
                 
                 <div className="text-center">
                   <motion.h1 
-                    initial={{ opacity: 0, y: 8 }}
+                    initial={{ opacity: 0, y: 4 }}
                     animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.15, duration: 0.5, ease: "easeOut" }}
+                    transition={{ delay: 0.1, duration: 0.4, ease: "easeOut" }}
                     className="text-2xl font-black text-white tracking-[0.45em] uppercase font-sans leading-none pl-[0.45em]"
                   >
                     NAMATE
@@ -161,22 +127,12 @@ export default function SplashScreen({ onComplete }: { onComplete: () => void })
                   <motion.p 
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 0.35 }}
-                    transition={{ delay: 0.3, duration: 0.5 }}
+                    transition={{ delay: 0.2, duration: 0.4 }}
                     className="text-[9px] font-black text-white uppercase tracking-[0.38em] mt-2.5 pl-[0.38em] leading-none"
                   >
                     The Clothing Frequency
                   </motion.p>
                 </div>
-              </div>
-              
-              {/* Luxury Progress Bar centered horizontally */}
-              <div className="absolute bottom-16 left-1/2 -translate-x-1/2 w-48 h-[1px] bg-white/10 rounded-full overflow-hidden">
-                <motion.div 
-                  initial={{ width: "0%" }}
-                  animate={{ width: `${progress}%` }}
-                  transition={{ duration: 0.05 }}
-                  className="h-full bg-[#C5A059] rounded-full"
-                />
               </div>
             </div>
           )}

@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import ProductCard from '@/components/ProductCard';
-import { collection, onSnapshot, query, orderBy, limit, getDocs } from 'firebase/firestore';
+import { collection, onSnapshot, query, orderBy, limit, getDocs, where, startAfter } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Button } from '@/components/ui/button';
 import { 
@@ -118,6 +118,9 @@ export default function Shop() {
   const [products, setProducts] = useState<any[]>([]);
   const [categoryConfigs, setCategoryConfigs] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [lastVisibleDoc, setLastVisibleDoc] = useState<any>(null);
+  const [hasMore, setHasMore] = useState(true);
+  const [isFetchingMore, setIsFetchingMore] = useState(false);
   const { wishlist } = useWishlist();
   const [isFilterOpen, setIsFilterOpen] = useState(false);
 
@@ -204,57 +207,17 @@ export default function Shop() {
     }
   }, []);
 
+  // Fetch category configs once on mount
   useEffect(() => {
-    const fetchProducts = async () => {
-      try {
-        const q = query(collection(db, 'products'), orderBy('createdAt', 'desc'), limit(100));
-        const snapshot = await getDocs(q);
-        const firestoreProducts = snapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        }));
-        
-        setProducts(firestoreProducts);
-        setIsLoading(false);
-        
-        // Save to cache
-        try {
-          // Prune cached sizes to keep local storage below limits
-          const prunedProducts = firestoreProducts.map((p: any) => ({
-            id: p.id,
-            name: p.name,
-            price: p.price,
-            originalPrice: p.originalPrice,
-            image: p.image,
-            category: p.category,
-            subcategory: p.subcategory,
-            sizes: p.sizes || [],
-            discount: p.discount || 0,
-            rating: p.rating || 0
-          }));
-          const dataToCache = {
-            products: prunedProducts,
-            configs: categoryConfigs
-          };
-          safeLocalStorage.setItem('shop_page_cache', JSON.stringify(dataToCache));
-        } catch (cacheErr) {
-          console.warn("Storage quota exceeded on shop cache:", cacheErr);
-        }
-      } catch (error) {
-        handleFirestoreError(error, OperationType.LIST, 'products');
-      }
-    };
-
     const fetchConfigs = async () => {
       try {
         const snapshot = await getDocs(collection(db, 'category_configs'));
         const configs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         setCategoryConfigs(configs);
         
-        // Save to cache
         try {
           const dataToCache = {
-            products: [], // Loaded independently
+            products: [],
             configs: configs
           };
           safeLocalStorage.setItem('shop_page_cache', JSON.stringify(dataToCache));
@@ -265,10 +228,141 @@ export default function Shop() {
         console.error("Error fetching configs:", error);
       }
     };
-
-    fetchProducts();
     fetchConfigs();
   }, []);
+
+  // Fetch products with smart indexing and limit paging
+  useEffect(() => {
+    let active = true;
+    const fetchProducts = async () => {
+      setIsLoading(true);
+      try {
+        let constraints: any[] = [];
+        
+        if (activeCategory) {
+          constraints.push(where('category', '==', activeCategory));
+        }
+        if (activeSubcategory && activeSubcategory !== 'General') {
+          constraints.push(where('subcategory', '==', activeSubcategory));
+        }
+        if (activeOfferId) {
+          constraints.push(where('offerId', '==', activeOfferId));
+        }
+        
+        // Only use global orderBy if no other filtering where clauses exist, ensuring 100% fail-safe behavior
+        if (!activeCategory && !activeSubcategory && !activeOfferId) {
+          constraints.push(orderBy('createdAt', 'desc'));
+        }
+        
+        constraints.push(limit(40));
+
+        const q = query(collection(db, 'products'), ...constraints);
+        const snapshot = await getDocs(q);
+
+        if (!active) return;
+
+        const firestoreProducts = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }));
+
+        if (snapshot.docs.length > 0) {
+          setLastVisibleDoc(snapshot.docs[snapshot.docs.length - 1]);
+          setHasMore(snapshot.docs.length === 40);
+        } else {
+          setLastVisibleDoc(null);
+          setHasMore(false);
+        }
+
+        setProducts(firestoreProducts);
+        setIsLoading(false);
+
+        // Cached for offline (only on general unfilters)
+        if (!activeCategory && !activeSubcategory && !activeOfferId) {
+          try {
+            const prunedProducts = firestoreProducts.map((p: any) => ({
+              id: p.id,
+              name: p.name,
+              price: p.price,
+              originalPrice: p.originalPrice,
+              image: p.image,
+              category: p.category,
+              subcategory: p.subcategory,
+              sizes: p.sizes || [],
+              discount: p.discount || 0,
+              rating: p.rating || 0
+            }));
+            const dataToCache = {
+              products: prunedProducts,
+              configs: categoryConfigs
+            };
+            safeLocalStorage.setItem('shop_page_cache', JSON.stringify(dataToCache));
+          } catch (cacheErr) {}
+        }
+      } catch (error) {
+        console.error("Error loading products:", error);
+        if (active) {
+          // Attempt offline fallback values
+          const cachedData = safeLocalStorage.getItem('shop_page_cache');
+          if (cachedData) {
+            try {
+              const { products: cachedProducts } = JSON.parse(cachedData);
+              if (cachedProducts) setProducts(cachedProducts);
+            } catch (e) {}
+          }
+          setIsLoading(false);
+        }
+      }
+    };
+
+    fetchProducts();
+    return () => {
+      active = false;
+    };
+  }, [activeCategory, activeSubcategory, activeOfferId, categoryConfigs]);
+
+  const handleLoadMore = async () => {
+    if (isFetchingMore || !hasMore || !lastVisibleDoc) return;
+    setIsFetchingMore(true);
+    try {
+      let constraints: any[] = [];
+      if (activeCategory) {
+        constraints.push(where('category', '==', activeCategory));
+      }
+      if (activeSubcategory && activeSubcategory !== 'General') {
+        constraints.push(where('subcategory', '==', activeSubcategory));
+      }
+      if (activeOfferId) {
+        constraints.push(where('offerId', '==', activeOfferId));
+      }
+      if (!activeCategory && !activeSubcategory && !activeOfferId) {
+        constraints.push(orderBy('createdAt', 'desc'));
+      }
+      constraints.push(startAfter(lastVisibleDoc));
+      constraints.push(limit(40));
+
+      const q = query(collection(db, 'products'), ...constraints);
+      const snapshot = await getDocs(q);
+
+      const nextProducts = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+
+      if (snapshot.docs.length > 0) {
+        setLastVisibleDoc(snapshot.docs[snapshot.docs.length - 1]);
+        setHasMore(snapshot.docs.length === 40);
+        setProducts(prev => [...prev, ...nextProducts]);
+      } else {
+        setHasMore(false);
+      }
+    } catch (err) {
+      console.error("Error fetching more products:", err);
+      toast.error("Failed to load more products");
+    } finally {
+      setIsFetchingMore(false);
+    }
+  };
 
   useEffect(() => {
     if (activeOfferId) {
@@ -729,13 +823,43 @@ export default function Shop() {
   return (
     <div className="bg-[#F7F4F0] min-h-screen pb-48 pt-24 relative">
       {/* Explore Collection Title (Goes up with page when scrolled) */}
-      <div className="px-4 mb-6 text-center animate-fade-in select-none">
+      <div className="px-4 mb-4 text-center animate-fade-in select-none">
         <h1 className="text-[12px] font-black tracking-[0.3em] text-[#111] uppercase">
           Explore Collection
         </h1>
         <p className="text-[7px] text-[#C5A059] font-black uppercase tracking-[0.2em] mt-1.5">
           Curated Premium Looks
         </p>
+      </div>
+
+      {/* Interactive Search Option */}
+      <div className="px-4 mb-6 animate-fade-in">
+        <div className="relative flex items-center bg-white/75 backdrop-blur-md rounded-2xl border border-black/[0.04] shadow-sm hover:border-[#C5A059]/35 focus-within:border-[#C5A059] transition-all duration-300">
+          <Search className="absolute left-4 w-4 h-4 text-[#C5A059]" strokeWidth={2.5} />
+          <input 
+            type="text" 
+            value={searchQuery}
+            onChange={(e) => {
+              setSearchQuery(e.target.value);
+              triggerHaptic('light');
+            }}
+            placeholder="Search custom looks, fabrics, vibes..."
+            className="w-full bg-transparent pl-11 pr-10 py-3.5 text-xs text-black placeholder-black/35 font-medium tracking-wide focus:outline-none"
+          />
+          {searchQuery && (
+            <button 
+              onClick={() => {
+                setSearchQuery('');
+                triggerHaptic('medium');
+              }}
+              className="absolute right-4 text-black/30 hover:text-black transition-colors"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-3.5 h-3.5">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+              </svg>
+            </button>
+          )}
+        </div>
       </div>
 
       {/* 1. Curated Looks Category Circles at the Top */}
@@ -1092,6 +1216,19 @@ export default function Shop() {
                     <ProductCard {...product} priority={index < 4} />
                   </motion.div>
                 ))}
+              </div>
+            )}
+
+            {/* Dynamic Load More Button */}
+            {hasMore && (
+              <div className="flex justify-center my-10 px-4">
+                <Button 
+                  onClick={handleLoadMore}
+                  disabled={isFetchingMore}
+                  className="w-full max-w-xs h-14 bg-black text-white hover:bg-black/90 font-black uppercase text-xs tracking-[0.2em] rounded-2xl shadow-sm transition-all active:scale-98"
+                >
+                  {isFetchingMore ? 'LOADING PRODUCTS...' : 'LOAD MORE PRODUCTS'}
+                </Button>
               </div>
             )}
 

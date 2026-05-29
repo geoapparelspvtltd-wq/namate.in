@@ -17,7 +17,7 @@ import {
 import BrandSignature from '@/components/BrandSignature';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { collection, onSnapshot, query, orderBy, deleteDoc, doc, setDoc, serverTimestamp, updateDoc, getDocs } from 'firebase/firestore';
+import { collection, onSnapshot, query, orderBy, deleteDoc, doc, setDoc, serverTimestamp, updateDoc, getDocs, startAfter, limit, where } from 'firebase/firestore';
 import { db, auth } from '@/lib/firebase';
 import { useAuth } from '@/lib/AuthContext';
 import { toast } from 'sonner';
@@ -32,6 +32,9 @@ export default function ManageProducts() {
   const [isPromoting, setIsPromoting] = useState<string | null>(null);
   const [isTogglingBest, setIsTogglingBest] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [lastVisibleDoc, setLastVisibleDoc] = useState<any>(null);
+  const [hasMore, setHasMore] = useState(true);
+  const [isFetchingMore, setIsFetchingMore] = useState(false);
 
   const isAdmin = role === 'admin' || user?.email?.toLowerCase().trim() === 'geoapparelspvtltd@gmail.com';
 
@@ -41,7 +44,7 @@ export default function ManageProducts() {
     const fetchProducts = async () => {
       setIsLoading(true);
       try {
-        const q = query(collection(db, 'products'), orderBy('createdAt', 'desc'));
+        const q = query(collection(db, 'products'), orderBy('createdAt', 'desc'), limit(50));
         const snapshot = await getDocs(q);
         const firestoreProducts = snapshot.docs.map(doc => {
           const data = doc.data();
@@ -52,6 +55,14 @@ export default function ManageProducts() {
           };
         });
         
+        if (snapshot.docs.length > 0) {
+          setLastVisibleDoc(snapshot.docs[snapshot.docs.length - 1]);
+          setHasMore(snapshot.docs.length === 50);
+        } else {
+          setLastVisibleDoc(null);
+          setHasMore(false);
+        }
+
         setProducts(firestoreProducts);
       } catch (error) {
         console.error("Error fetching products:", error);
@@ -63,6 +74,41 @@ export default function ManageProducts() {
 
     fetchProducts();
   }, [isAdmin]);
+
+  const handleLoadMore = async () => {
+    if (isFetchingMore || !hasMore || !lastVisibleDoc) return;
+    setIsFetchingMore(true);
+    try {
+      const q = query(
+        collection(db, 'products'),
+        orderBy('createdAt', 'desc'),
+        startAfter(lastVisibleDoc),
+        limit(50)
+      );
+      const snapshot = await getDocs(q);
+      const nextProducts = snapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          ...data,
+          createdAt: data.createdAt?.toDate?.() || new Date(0)
+        };
+      });
+
+      if (snapshot.docs.length > 0) {
+        setLastVisibleDoc(snapshot.docs[snapshot.docs.length - 1]);
+        setHasMore(snapshot.docs.length === 50);
+        setProducts(prev => [...prev, ...nextProducts]);
+      } else {
+        setHasMore(false);
+      }
+    } catch (err) {
+      console.error("Error managing load-more:", err);
+      toast.error("Failed to fetch more inventory");
+    } finally {
+      setIsFetchingMore(false);
+    }
+  };
 
   const handleDelete = async (productId: string, productName: string) => {
     if (!window.confirm(`Are you sure you want to delete "${productName}"? This action cannot be undone.`)) {
@@ -332,6 +378,18 @@ export default function ManageProducts() {
             </div>
             <h3 className="text-lg font-black uppercase tracking-tighter mb-2 text-black">No products found</h3>
             <p className="text-black/40 text-sm font-bold">Try a different search or add a new product.</p>
+          </div>
+        )}
+
+        {hasMore && (
+          <div className="flex justify-center my-8">
+            <Button
+              onClick={handleLoadMore}
+              disabled={isFetchingMore}
+              className="w-full max-w-xs h-14 bg-black text-white hover:bg-black/90 font-black uppercase text-xs tracking-widest rounded-3xl transition-all"
+            >
+              {isFetchingMore ? 'Loading Inventory...' : 'Load More Products'}
+            </Button>
           </div>
         )}
       </div>

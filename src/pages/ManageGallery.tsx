@@ -37,6 +37,7 @@ export default function ManageGallery() {
   const isAdmin = role === 'admin' || user?.email?.toLowerCase().trim() === 'geoapparelspvtltd@gmail.com';
   
   const [images, setImages] = useState<any[]>([]);
+  const [activeTab, setActiveTab] = useState<'lookbook' | 'tribe'>('lookbook');
   const [isFetching, setIsFetching] = useState(true);
   const [isUploading, setIsUploading] = useState(false);
   const [editingImage, setEditingImage] = useState<any | null>(null);
@@ -70,7 +71,9 @@ export default function ManageGallery() {
       return;
     }
 
-    const q = query(collection(db, 'store_gallery'), orderBy('createdAt', 'desc'));
+    const collectionName = activeTab === 'lookbook' ? 'store_gallery' : 'tribe_promo_gallery';
+    const q = query(collection(db, collectionName), orderBy('createdAt', 'desc'));
+    setIsFetching(true);
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const gImages = snapshot.docs.map(doc => ({
         id: doc.id,
@@ -80,13 +83,13 @@ export default function ManageGallery() {
       setImages(gImages);
       setIsFetching(false);
     }, (error) => {
-      console.error("Error fetching gallery:", error);
-      toast.error("Failed to load gallery images");
+      console.error(`Error fetching ${collectionName}:`, error);
+      toast.error(`Failed to load ${activeTab === 'lookbook' ? 'lookbook' : 'tribe promotion'} images`);
       setIsFetching(false);
     });
 
     return () => unsubscribe();
-  }, [isAdmin, loading]);
+  }, [isAdmin, loading, activeTab]);
 
   useEffect(() => {
     if (!isNative) return;
@@ -104,16 +107,17 @@ export default function ManageGallery() {
         const formattedBase64 = base64.startsWith('data:') ? base64 : `data:image/jpeg;base64,${base64}`;
         const compressed = await compressImage(formattedBase64, 1200, 1200, 0.6);
         
-        await addDoc(collection(db, 'store_gallery'), {
+        const collectionName = activeTab === 'lookbook' ? 'store_gallery' : 'tribe_promo_gallery';
+        await addDoc(collection(db, collectionName), {
           url: compressed,
-          caption: caption || 'Lifestyle Shot',
-          category: category || null,
-          subcategory: subcategory || null,
+          caption: caption || (activeTab === 'lookbook' ? 'Lifestyle Shot' : 'Tribe Promo Highlight'),
+          category: activeTab === 'lookbook' ? (category || null) : null,
+          subcategory: activeTab === 'lookbook' ? (subcategory || null) : null,
           createdBy: user?.uid,
           createdAt: serverTimestamp()
         });
 
-        toast.success("Image added to gallery", { id: toastId });
+        toast.success(`Image added to ${activeTab === 'lookbook' ? 'lookbook' : 'tribe gallery'}`, { id: toastId });
         setCaption('');
       } catch (error) {
         console.error("Native Gallery Error:", error);
@@ -125,13 +129,15 @@ export default function ManageGallery() {
 
     window.addEventListener('flutterImageSuccess' as any, handleNativeImage);
     return () => window.removeEventListener('flutterImageSuccess' as any, handleNativeImage);
-  }, [isNative, caption, category, subcategory, user]);
+  }, [isNative, caption, category, subcategory, user, activeTab]);
 
   const uploadImages = async (files: FileList) => {
     setIsUploading(true);
-    const toastId = toast.loading(`Uploading ${files.length} lifestyle shot(s)...`);
+    const targetName = activeTab === 'lookbook' ? 'lookbook shot(s)' : 'tribe promo shot(s)';
+    const toastId = toast.loading(`Uploading ${files.length} ${targetName}...`);
 
     try {
+      const collectionName = activeTab === 'lookbook' ? 'store_gallery' : 'tribe_promo_gallery';
       const uploadPromises = Array.from(files).map(async (file) => {
         const reader = new FileReader();
         const base64 = await new Promise<string>((resolve) => {
@@ -141,11 +147,11 @@ export default function ManageGallery() {
 
         const compressed = await compressImage(base64, 1200, 1200, 0.6);
         
-        return addDoc(collection(db, 'store_gallery'), {
+        return addDoc(collection(db, collectionName), {
           url: compressed,
-          caption: caption || 'Lifestyle Shot',
-          category: category || null,
-          subcategory: subcategory || null,
+          caption: caption || (activeTab === 'lookbook' ? 'Lifestyle Shot' : 'Tribe Promo Highlight'),
+          category: activeTab === 'lookbook' ? (category || null) : null,
+          subcategory: activeTab === 'lookbook' ? (subcategory || null) : null,
           createdBy: user?.uid,
           createdAt: serverTimestamp()
         });
@@ -153,7 +159,7 @@ export default function ManageGallery() {
 
       await Promise.all(uploadPromises);
 
-      toast.success(`${files.length} images added to gallery`, { id: toastId });
+      toast.success(`${files.length} images added to ${activeTab === 'lookbook' ? 'lookbook' : 'tribe gallery'}`, { id: toastId });
       
       // Reset form if success
       setCaption('');
@@ -174,10 +180,14 @@ export default function ManageGallery() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!window.confirm("Remove this image from the gallery?")) return;
+    const confirmMsg = activeTab === 'lookbook' 
+      ? "Remove this image from the lookbook?" 
+      : "Remove this image from the Tribe Promos gallery?";
+    if (!window.confirm(confirmMsg)) return;
     
     try {
-      await deleteDoc(doc(db, 'store_gallery', id));
+      const collectionName = activeTab === 'lookbook' ? 'store_gallery' : 'tribe_promo_gallery';
+      await deleteDoc(doc(db, collectionName, id));
       toast.success("Image removed");
     } catch (error) {
       console.error("Delete error:", error);
@@ -199,10 +209,11 @@ export default function ManageGallery() {
     const toastId = toast.loading("Updating image details...");
 
     try {
-      await setDoc(doc(db, 'store_gallery', editingImage.id), {
-        caption: caption || 'Lifestyle Shot',
-        category: category === 'NONE' ? null : category,
-        subcategory: subcategory || null,
+      const collectionName = activeTab === 'lookbook' ? 'store_gallery' : 'tribe_promo_gallery';
+      await setDoc(doc(db, collectionName, editingImage.id), {
+        caption: caption || (activeTab === 'lookbook' ? 'Lifestyle Shot' : 'Tribe Promo Highlight'),
+        category: activeTab === 'lookbook' ? (category === 'NONE' ? null : category) : null,
+        subcategory: activeTab === 'lookbook' ? (subcategory || null) : null,
         updatedAt: serverTimestamp()
       }, { merge: true });
 
@@ -231,7 +242,7 @@ export default function ManageGallery() {
     <div className="min-h-screen bg-white pb-32">
       <div className="max-w-4xl mx-auto px-4 pt-12 pb-24">
         {/* Header */}
-        <div className="flex items-center justify-between mb-12">
+        <div className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-4">
             <button 
               onClick={() => navigate('/profile')}
@@ -241,9 +252,47 @@ export default function ManageGallery() {
             </button>
             <div>
               <h1 className="text-3xl font-black uppercase tracking-tighter text-black">Lookbook</h1>
-              <p className="text-[10px] font-bold text-black/40 uppercase tracking-widest mt-1">Manage lifestyle gallery</p>
+              <p className="text-[10px] font-bold text-black/40 uppercase tracking-widest mt-1">Manage lifestyle gallery & Tribe promo stream</p>
             </div>
           </div>
+        </div>
+
+        {/* Dynamic Tab Switcher */}
+        <div className="flex border border-black/5 mb-8 p-1 bg-black/5 rounded-2xl max-w-md select-none">
+          <button
+            onClick={() => {
+              setActiveTab('lookbook');
+              setEditingImage(null);
+              setCaption('');
+              setCategory('');
+              setSubcategory('');
+            }}
+            className={cn(
+              "flex-1 py-3 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all duration-300",
+              activeTab === 'lookbook' 
+                ? "bg-white text-black shadow-sm" 
+                : "text-black/40 hover:text-black/80"
+            )}
+          >
+            Lookbook Shots
+          </button>
+          <button
+            onClick={() => {
+              setActiveTab('tribe');
+              setEditingImage(null);
+              setCaption('');
+              setCategory('');
+              setSubcategory('');
+            }}
+            className={cn(
+              "flex-1 py-3 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all duration-300",
+              activeTab === 'tribe' 
+                ? "bg-white text-black shadow-sm" 
+                : "text-black/40 hover:text-black/80"
+            )}
+          >
+            Tribe Promo Stream
+          </button>
         </div>
 
         {/* Upload Interface */}
@@ -251,7 +300,9 @@ export default function ManageGallery() {
           <div className="flex flex-col gap-6">
             <div className="flex items-center justify-between px-2">
               <h2 className="text-sm font-black uppercase tracking-widest text-black">
-                {editingImage ? "Edit Image Details" : "Upload Lifestyle shots"}
+                {editingImage 
+                  ? "Edit Image Details" 
+                  : (activeTab === 'lookbook' ? "Upload Lifestyle shots" : "Upload Tribe Promo shots")}
               </h2>
               {editingImage && (
                 <button 
@@ -279,6 +330,7 @@ export default function ManageGallery() {
                 </div>
               </div>
             )}
+            
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
               <div className="space-y-4">
                 <Label className="text-xs font-black uppercase tracking-widest text-black/40 ml-2">Image Caption</Label>
@@ -287,44 +339,54 @@ export default function ManageGallery() {
                   <Input 
                     value={caption}
                     onChange={(e) => setCaption(e.target.value)}
-                    placeholder="e.g. Summer Collection '26"
+                    placeholder={activeTab === 'lookbook' ? "e.g. Summer Collection '26" : "e.g. Join the tribe of 10k+ stylers!"}
                     className="pl-12 h-14 rounded-2xl border-none bg-white text-black font-bold focus:ring-2 focus:ring-black/10"
                   />
                 </div>
               </div>
 
-              <div className="space-y-4">
-                <Label className="text-xs font-black uppercase tracking-widest text-black/40 ml-2">Category Link</Label>
-                <div className="relative">
-                  <LayoutGrid className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-black/20 z-10" />
-                  <Select onValueChange={setCategory} value={category}>
-                    <SelectTrigger className="pl-12 h-14 rounded-2xl border-none bg-white text-black font-bold focus:ring-2 focus:ring-black/10">
-                      <SelectValue placeholder="Link Category" />
-                    </SelectTrigger>
-                    <SelectContent className="rounded-2xl border-2 border-black/10 bg-white text-black">
-                      <SelectItem value="NONE" className="font-bold py-3 hover:bg-black/5 text-black/40">No Category</SelectItem>
-                      <SelectItem value="ALL" className="font-bold py-3 hover:bg-black/5 text-[#C5A059]">ALL</SelectItem>
-                      {allCategories.map(cat => (
-                        <SelectItem key={cat} value={cat} className="font-bold py-3 hover:bg-black/5">{cat}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+              {activeTab === 'lookbook' ? (
+                <div className="space-y-4">
+                  <Label className="text-xs font-black uppercase tracking-widest text-black/40 ml-2">Category Link</Label>
+                  <div className="relative">
+                    <LayoutGrid className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-black/20 z-10" />
+                    <Select onValueChange={setCategory} value={category}>
+                      <SelectTrigger className="pl-12 h-14 rounded-2xl border-none bg-white text-black font-bold focus:ring-2 focus:ring-black/10">
+                        <SelectValue placeholder="Link Category" />
+                      </SelectTrigger>
+                      <SelectContent className="rounded-2xl border-2 border-black/10 bg-white text-black">
+                        <SelectItem value="NONE" className="font-bold py-3 hover:bg-black/5 text-black/40">No Category</SelectItem>
+                        <SelectItem value="ALL" className="font-bold py-3 hover:bg-black/5 text-[#C5A059]">ALL</SelectItem>
+                        {allCategories.map(cat => (
+                          <SelectItem key={cat} value={cat} className="font-bold py-3 hover:bg-black/5">{cat}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <div className="flex flex-col justify-end">
+                  <div className="p-4 bg-[#C5A059]/10 rounded-2xl border border-[#C5A059]/20 text-[10px] font-bold text-[#C5A059] uppercase tracking-widest leading-relaxed">
+                    🌟 Photos added here appear in the "Join Tribe" promotional gallery on the Home screen to capture user attention instantly!
+                  </div>
+                </div>
+              )}
             </div>
 
-            <div className="space-y-4">
-              <Label className="text-xs font-black uppercase tracking-widest text-black/40 ml-2">Sub-category (Optional)</Label>
-              <div className="relative">
-                <Tags className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-black/20" />
-                <Input 
-                  value={subcategory}
-                  onChange={(e) => setSubcategory(e.target.value)}
-                  placeholder="e.g. Oversized, Streetwear"
-                  className="pl-12 h-14 rounded-2xl border-none bg-white text-black font-bold focus:ring-2 focus:ring-black/10"
-                />
+            {activeTab === 'lookbook' && (
+              <div className="space-y-4">
+                <Label className="text-xs font-black uppercase tracking-widest text-black/40 ml-2">Sub-category (Optional)</Label>
+                <div className="relative">
+                  <Tags className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-black/20" />
+                  <Input 
+                    value={subcategory}
+                    onChange={(e) => setSubcategory(e.target.value)}
+                    placeholder="e.g. Oversized, Streetwear"
+                    className="pl-12 h-14 rounded-2xl border-none bg-white text-black font-bold focus:ring-2 focus:ring-black/10"
+                  />
+                </div>
               </div>
-            </div>
+            )}
 
             <input 
               type="file" 
@@ -340,12 +402,11 @@ export default function ManageGallery() {
                 if (editingImage) {
                   handleUpdate();
                 } else if (isNative) {
-                  toast.info("Opening app lookbook picker...");
+                  toast.info("Opening app style picker...");
                   requestImagePick('gallery');
-                  // Fallback after 3s
                   setTimeout(() => {
                     if (!isUploading) {
-                      toast.info("Fallback: using local files");
+                      toast.info("Fallback: selecting local files");
                       fileInputRef.current?.click();
                     }
                   }, 3000);
@@ -359,7 +420,7 @@ export default function ManageGallery() {
               {isUploading ? (
                 <>
                   <Loader2 className="w-6 h-6 animate-spin mb-1" />
-                  {editingImage ? 'SAVING...' : 'SHARPENING...'}
+                  {editingImage ? 'SAVING...' : 'UPLOADING SHOTS...'}
                 </>
               ) : editingImage ? (
                 <>
@@ -369,7 +430,7 @@ export default function ManageGallery() {
               ) : (
                 <>
                   <Camera className="w-6 h-6 group-hover:scale-110 transition-transform" />
-                  <span>UPLOAD LIFESTYLE SHOTS</span>
+                  <span>{activeTab === 'lookbook' ? 'UPLOAD LIFESTYLE SHOTS' : 'UPLOAD TRIBE PROMO PHOTOS'}</span>
                   <span className="text-[10px] opacity-40 normal-case font-medium">Select one or more images</span>
                 </>
               )}
@@ -382,7 +443,7 @@ export default function ManageGallery() {
                   setCaption('');
                   setCategory('');
                   setSubcategory('');
-                  toast.success("Ready for new batch!");
+                  toast.success("Cleared!");
                 }}
                 className="text-[10px] font-black uppercase tracking-widest text-black/40 hover:text-black transition-colors"
               >
@@ -403,17 +464,36 @@ export default function ManageGallery() {
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.9 }}
-                className="group relative aspect-[4/5] rounded-[32px] overflow-hidden bg-[#FAF9F6] border-2 border-dashed border-black/10 hover:border-black/30 transition-all shadow-sm hover:shadow-md duration-500 p-6 flex flex-col justify-between"
+                className="group relative aspect-[4/5] rounded-[32px] overflow-hidden bg-neutral-900 border border-black/10 hover:border-black/30 transition-all shadow-md hover:shadow-xl duration-500 p-6 flex flex-col justify-between"
               >
+                {/* Background Actual Image for stunning visual appeal */}
+                <div className="absolute inset-0 z-0">
+                  <img 
+                    src={img.url} 
+                    alt={img.caption || "Gallery Preview"} 
+                    className="w-full h-full object-cover brightness-[0.55] group-hover:scale-105 transition-transform duration-700"
+                    referrerPolicy="no-referrer"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-black/50" />
+                </div>
+
                 {/* Top actions/category info */}
-                <div className="flex items-start justify-between">
+                <div className="flex items-start justify-between z-10">
                   <div className="flex flex-col gap-1">
-                    <span className="text-[9px] font-black uppercase tracking-[0.2em] bg-black/5 text-[#C5A059] px-2.5 py-1 rounded-full w-fit">
-                      {img.category && img.category !== 'NONE' ? img.category : "NO LINKED CAT"}
-                    </span>
-                    {img.subcategory && (
-                      <span className="text-[7.5px] font-bold uppercase tracking-widest text-black/40 pl-1 mt-0.5">
-                        {img.subcategory}
+                    {activeTab === 'lookbook' ? (
+                      <>
+                        <span className="text-[9px] font-black uppercase tracking-[0.2em] bg-white/25 backdrop-blur-sm text-white px-2.5 py-1 rounded-full w-fit">
+                          {img.category && img.category !== 'NONE' ? img.category : "NO LINKED CAT"}
+                        </span>
+                        {img.subcategory && (
+                          <span className="text-[7.5px] font-bold uppercase tracking-widest text-white/70 pl-1 mt-0.5">
+                            {img.subcategory}
+                          </span>
+                        )}
+                      </>
+                    ) : (
+                      <span className="text-[9px] font-black uppercase tracking-[0.2em] bg-[#FFF38C] text-black px-2.5 py-1 rounded-full w-fit shadow-sm">
+                        TRIBE PROMO
                       </span>
                     )}
                   </div>
@@ -424,8 +504,8 @@ export default function ManageGallery() {
                         e.stopPropagation();
                         handleEdit(img);
                       }}
-                      className="w-8 h-8 rounded-full bg-white text-black hover:bg-black hover:text-white flex items-center justify-center shadow-md border border-black/5 transition-all active:scale-95"
-                      title="Edit details"
+                      className="w-8 h-8 rounded-full bg-white/20 backdrop-blur-md text-white hover:bg-white hover:text-black flex items-center justify-center shadow-lg border border-white/10 transition-all active:scale-95"
+                      title="Edit caption"
                     >
                       <Type className="w-3.5 h-3.5" />
                     </button>
@@ -434,29 +514,24 @@ export default function ManageGallery() {
                         e.stopPropagation();
                         handleDelete(img.id);
                       }}
-                      className="w-8 h-8 rounded-full bg-red-500 text-white hover:bg-red-600 flex items-center justify-center shadow-md transition-all active:scale-95"
-                      title="Delete image"
+                      className="w-8 h-8 rounded-full bg-red-500 text-white hover:bg-red-600 flex items-center justify-center shadow-lg transition-all active:scale-95"
+                      title="Delete photo"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
                   </div>
                 </div>
 
-                {/* Aesthetic middle indicator representing the uploaded image */}
-                <div className="my-4 flex flex-col justify-center items-center py-5 bg-black/[0.02] rounded-2xl border border-black/5">
-                  <ImageIcon className="w-5 h-5 text-black/25 mb-1" />
-                  <span className="text-[7.5px] font-black uppercase tracking-[0.25em] text-black/30 text-center">
-                    PHOTO STREAM READY
-                  </span>
-                </div>
+                {/* Decorative Center space */}
+                <div className="my-4 flex-grow" />
 
                 {/* Bottom details description */}
-                <div>
-                  <h4 className="text-black font-black uppercase tracking-tight text-sm leading-tight mb-2">
-                    {img.caption || "Lifestyle Shot"}
+                <div className="z-10 text-left">
+                  <h4 className="text-white font-brand font-bold uppercase tracking-wide text-xs leading-snug mb-2 drop-shadow-md">
+                    {img.caption || (activeTab === 'lookbook' ? "Lifestyle Shot" : "Tribe Promo Highlight")}
                   </h4>
-                  <div className="text-[8.5px] font-black text-black/30 uppercase tracking-widest">
-                    Added {img.createdAt instanceof Date ? img.createdAt.toLocaleDateString() : 'recently'}
+                  <div className="text-[8.5px] font-black text-white/50 uppercase tracking-widest drop-shadow-sm">
+                    Added {img.createdAt instanceof Date ? img.createdAt.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : 'recently'}
                   </div>
                 </div>
               </motion.div>
@@ -467,10 +542,12 @@ export default function ManageGallery() {
         {images.length === 0 && !isFetching && (
           <div className="py-32 text-center">
             <div className="w-20 h-20 bg-black/5 rounded-full flex items-center justify-center mx-auto mb-6">
-              <ImageIcon className="w-10 h-10 text-black/10" />
+              <ImageIcon className="w-10 h-10 text-black/20" />
             </div>
-            <h3 className="text-xl font-black uppercase tracking-tighter text-black/20">The gallery is empty</h3>
-            <p className="text-black/10 text-xs font-bold uppercase tracking-widest mt-2">Start adding lifestyle shots above</p>
+            <h3 className="text-xl font-black uppercase tracking-tighter text-black/50">The stream is empty</h3>
+            <p className="text-black/30 text-[9px] font-black uppercase tracking-widest mt-2">
+              Start adding {activeTab === 'lookbook' ? 'lifestyle' : 'tribe promo'} shots above
+            </p>
           </div>
         )}
       </div>

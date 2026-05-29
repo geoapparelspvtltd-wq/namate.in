@@ -130,6 +130,14 @@ const pruneGalleryImages = (galleryList: any[]) => {
   }));
 };
 
+const DEFAULT_TRIBE_IMAGES = [
+  { id: 'def1', url: 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=600&q=80', caption: 'The Minimalist Vibe' },
+  { id: 'def2', url: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&w=600&q=80', caption: 'Streetwear Pioneers' },
+  { id: 'def3', url: 'https://images.unsplash.com/photo-1496345875659-11f7dd282d1d?auto=format&fit=crop&w=600&q=80', caption: 'Casual Aesthetic' },
+  { id: 'def4', url: 'https://images.unsplash.com/photo-1507679799987-c73779587ccf?auto=format&fit=crop&w=600&q=80', caption: 'Classic Tailoring' },
+  { id: 'def5', url: 'https://images.unsplash.com/photo-1529139574466-a303027c1d8b?auto=format&fit=crop&w=600&q=80', caption: 'Elevated Loungewear' }
+];
+
 const toTitleCase = (str: string): string => {
   if (!str) return '';
   return str
@@ -144,6 +152,7 @@ export default function Home() {
   const { role, user } = useAuth();
   const [products, setProducts] = useState<any[]>([]);
   const [galleryImages, setGalleryImages] = useState<any[]>([]);
+  const [tribeGallery, setTribeGallery] = useState<any[]>([]);
   const [categoryConfigs, setCategoryConfigs] = useState<any[]>([]);
   const [allCategoryConfigs, setAllCategoryConfigs] = useState<any[]>([]);
   const [subcategoryConfigs, setSubcategoryConfigs] = useState<any[]>([]);
@@ -249,6 +258,16 @@ export default function Home() {
       setGalleryImages(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
     }, (error) => {
       console.error("Gallery Sync Error:", error);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    const q = query(collection(db, 'tribe_promo_gallery'), orderBy('createdAt', 'desc'), limit(12));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      setTribeGallery(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    }, (error) => {
+      console.error("Tribe Gallery Sync Error:", error);
     });
     return () => unsubscribe();
   }, []);
@@ -657,37 +676,6 @@ export default function Home() {
             </div>
           </section>
 
-          {/* Curated Spotlight: CRAFTED FOR YOU (Dynamic lookbook banner) */}
-          <section className="mb-12 px-4">
-            <div className="relative rounded-2xl overflow-hidden h-36 border border-neutral-200/25 shadow-sm">
-              <div className="absolute inset-0">
-                <img 
-                  src={secondGallery.imageUrl || "https://images.unsplash.com/photo-1576016770956-debb63d900bb?auto=format&fit=crop&w=800&q=85"} 
-                  alt={secondGallery.title || "Spotlight texture"} 
-                  className="w-full h-full object-cover brightness-[0.9] saturate-[0.8]"
-                />
-                <div className="absolute inset-0 bg-black/15" />
-              </div>
-              <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-4 space-y-1 z-10">
-                <span className="text-[8px] font-black tracking-[0.3em] text-white/70 uppercase">
-                  {secondGallery.title || 'CRAFTED FOR YOU'}
-                </span>
-                <p className="font-serif italic text-xs text-white/95 text-shadow-sm">
-                  {secondGallery.subtitle || 'Timeless pieces. Naturally made.'}
-                </p>
-                <div className="pt-2">
-                  <Link 
-                    to={secondGallery.linkType === 'offer' && secondGallery.offerId ? `/shop?offerId=${secondGallery.offerId}` : '/shop'}
-                    onClick={() => triggerHaptic('light')}
-                    className="inline-block bg-white hover:bg-neutral-100 text-[#111] text-[7.5px] font-black uppercase tracking-widest px-6 py-2 rounded-sm transition-all active:scale-95"
-                  >
-                    {secondGallery.buttonText || 'SHOP COLLECTION'}
-                  </Link>
-                </div>
-              </div>
-            </div>
-          </section>
-
           {/* BEST SELLERS SECTION */}
           <section className="mb-12">
             <div className="flex items-center justify-between mb-4 px-4">
@@ -726,6 +714,40 @@ export default function Home() {
                 )}
               </div>
             )}
+          </section>
+
+          {/* Curated Spotlight / Offers Card (Moved under Best Sellers and made BIG photo size) */}
+          <section className="mb-14 px-4">
+            <div className="relative rounded-3xl overflow-hidden h-[450px] md:h-[500px] border border-neutral-200/25 shadow-md">
+              <div className="absolute inset-0">
+                <img 
+                  src={secondGallery.imageUrl || "https://images.unsplash.com/photo-1576016770956-debb63d900bb?auto=format&fit=crop&w=800&q=85"} 
+                  alt={secondGallery.title || "Spotlight texture"} 
+                  className="w-full h-full object-cover select-none transition-transform duration-700 hover:scale-105"
+                  referrerPolicy="no-referrer"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/35 to-transparent" />
+              </div>
+              <div className="absolute inset-x-0 bottom-0 flex flex-col items-center justify-end text-center p-8 pb-10 space-y-3.5 z-10">
+                <span className="text-[9px] font-black tracking-[0.4em] text-[#C5A059] uppercase border-b border-[#C5A059]/30 pb-1.5 mb-1">
+                  {secondGallery.title || 'CRAFTED FOR YOU'}
+                </span>
+                <h3 className="font-serif italic text-[22px] text-white font-medium max-w-[280px] leading-relaxed drop-shadow-md">
+                  {secondGallery.subtitle || 'Timeless pieces. Naturally made.'}
+                </h3>
+                <div className="pt-2">
+                  <a 
+                    href={/iPhone|iPad|iPod/i.test(navigator.userAgent) ? 'https://apps.apple.com' : 'https://play.google.com'}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={() => triggerHaptic('light')}
+                    className="inline-block bg-[#C5A059] hover:bg-[#b08e50] text-black font-brand font-bold text-[9.5px] uppercase tracking-[0.25em] px-8 py-4 rounded-full transition-all duration-300 shadow-xl active:scale-95"
+                  >
+                    {secondGallery.buttonText || 'DOWNLOAD APP'}
+                  </a>
+                </div>
+              </div>
+            </div>
           </section>
 
           {/* Core Perks row: 4 neat minimalist blocks matching image */}
@@ -774,6 +796,83 @@ export default function Home() {
                   EASY RETURNS
                 </span>
               </div>
+            </div>
+          </section>
+
+          {/* Join Tribe Promotion Gallery Section */}
+          <section className="mb-14">
+            <div className="px-4 mb-5 flex flex-col sm:flex-row sm:items-end justify-between gap-2">
+              <div>
+                <div className="flex items-center gap-2 mb-1.5 select-none">
+                  <span className="text-[9px] font-black uppercase tracking-[0.2em] bg-amber-100 text-[#C5A059] px-2.5 py-1 rounded-full w-fit">
+                    Join Tribe
+                  </span>
+                  <span className="text-[8px] font-black uppercase tracking-[0.2em] bg-black text-white px-2.5 py-1 rounded-full w-fit">
+                    ₹299/YR
+                  </span>
+                </div>
+                <h2 className="text-2xl font-brand font-semibold tracking-tight text-neutral-900 uppercase">
+                  Our Community Aesthetic
+                </h2>
+                <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest mt-1">
+                  Connect & vibe with the Geometric Crew 
+                </p>
+              </div>
+              <Link 
+                to="/tribe"
+                className="text-xs font-black uppercase tracking-wider text-[#C5A059] hover:text-black hover:underline transition-all"
+              >
+                Join Tribe Now &rarr;
+              </Link>
+            </div>
+
+            {/* Horizontally scrolling gallery stream */}
+            <div className="flex gap-4 overflow-x-auto pb-6 no-scrollbar snap-x snap-mandatory px-4">
+              {(tribeGallery.length > 0 ? tribeGallery : DEFAULT_TRIBE_IMAGES).map((img) => (
+                <div 
+                  key={img.id} 
+                  className="min-w-[220px] w-[220px] aspect-[4/5] snap-start bg-neutral-900 rounded-[32px] p-4 relative shrink-0 overflow-hidden group shadow-md hover:shadow-lg transition-transform duration-500"
+                >
+                  <img 
+                    src={img.url} 
+                    alt={img.caption || "Community highlight"} 
+                    className="absolute inset-0 w-full h-full object-cover brightness-[0.6] group-hover:scale-105 transition-transform duration-700"
+                    referrerPolicy="no-referrer"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent" />
+                  
+                  {/* Glass Card Caption Badge */}
+                  <div className="absolute bottom-4 left-4 right-4 bg-white/10 backdrop-blur-md p-3 rounded-2xl border border-white/10 text-left">
+                    <p className="text-[8px] font-black uppercase tracking-widest text-amber-300 mb-0.5">
+                      TRIBE VIBE
+                    </p>
+                    <p className="text-[10px] font-bold uppercase tracking-tight text-white leading-tight truncate">
+                      {img.caption || "Lifestyle Shot"}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Golden Promotion Feature Card with real member actions on click */}
+            <div className="mx-4 mt-2 bg-[#FAF8F5] text-black p-8 rounded-[40px] border-2 border-[#C5A059]/30 relative overflow-hidden flex flex-col items-center text-center shadow-sm">
+              <div className="absolute -right-16 -top-16 w-36 h-36 bg-[#C5A059]/10 rounded-full blur-3xl" />
+              <div className="absolute -left-16 -bottom-16 w-36 h-36 bg-[#C5A059]/10 rounded-full blur-3xl" />
+              
+              <h3 className="text-xl font-heading font-black text-black uppercase tracking-tight mb-2">
+                Save an Extra 10% on Every Single Item
+              </h3>
+              <p className="text-neutral-500 font-medium text-xs max-w-md mx-auto mb-6 leading-relaxed">
+                Tribe members skip standard shipping fees, receive immediate 24h Early Access to all drop collections, and score limited-edition designs.
+              </p>
+              
+              <Link 
+                to="/tribe"
+                onClick={() => triggerHaptic('medium')}
+                className="bg-black text-white font-brand font-black text-xs uppercase tracking-[0.2em] px-10 py-4 rounded-full hover:scale-105 hover:bg-[#C5A059] hover:text-black transition-all shadow-md active:scale-95"
+              >
+                JOIN THE TRIBE &bull; ₹299/YR
+              </Link>
             </div>
           </section>
 

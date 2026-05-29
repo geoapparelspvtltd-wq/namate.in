@@ -42,7 +42,9 @@ import {
   doc, 
   onSnapshot, 
   setDoc,
-  updateDoc
+  updateDoc,
+  where,
+  limit
 } from 'firebase/firestore';
 import { db, auth as firebaseAuth } from '@/lib/firebase';
 import { toast } from 'sonner';
@@ -129,8 +131,13 @@ export default function ManageOffers() {
       toast.error("Failed to load offer campaigns");
     });
 
-    // 2. Listen to Products
-    const productsUnsub = onSnapshot(collection(db, 'products'), (snapshot) => {
+    // 2. Listen to Products (safely query-limited and filtered by category to handle 100,000+ products instantly)
+    const productConstraints = [];
+    if (categoryFilter && categoryFilter !== 'ALL') {
+      productConstraints.push(where('category', '==', categoryFilter));
+    }
+    productConstraints.push(limit(150));
+    const productsUnsub = onSnapshot(query(collection(db, 'products'), ...productConstraints), (snapshot) => {
       const dbProducts = snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
@@ -150,7 +157,7 @@ export default function ManageOffers() {
       productsUnsub();
       bannerUnsub();
     };
-  }, [isAdmin, loading]);
+  }, [isAdmin, loading, categoryFilter]);
 
   // Handle Native image success for iOS/Android
   useEffect(() => {

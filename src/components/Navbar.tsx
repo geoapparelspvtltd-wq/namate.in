@@ -109,10 +109,13 @@ const Navbar = memo(() => {
 
   return (
     <>
-      <nav className={cn(
-        "fixed top-0 left-0 right-0 md:left-1/2 md:-translate-x-1/2 z-[100] w-full md:max-w-[430px] transition-all duration-300 bg-transparent border-none",
-        scrolled ? "py-2.5" : "py-4"
-      )}>
+      <nav 
+        className={cn(
+          "fixed left-0 right-0 md:left-1/2 md:-translate-x-1/2 z-[100] w-full md:max-w-[430px] transition-all duration-300 bg-transparent border-none",
+          scrolled ? "py-2.5" : "py-4"
+        )}
+        style={{ top: 'var(--app-banner-height, 0px)' }}
+      >
         <div className="max-w-7xl mx-auto px-4 h-12 flex items-center justify-between">
           
           {/* Left Action Button */}

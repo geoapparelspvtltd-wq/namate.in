@@ -38,6 +38,7 @@ import SplashScreen from './components/SplashScreen';
 import ScrollToTop from './components/ScrollToTop';
 import { NativeAppBanner } from './components/NativeAppBanner';
 import { NotificationBridge } from './components/NotificationBridge';
+import { PullToRefresh } from './components/PullToRefresh';
 import ErrorBoundary from './components/ErrorBoundary';
 import { cn } from './lib/utils';
 import { db } from './lib/firebase';
@@ -159,23 +160,8 @@ export default function App() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    async function testConnection() {
-      // Small delay to allow Firebase to initialize fully
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      try {
-        console.log("Testing Firestore connection...");
-        // Use a dummy path to test connection
-        await getDocFromServer(doc(db, '_test_connection_', 'init'));
-        console.log("Firestore connection successful.");
-      } catch (error: any) {
-        if (error.message?.includes('the client is offline')) {
-          console.error("Firestore Error: The client is offline. This usually means the 'firestoreDatabaseId' in firebase-applet-config.json is incorrect.");
-        } else {
-          console.log("Firestore connection test completed (ignoring non-connectivity errors).");
-        }
-      }
-    }
-    testConnection();
+    // Immediate and fast app load
+    console.log("App mounted. Hotboot ready.");
   }, []);
 
   return (
@@ -234,7 +220,7 @@ function AppContent({ isLoading, setIsLoading }: { isLoading: boolean, setIsLoad
                   "min-h-screen flex flex-col font-sans selection:bg-primary selection:text-primary-foreground relative overflow-hidden transition-opacity duration-300 w-full md:max-w-[430px] shadow-none md:shadow-[0_0_100px_rgba(0,0,0,0.08)] md:border-x md:border-black/[0.04]",
                   showSplash ? "opacity-0" : "opacity-100"
                 )}
-                style={{ backgroundColor: '#F7F4F0' }}
+                style={{ backgroundColor: '#F7F4F0', paddingTop: 'var(--app-banner-height, 0px)' }}
               >
                 {/* Subtle natural linen grain feel */}
                 <div className="absolute inset-0 pointer-events-none opacity-[0.015] bg-[radial-gradient(#111_1px,transparent_1px)] [background-size:12px_12px] z-0" />
@@ -243,9 +229,11 @@ function AppContent({ isLoading, setIsLoading }: { isLoading: boolean, setIsLoad
                 <NativeAppBanner />
                 <NotificationBridge />
 
-                <main className="flex-grow relative z-10 pb-32">
-                  <AnimatedRoutes />
-                </main>
+                <PullToRefresh>
+                  <main className="flex-grow relative z-10 pb-32">
+                    <AnimatedRoutes />
+                  </main>
+                </PullToRefresh>
                 <FloatingCart />
                 <BottomNav />
                 <Toaster position="top-center" expand={false} richColors />
