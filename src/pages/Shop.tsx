@@ -106,6 +106,31 @@ const getProductExtraDetails = (p: any) => {
   return { pattern, fabric, discount, deliveryDays };
 };
 
+const updateShopPageCache = (updates: { products?: any[]; configs?: any[] }) => {
+  try {
+    const cachedStr = safeLocalStorage.getItem('shop_page_cache');
+    let currentData: any = { products: [], configs: [] };
+    if (cachedStr) {
+      try {
+        const parsed = JSON.parse(cachedStr);
+        if (parsed) {
+          if (Array.isArray(parsed.products)) currentData.products = parsed.products;
+          if (Array.isArray(parsed.configs)) currentData.configs = parsed.configs;
+        }
+      } catch (e) {}
+    }
+    
+    const newData = {
+      products: updates.products !== undefined ? updates.products : currentData.products,
+      configs: updates.configs !== undefined ? updates.configs : currentData.configs
+    };
+    
+    safeLocalStorage.setItem('shop_page_cache', JSON.stringify(newData));
+  } catch (error) {
+    console.warn("Error updating shop page cache:", error);
+  }
+};
+
 export default function Shop() {
   const { searchQuery, setSearchQuery } = useSearch();
   const { role, user } = useAuth();
@@ -115,9 +140,22 @@ export default function Shop() {
   const activeOfferId = searchParams.get('offerId');
   const [activeOffer, setActiveOffer] = useState<any>(null);
   
-  const [products, setProducts] = useState<any[]>([]);
-  const [categoryConfigs, setCategoryConfigs] = useState<any[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  // Load shop page cache synchronously
+  const cachedShopData = useMemo(() => {
+    try {
+      const cached = safeLocalStorage.getItem('shop_page_cache');
+      if (cached) {
+        return JSON.parse(cached);
+      }
+    } catch (e) {
+      console.warn("Error parsing shop page cache on startup", e);
+    }
+    return null;
+  }, []);
+
+  const [products, setProducts] = useState<any[]>(() => cachedShopData?.products || []);
+  const [categoryConfigs, setCategoryConfigs] = useState<any[]>(() => cachedShopData?.configs || []);
+  const [isLoading, setIsLoading] = useState(() => !(cachedShopData?.products?.length > 0));
   const [lastVisibleDoc, setLastVisibleDoc] = useState<any>(null);
   const [hasMore, setHasMore] = useState(true);
   const [isFetchingMore, setIsFetchingMore] = useState(false);
@@ -192,21 +230,6 @@ export default function Shop() {
     );
   }, [products]);
 
-  // Superfast initial load from cache
-  useEffect(() => {
-    const cachedData = safeLocalStorage.getItem('shop_page_cache');
-    if (cachedData) {
-      try {
-        const { products: cachedProducts, configs: cachedConfigs } = JSON.parse(cachedData);
-        if (cachedProducts) setProducts(cachedProducts);
-        if (cachedConfigs) setCategoryConfigs(cachedConfigs);
-        setIsLoading(false);
-      } catch (error) {
-        console.error("Cache parsing error in Shop.tsx:", error);
-      }
-    }
-  }, []);
-
   // Fetch category configs once on mount
   useEffect(() => {
     const fetchConfigs = async () => {
@@ -215,15 +238,7 @@ export default function Shop() {
         const configs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         setCategoryConfigs(configs);
         
-        try {
-          const dataToCache = {
-            products: [],
-            configs: configs
-          };
-          safeLocalStorage.setItem('shop_page_cache', JSON.stringify(dataToCache));
-        } catch (cacheErr) {
-          console.warn("Storage quota exceeded on shop cache configs:", cacheErr);
-        }
+        updateShopPageCache({ configs });
       } catch (error) {
         console.error("Error fetching configs:", error);
       }
@@ -235,7 +250,11 @@ export default function Shop() {
   useEffect(() => {
     let active = true;
     const fetchProducts = async () => {
-      setIsLoading(true);
+      // Avoid showing screen blocker if we're on the initial general shop view and have products loaded from cache
+      const isInitialGeneralLoad = !activeCategory && !activeSubcategory && !activeOfferId;
+      if (products.length === 0 || !isInitialGeneralLoad) {
+        setIsLoading(true);
+      }
       try {
         let constraints: any[] = [];
         
@@ -292,11 +311,7 @@ export default function Shop() {
               discount: p.discount || 0,
               rating: p.rating || 0
             }));
-            const dataToCache = {
-              products: prunedProducts,
-              configs: categoryConfigs
-            };
-            safeLocalStorage.setItem('shop_page_cache', JSON.stringify(dataToCache));
+            updateShopPageCache({ products: prunedProducts });
           } catch (cacheErr) {}
         }
       } catch (error) {
@@ -1170,7 +1185,22 @@ export default function Shop() {
             )}
 
             {/* Subcategory Grouped View (If Category selected) or Flat Grid (If Subcategory selected) */}
-            {activeCategory && !activeSubcategory && !searchQuery ? (
+            {isLoading ? (
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-0 border-t border-[#e5e5e5] [&>*:nth-child(2n)_.group]:border-r-0 md:[&>*:nth-child(2n)_.group]:border-r-[0.5px] md:[&>*:nth-child(3n)_.group]:border-r-0 lg:[&>*:nth-child(3n)_.group]:border-r-[0.5px] lg:[&>*:nth-child(4n)_.group]:border-r-0 animate-fade-in">
+                {[...Array(8)].map((_, index) => (
+                  <div 
+                    key={index} 
+                    className="bg-white p-4 border-b-[0.5px] border-r-[0.5px] border-[#e5e5e5] flex flex-col justify-start select-none
+                      [&:nth-child(2n)]:border-r-0 md:[&:nth-child(2n)]:border-r-[0.5px] md:[&:nth-child(3n)]:border-r-0 lg:[&:nth-child(3n)]:border-r-[0.5px] lg:[&:nth-child(4n)]:border-r-0"
+                  >
+                    <div className="aspect-[3/4] w-full bg-neutral-100 animate-pulse rounded-2xl mb-4" />
+                    <div className="h-3 w-1/3 bg-neutral-100 animate-pulse rounded mb-2" />
+                    <div className="h-4 w-3/4 bg-neutral-100 animate-pulse rounded mb-2.5" />
+                    <div className="h-4 w-1/4 bg-neutral-100 animate-pulse rounded" />
+                  </div>
+                ))}
+              </div>
+            ) : activeCategory && !activeSubcategory && !searchQuery ? (
               <div className="space-y-16">
                 {productsBySubcategory.map((group) => (
                   <section key={group.title} className="relative">
@@ -1220,7 +1250,7 @@ export default function Shop() {
             )}
 
             {/* Dynamic Load More Button */}
-            {hasMore && (
+            {hasMore && !isLoading && (
               <div className="flex justify-center my-10 px-4">
                 <Button 
                   onClick={handleLoadMore}
@@ -1232,7 +1262,7 @@ export default function Shop() {
               </div>
             )}
 
-            {filteredProducts.length > 0 && (activeCategory || activeSubcategory || searchQuery) && (
+            {filteredProducts.length > 0 && !isLoading && (activeCategory || activeSubcategory || searchQuery) && (
               <EndOfFeedSuggestions 
                 currentCategory={activeCategory}
                 currentSubcategory={activeSubcategory}
@@ -1243,7 +1273,7 @@ export default function Shop() {
               />
             )}
 
-            {filteredProducts.length === 0 && (
+            {filteredProducts.length === 0 && !isLoading && (
               <motion.div 
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
@@ -1320,8 +1350,8 @@ export default function Shop() {
                 <span className="w-1 h-1 bg-[#C5A059] rounded-full animate-ping" />
               )}
             </SheetTrigger>
-            <SheetContent side="bottom" className="h-[85vh] rounded-t-[40px] px-8 bg-white border-black/10 overflow-y-auto no-scrollbar">
-              <div className="mt-8 pb-32">
+            <SheetContent side="bottom" className="h-[85vh] rounded-t-[40px] px-0 bg-white border-black/10 flex flex-col overflow-hidden">
+              <div className="mt-8 px-8 flex-shrink-0">
                 <div className="w-12 h-1.5 bg-black/10 rounded-full mx-auto mb-8" />
                 <div className="flex items-center justify-between mb-8">
                   <h2 className="text-2xl font-black uppercase tracking-tighter text-black">Filter Your Vibe</h2>
@@ -1332,17 +1362,19 @@ export default function Shop() {
                     <ChevronDown className="w-6 h-6" />
                   </button>
                 </div>
-                
+              </div>
+              
+              <div className="flex-1 overflow-y-auto no-scrollbar px-8 pb-32">
                 <FilterContent />
-                
-                <div className="fixed bottom-0 left-0 right-0 p-8 bg-gradient-to-t from-white via-white to-transparent pt-12">
-                  <Button 
-                    onClick={() => setIsFilterOpen(false)}
-                    className="w-full bg-black text-white font-black py-7 rounded-2xl shadow-2xl shadow-black/20 hover:bg-[#C5A059] hover:text-black active:scale-[0.98] transition-all"
-                  >
-                    VIEW {filteredProducts.length} PRODUCTS
-                  </Button>
-                </div>
+              </div>
+              
+              <div className="absolute bottom-0 left-0 right-0 p-8 bg-gradient-to-t from-white via-white to-transparent pt-12 z-20">
+                <Button 
+                  onClick={() => setIsFilterOpen(false)}
+                  className="w-full bg-black text-white font-black py-7 rounded-2xl shadow-2xl shadow-black/20 hover:bg-[#C5A059] hover:text-[#111] active:scale-[0.98] transition-all"
+                >
+                  VIEW {filteredProducts.length} PRODUCTS
+                </Button>
               </div>
             </SheetContent>
           </Sheet>

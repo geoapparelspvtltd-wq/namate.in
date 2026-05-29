@@ -110,8 +110,8 @@ const CategoryProductCard = ({ product }: { product: any }) => {
       <div className="relative aspect-[3/4] bg-transparent overflow-hidden group-card">
         <Link to={`/product/${product.id}`} className="block h-full">
            <img 
-            src={product.images?.[0] || product.image} 
-            alt={product.name} 
+            src={product.images?.[0] || product.image || "https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=600&q=80"} 
+            alt={product.name} onError={(e) => { (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=600&q=80"; }} 
             className="w-full h-full object-contain transition-transform duration-700 group-card-hover:scale-110"
             referrerPolicy="no-referrer"
           />

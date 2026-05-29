@@ -150,15 +150,29 @@ const toTitleCase = (str: string): string => {
 export default function Home() {
   const { searchQuery, setSearchQuery } = useSearch();
   const { role, user } = useAuth();
-  const [products, setProducts] = useState<any[]>([]);
-  const [galleryImages, setGalleryImages] = useState<any[]>([]);
+
+  // Load home data cache synchronously for instantaneous rendering without layout shift or loaders
+  const cachedHomeData = useMemo(() => {
+    try {
+      const cached = safeLocalStorage.getItem('home_data_cache');
+      if (cached) {
+        return JSON.parse(cached);
+      }
+    } catch (e) {
+      console.warn("Error parsing home page cache on startup", e);
+    }
+    return null;
+  }, []);
+
+  const [products, setProducts] = useState<any[]>(() => cachedHomeData?.products || []);
+  const [galleryImages, setGalleryImages] = useState<any[]>(() => cachedHomeData?.gallery || []);
   const [tribeGallery, setTribeGallery] = useState<any[]>([]);
   const [categoryConfigs, setCategoryConfigs] = useState<any[]>([]);
-  const [allCategoryConfigs, setAllCategoryConfigs] = useState<any[]>([]);
-  const [subcategoryConfigs, setSubcategoryConfigs] = useState<any[]>([]);
+  const [allCategoryConfigs, setAllCategoryConfigs] = useState<any[]>(() => cachedHomeData?.catConfigs || []);
+  const [subcategoryConfigs, setSubcategoryConfigs] = useState<any[]>(() => cachedHomeData?.subConfigs || []);
   const [currentGalleryIndex, setCurrentGalleryIndex] = useState(0);
   const [isAutoPlay, setIsAutoPlay] = useState(true);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(() => !(cachedHomeData?.products?.length > 0));
   const { wishlist } = useWishlist();
   const [secondGallery, setSecondGallery] = useState<any>({
     imageUrl: "https://images.unsplash.com/photo-1576016770956-debb63d900bb?auto=format&fit=crop&w=800&q=85",
@@ -202,23 +216,6 @@ export default function Home() {
       }
     }
   }, [currentGalleryIndex, galleryImages]);
-
-  // Load cache on mount for superfast initial render
-  useEffect(() => {
-    const cachedData = safeLocalStorage.getItem('home_data_cache');
-    if (cachedData) {
-      try {
-        const { gallery, products, subConfigs, catConfigs } = JSON.parse(cachedData);
-        if (gallery) setGalleryImages(gallery);
-        if (products) setProducts(products);
-        if (subConfigs) setSubcategoryConfigs(subConfigs);
-        if (catConfigs) setAllCategoryConfigs(catConfigs);
-        setIsLoading(false);
-      } catch (e) {
-        console.error("Cache parsing error", e);
-      }
-    }
-  }, []);
 
   // Sync cache when data changes with pruned structures to prevent QuotaExceededErrors
   useEffect(() => {
@@ -615,7 +612,7 @@ export default function Home() {
               }}
               className="grid grid-cols-2 md:grid-cols-4 gap-0 border-t border-[#e5e5e5] [&>*:nth-child(2n)_.group]:border-r-0 md:[&>*:nth-child(2n)_.group]:border-r-[0.5px] md:[&>*:nth-child(4n)_.group]:border-r-0"
             >
-              {filteredAndSortedProducts.map((product) => (
+              {filteredAndSortedProducts.map((product, index) => (
                 <motion.div
                   key={product.id}
                   variants={{
@@ -624,7 +621,7 @@ export default function Home() {
                   }}
                   className="bg-white"
                 >
-                  <ProductCard {...product} />
+                  <ProductCard {...product} priority={index < 4} />
                 </motion.div>
               ))}
             </motion.div>
@@ -668,9 +665,9 @@ export default function Home() {
 
             {/* Scrollable list of first arrivals */}
             <div className="flex gap-4 overflow-x-auto pb-4 no-scrollbar snap-x snap-mandatory px-4">
-              {products.slice(0, 6).map((product) => (
+              {products.slice(0, 6).map((product, index) => (
                 <div key={product.id} className="min-w-[190px] w-[190px] snap-start bg-white rounded-2xl p-2 border border-neutral-200/40 shadow-sm relative shrink-0">
-                  <ProductCard {...product} />
+                  <ProductCard {...product} priority={index < 3} />
                 </div>
               ))}
             </div>
@@ -689,9 +686,9 @@ export default function Home() {
 
             {bestSellers.length > 0 ? (
               <div className="flex gap-4 overflow-x-auto pb-4 no-scrollbar snap-x snap-mandatory px-4">
-                {bestSellers.map((product) => (
+                {bestSellers.map((product, index) => (
                   <div key={product.id} className="min-w-[190px] w-[190px] snap-start bg-white rounded-2xl p-2 border border-neutral-200/40 shadow-sm relative shrink-0">
-                    <ProductCard {...product} />
+                    <ProductCard {...product} priority={index < 3} />
                   </div>
                 ))}
               </div>

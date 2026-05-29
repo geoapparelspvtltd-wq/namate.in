@@ -1,6 +1,6 @@
 import React, { useRef, useState, memo, useEffect, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Heart, ShoppingCart, Plus, Play, Trash2, Share2, Crown, Star, Sparkles, Wand2 } from 'lucide-react';
+import { Heart, ShoppingCart, Plus, Play, Trash2, Share2, Crown, Star, Sparkles, Wand2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { motion, AnimatePresence, useScroll, useTransform } from 'motion/react';
@@ -89,13 +89,39 @@ const ProductCard = memo(({ id, name, price, originalPrice, image, images = [], 
   }, []);
 
   useEffect(() => {
-    if (isInView && (!props.media || props.media.length === 0) && id) {
+    if (isInView && id) {
       const fetchMediaSub = async () => {
         try {
           const { collection, query, orderBy, getDocs } = await import('firebase/firestore');
-          const mediaSnap = await getDocs(query(collection(db, 'products', id, 'media'), orderBy('createdAt', 'asc')));
-          if (!mediaSnap.empty) {
-            setFetchedMedia(mediaSnap.docs.map(d => d.data()));
+          
+          // Fetch media subcollection
+          const mediaQuery = query(collection(db, 'products', id, 'media'), orderBy('createdAt', 'asc'));
+          const mediaSnap = await getDocs(mediaQuery);
+          const mediaList = mediaSnap.empty ? [] : mediaSnap.docs.map(d => d.data());
+
+          // Fetch gallery subcollection
+          let galleryList: any[] = [];
+          try {
+            const galleryQuery = query(collection(db, 'products', id, 'gallery'), orderBy('createdAt', 'asc'));
+            const gallerySnap = await getDocs(galleryQuery);
+            galleryList = gallerySnap.empty ? [] : gallerySnap.docs.map(d => d.data());
+          } catch (gErr) {
+            console.warn("Could not fetch gallery for product", id, gErr);
+          }
+
+          // Merge both media and gallery
+          const combined = [...mediaList, ...galleryList];
+          const seenUrls = new Set<string>();
+          const deduped: any[] = [];
+          for (const item of combined) {
+            if (item && item.url && !seenUrls.has(item.url)) {
+              seenUrls.add(item.url);
+              deduped.push(item);
+            }
+          }
+
+          if (deduped.length > 0) {
+            setFetchedMedia(deduped);
           }
         } catch (error) {
           console.error("Error fetching media sub-collection:", error);
@@ -103,50 +129,71 @@ const ProductCard = memo(({ id, name, price, originalPrice, image, images = [], 
       };
       fetchMediaSub();
     }
-  }, [id, props.media, isInView]);
+  }, [id, isInView]);
 
   const displayMedia = useMemo(() => {
-    const sourceMedia = props.media && props.media.length > 0 ? props.media : fetchedMedia;
-    
-    // If unified media exists, use it as is (respecting user order)
-    if (sourceMedia && Array.isArray(sourceMedia) && sourceMedia.length > 0) {
-      return sourceMedia.map((m: any) => {
-        const youtubeUrl = m.type === 'video' ? getYoutubeEmbedUrl(m.url) : null;
-        return {
-          type: youtubeUrl ? 'youtube' : m.type,
-          url: youtubeUrl || m.url
-        };
+    const combinedList: { type: 'video' | 'youtube' | 'image'; url: string }[] = [];
+    const seenUrls = new Set<string>();
+
+    // 1. Add props.media if present
+    if (props.media && Array.isArray(props.media)) {
+      props.media.forEach((m: any) => {
+        if (m && m.url) {
+          const youtubeUrl = m.type === 'video' ? getYoutubeEmbedUrl(m.url) : null;
+          const type = youtubeUrl ? 'youtube' : m.type;
+          const url = youtubeUrl || m.url;
+          if (!seenUrls.has(url)) {
+            seenUrls.add(url);
+            combinedList.push({ type, url });
+          }
+        }
       });
     }
 
-    const items: { type: 'video' | 'youtube' | 'image', url: string }[] = [];
-    
-    // Add videos
+    // 2. Add fetchedMedia
+    if (fetchedMedia && Array.isArray(fetchedMedia)) {
+      fetchedMedia.forEach((m: any) => {
+        if (m && m.url) {
+          const youtubeUrl = m.type === 'video' ? getYoutubeEmbedUrl(m.url) : null;
+          const type = youtubeUrl ? 'youtube' : m.type;
+          const url = youtubeUrl || m.url;
+          if (!seenUrls.has(url)) {
+            seenUrls.add(url);
+            combinedList.push({ type, url });
+          }
+        }
+      });
+    }
+
+    // 3. Add videoUrls / videoUrl
     const vUrls = (videoUrls && videoUrls.length > 0) ? videoUrls : (videoUrl ? [videoUrl] : []);
     vUrls.forEach(url => {
       if (url && typeof url === 'string') {
         const youtubeUrl = getYoutubeEmbedUrl(url);
-        if (youtubeUrl) {
-          items.push({ type: 'youtube', url: youtubeUrl });
-        } else {
-          items.push({ type: 'video', url });
+        const type = youtubeUrl ? 'youtube' : 'video';
+        const finalUrl = youtubeUrl || url;
+        if (!seenUrls.has(finalUrl)) {
+          seenUrls.add(finalUrl);
+          combinedList.push({ type, url: finalUrl });
         }
       }
     });
 
-    // Add images
-    const imgs = (images && images.length > 0) ? images : [image];
+    // 4. Add images / image prop
+    const imgs = (images && images.length > 0) ? images : (image ? [image] : []);
     imgs.forEach(url => {
-      if (url && typeof url === 'string') {
-        items.push({ type: 'image', url });
+      if (url && typeof url === 'string' && !seenUrls.has(url)) {
+        seenUrls.add(url);
+        combinedList.push({ type: 'image', url });
       }
     });
 
-    if (items.length === 0) {
-      items.push({ type: 'image', url: 'https://picsum.photos/seed/fashion/600/800' });
+    // Fallback if empty
+    if (combinedList.length === 0) {
+      combinedList.push({ type: 'image', url: 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=600&q=80' });
     }
-    
-    return items;
+
+    return combinedList;
   }, [props.media, fetchedMedia, videoUrls, videoUrl, images, image]);
 
   useEffect(() => {
@@ -158,7 +205,7 @@ const ProductCard = memo(({ id, name, price, originalPrice, image, images = [], 
     e.stopPropagation();
     const wasInWishlist = isInWishlist(id);
     triggerHaptic(wasInWishlist ? 'light' : 'success');
-    toggleWishlist({ id, name, price, image });
+    toggleWishlist({ id, name, price, image, images } as any);
     if (!wasInWishlist) {
       setShowFloatingHeart(true);
     }
@@ -230,6 +277,24 @@ const ProductCard = memo(({ id, name, price, originalPrice, image, images = [], 
     }
   };
 
+  const scrollPrev = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (scrollRef.current) {
+      const width = scrollRef.current.offsetWidth;
+      scrollRef.current.scrollBy({ left: -width, behavior: 'smooth' });
+    }
+  };
+
+  const scrollNext = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (scrollRef.current) {
+      const width = scrollRef.current.offsetWidth;
+      scrollRef.current.scrollBy({ left: width, behavior: 'smooth' });
+    }
+  };
+
   if (isDeleting) return null;
 
   return (
@@ -282,11 +347,34 @@ const ProductCard = memo(({ id, name, price, originalPrice, image, images = [], 
                   referrerPolicy="no-referrer"
                   loading={priority && idx === 0 ? "eager" : "lazy"}
                   {...(priority && idx === 0 ? { fetchPriority: "high" } : {})}
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=600&q=80";
+                  }}
                 />
               )}
             </Link>
           ))}
         </div>
+
+        {/* Desktop Left/Right navigation chevrons */}
+        {displayMedia.length > 1 && (
+          <>
+            <button 
+              onClick={scrollPrev}
+              type="button"
+              className="absolute left-2 top-1/2 -translate-y-1/2 w-7 h-7 bg-white/75 hover:bg-white text-black rounded-full flex items-center justify-center shadow-md transition-all active:scale-90 z-20 md:flex hidden opacity-0 group-hover:opacity-100"
+            >
+              <ChevronLeft className="w-4 h-4" strokeWidth={3} />
+            </button>
+            <button 
+              onClick={scrollNext}
+              type="button"
+              className="absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 bg-white/75 hover:bg-white text-black rounded-full flex items-center justify-center shadow-md transition-all active:scale-90 z-20 md:flex hidden opacity-0 group-hover:opacity-100"
+            >
+              <ChevronRight className="w-4 h-4" strokeWidth={3} />
+            </button>
+          </>
+        )}
 
         {/* Pagination Dots */}
         {displayMedia.length > 1 && (

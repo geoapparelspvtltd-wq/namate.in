@@ -10,6 +10,20 @@ interface WishlistItem {
   name: string;
   price: number;
   image: string;
+  images?: string[];
+  originalPrice?: number;
+  discount?: number;
+  category?: string;
+  brand?: string;
+  description?: string;
+  isNew?: boolean;
+  isUpcoming?: boolean;
+  isTribeExclusive?: boolean;
+  tribeReleaseDate?: string;
+  badge?: string;
+  sizes?: string[];
+  averageRating?: number;
+  reviewCount?: number;
 }
 
 interface WishlistContextType {
@@ -95,17 +109,38 @@ export function WishlistProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
+    const normalizedProduct: WishlistItem = {
+      id: product.id,
+      name: product.name,
+      price: product.price,
+      image: product.image || (product as any).images?.[0] || 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=600&q=80',
+      images: product.images || (product.image ? [product.image] : []),
+      originalPrice: product.originalPrice,
+      discount: product.discount,
+      category: product.category,
+      brand: product.brand,
+      description: product.description,
+      isNew: product.isNew,
+      isUpcoming: product.isUpcoming,
+      isTribeExclusive: product.isTribeExclusive,
+      tribeReleaseDate: product.tribeReleaseDate,
+      badge: product.badge,
+      sizes: product.sizes,
+      averageRating: product.averageRating,
+      reviewCount: product.reviewCount
+    };
+
     setWishlist(prev => {
-      if (prev.find(item => item.id === product.id)) return prev;
-      return [...prev, product];
+      if (prev.find(item => item.id === normalizedProduct.id)) return prev;
+      return [...prev, normalizedProduct];
     });
 
     if (user) {
       isSyncing.current = true;
       try {
-        const itemRef = doc(db, 'users', user.uid, 'wishlist', product.id);
+        const itemRef = doc(db, 'users', user.uid, 'wishlist', normalizedProduct.id);
         await setDoc(itemRef, {
-          ...product,
+          ...normalizedProduct,
           addedAt: serverTimestamp()
         });
       } catch (err) {

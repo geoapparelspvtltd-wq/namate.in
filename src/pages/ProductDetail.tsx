@@ -49,6 +49,7 @@ export default function ProductDetail() {
   // Product Details States
   const [product, setProduct] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [galleryImages, setGalleryImages] = useState<string[]>([]);
   const [reelMedia, setReelMedia] = useState<any[]>([]);
   const [relatedProducts, setRelatedProducts] = useState<any[]>([]);
@@ -208,36 +209,45 @@ export default function ProductDetail() {
     }, 1200);
   };
 
-  // Initial Fetches
-  useEffect(() => {
-    const fetchProductData = async () => {
-      if (!id) return;
-      setLoading(true);
+  const fetchProductData = React.useCallback(async () => {
+    if (!id) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const productSnap = await getDoc(doc(db, 'products', id));
+      if (!productSnap.exists()) {
+        toast.error("Product not found");
+        navigate('/shop');
+        return;
+      }
+
+      const data = { id: productSnap.id, ...productSnap.data() } as any;
+      setProduct(data);
+
+      // Fetch Subcollections defensively so they don't block the master product render
+      let galleryUrls: string[] = [];
       try {
-        const productSnap = await getDoc(doc(db, 'products', id));
-        if (!productSnap.exists()) {
-          toast.error("Product not found");
-          navigate('/shop');
-          return;
-        }
-
-        const data = { id: productSnap.id, ...productSnap.data() } as any;
-        setProduct(data);
-
-        // Fetch Subcollections
         const gallerySnap = await getDocs(collection(db, 'products', id, 'gallery'));
-        const galleryUrls = gallerySnap.docs.map(doc => doc.data().url);
-        
-        const mainImage = data.image || '/src/assets/placeholder.png';
-        const docImages = Array.isArray(data.images) ? data.images : [];
-        const fullImagesList = Array.from(new Set([mainImage, ...docImages, ...galleryUrls])).filter(Boolean);
-        setGalleryImages(fullImagesList);
+        galleryUrls = gallerySnap.docs.map(doc => doc.data().url);
+      } catch (gErr) {
+        console.warn("Could not load gallery from server or local offline cache:", gErr);
+      }
+      
+      const mainImage = data.image || 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=600&q=80';
+      const docImages = Array.isArray(data.images) ? data.images : [];
+      const fullImagesList = Array.from(new Set([mainImage, ...docImages, ...galleryUrls])).filter(Boolean);
+      setGalleryImages(fullImagesList);
 
+      try {
         const mediaSnap = await getDocs(collection(db, 'products', id, 'media'));
         setReelMedia(mediaSnap.docs.map(doc => doc.data()));
+      } catch (mErr) {
+        console.warn("Could not load media from server or local offline cache:", mErr);
+      }
 
-        // Fetch Related Products (same category/subcategory)
-        if (data.category) {
+      // Fetch Related Products (same category/subcategory)
+      if (data.category) {
+        try {
           const q = query(
             collection(db, 'products'),
             where('category', '==', data.category),
@@ -248,18 +258,24 @@ export default function ProductDetail() {
             .map(doc => ({ id: doc.id, ...doc.data() }))
             .filter(item => item.id !== id);
           setRelatedProducts(list);
+        } catch (rErr) {
+          console.warn("Could not load related products from server while offline:", rErr);
         }
-      } catch (err) {
-        console.error("Error loading product detail info:", err);
-      } finally {
-        setLoading(false);
       }
-    };
+    } catch (err: any) {
+      console.error("Error loading product detail info:", err);
+      setError(err?.message || String(err));
+    } finally {
+      setLoading(false);
+    }
+  }, [id, navigate]);
 
+  // Initial Fetches
+  useEffect(() => {
     fetchProductData();
     // Scroll back to top on transitions
     window.scrollTo({ top: 0, behavior: 'smooth' });
-  }, [id, navigate]);
+  }, [fetchProductData]);
 
   if (loading) {
     return (
@@ -267,6 +283,34 @@ export default function ProductDetail() {
         <div className="flex flex-col items-center gap-4">
           <div className="w-12 h-12 border-4 border-black border-t-transparent rounded-full animate-spin" />
           <span className="text-xs font-black uppercase tracking-widest text-black/55 animate-pulse">Loading bespoke options...</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#F7F4F0] px-6 text-center select-none pt-24 pb-28">
+        <div className="max-w-[360px] w-full bg-white p-8 rounded-[40px] border border-black/[0.04] shadow-sm flex flex-col items-center">
+          <div className="w-[72px] h-[72px] bg-amber-50 rounded-[24px] flex items-center justify-center mb-6">
+            <svg viewBox="0 0 24 24" className="w-8 h-8 text-[#C5A059]" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M1 1l22 22M16.72 11.06A10.94 10.94 0 0 1 19 12.5M5 12.5a10.94 10.94 0 0 1 5.83-2.84M8.5 16.5a4.48 4.48 0 0 1 1-.69M16.42 12.51l-1.43-1.43M18.8 9.3l-1.42-1.42M21.1 6.1l-1.42-1.42" />
+              <path d="M12 20h.01" />
+            </svg>
+          </div>
+          <h2 className="text-lg font-brand font-black uppercase tracking-tight text-neutral-900 mb-2">Offline Connection</h2>
+          <p className="text-xs font-medium text-neutral-500 leading-relaxed mb-6">
+            Unable to connect to Server. Please test your network settings or pull down to refresh current context.
+          </p>
+          <button 
+            onClick={() => {
+              triggerHaptic('medium');
+              fetchProductData();
+            }}
+            className="w-full bg-black text-white font-brand font-black text-xs uppercase tracking-[0.2em] py-4 rounded-full hover:scale-105 active:scale-95 transition-all shadow-md hover:bg-[#C5A059] hover:text-black"
+          >
+            Retry Connection
+          </button>
         </div>
       </div>
     );
@@ -303,6 +347,9 @@ export default function ProductDetail() {
                 alt={product.name}
                 className="w-full h-full object-contain p-4"
                 referrerPolicy="no-referrer"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=600&q=80";
+                }}
               />
             </AnimatePresence>
 
@@ -349,7 +396,15 @@ export default function ProductDetail() {
                     activeImageIndex === i ? "border-[#C5A059] scale-105" : "border-neutral-100 opacity-60 hover:opacity-100"
                   )}
                 >
-                  <img src={img} alt={`Thumb ${i}`} className="w-full h-full object-cover rounded-lg" referrerPolicy="no-referrer" />
+                  <img 
+                    src={img} 
+                    alt={`Thumb ${i}`} 
+                    className="w-full h-full object-cover rounded-lg" 
+                    referrerPolicy="no-referrer" 
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=600&q=80";
+                    }}
+                  />
                 </button>
               ))}
             </div>
