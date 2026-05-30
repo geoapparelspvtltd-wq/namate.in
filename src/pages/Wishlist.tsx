@@ -47,7 +47,7 @@ export default function Wishlist() {
                   exit={{ opacity: 0, scale: 0.98 }}
                   className="bg-white"
                 >
-                  <ProductCard {...(item as any)} />
+                  <ProductCard {...(item as any)} isWishlistPage={true} />
                 </motion.div>
               ))}
             </AnimatePresence>

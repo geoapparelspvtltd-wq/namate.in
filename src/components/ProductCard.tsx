@@ -34,12 +34,13 @@ interface ProductCardProps {
   priority?: boolean;
   aspectRatio?: 'portrait' | 'square';
   variant?: 'default' | 'minimal';
+  isWishlistPage?: boolean;
   [key: string]: any;
 }
 
 import { triggerHaptic } from '@/lib/haptics';
 
-const ProductCard = memo(({ id, name, price, originalPrice, image, images = [], category, isNew, isUpcoming, isTribeExclusive, tribeReleaseDate, discount, sizes = ['S', 'M', 'L', 'XL'], videoUrl, videoUrls = [], priority, aspectRatio = 'portrait', variant = 'default', ...props }: ProductCardProps) => {
+const ProductCard = memo(({ id, name, price, originalPrice, image, images = [], category, isNew, isUpcoming, isTribeExclusive, tribeReleaseDate, discount, sizes = ['S', 'M', 'L', 'XL'], videoUrl, videoUrls = [], priority, aspectRatio = 'portrait', variant = 'default', isWishlistPage, ...props }: ProductCardProps) => {
   const navigate = useNavigate();
   const { addToCart } = useCart();
   const { toggleWishlist, isInWishlist } = useWishlist();
@@ -89,7 +90,7 @@ const ProductCard = memo(({ id, name, price, originalPrice, image, images = [], 
   }, []);
 
   useEffect(() => {
-    if (isInView && id) {
+    if (isInView && id && !isWishlistPage) {
       const fetchMediaSub = async () => {
         try {
           const { collection, query, orderBy, getDocs } = await import('firebase/firestore');
@@ -132,6 +133,11 @@ const ProductCard = memo(({ id, name, price, originalPrice, image, images = [], 
   }, [id, isInView]);
 
   const displayMedia = useMemo(() => {
+    if (isWishlistPage) {
+      const url = image || (images && images.length > 0 ? images[0] : 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=600&q=80');
+      return [{ type: 'image' as const, url }];
+    }
+
     const combinedList: { type: 'video' | 'youtube' | 'image'; url: string }[] = [];
     const seenUrls = new Set<string>();
 
@@ -194,7 +200,7 @@ const ProductCard = memo(({ id, name, price, originalPrice, image, images = [], 
     }
 
     return combinedList;
-  }, [props.media, fetchedMedia, videoUrls, videoUrl, images, image]);
+  }, [props.media, fetchedMedia, videoUrls, videoUrl, images, image, isWishlistPage]);
 
   useEffect(() => {
     if (displayMedia.length <= 1) return;
