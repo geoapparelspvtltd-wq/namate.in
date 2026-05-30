@@ -334,7 +334,7 @@ export default function Shop() {
     return () => {
       active = false;
     };
-  }, [activeCategory, activeSubcategory, activeOfferId, categoryConfigs]);
+  }, [activeCategory, activeSubcategory, activeOfferId]);
 
   const handleLoadMore = async () => {
     if (isFetchingMore || !hasMore || !lastVisibleDoc) return;

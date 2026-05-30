@@ -16,6 +16,11 @@ service cloud.firestore {
         allow read: if true;
         allow write: if isAdmin();
       }
+      
+      match /media/{mediaId} {
+        allow read: if true;
+        allow write: if isAdmin();
+      }
     }
     
     function isAdmin() {
@@ -66,6 +71,22 @@ service cloud.firestore {
       allow read, write: if isAdmin();
     }
     match /store_gallery/{imageId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    match /category_configs/{configId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    match /subcategory_configs/{configId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    match /offers/{offerId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    match /tribe_promo_gallery/{imageId} {
       allow read: if true;
       allow write: if isAdmin();
     }
