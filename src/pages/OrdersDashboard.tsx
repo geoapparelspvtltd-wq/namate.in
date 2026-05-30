@@ -125,8 +125,22 @@ export default function OrdersDashboard() {
   const navigate = useNavigate();
   const { user, role, loading } = useAuth();
   const isAdmin = role === 'admin' || user?.email?.toLowerCase().trim() === 'geoapparelspvtltd@gmail.com';
-  const [orders, setOrders] = useState<Order[]>([]);
-  const [isInitialLoading, setIsInitialLoading] = useState(true);
+  const [orders, setOrders] = useState<Order[]>(() => {
+    try {
+      const cached = localStorage.getItem('admin_orders_cache');
+      return cached ? JSON.parse(cached) : [];
+    } catch {
+      return [];
+    }
+  });
+  const [isInitialLoading, setIsInitialLoading] = useState(() => {
+    try {
+      const cached = localStorage.getItem('admin_orders_cache');
+      return !cached;
+    } catch {
+      return true;
+    }
+  });
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
 
@@ -134,12 +148,16 @@ export default function OrdersDashboard() {
 
   const fetchOrders = async () => {
     if (!isAdmin) return;
-    setIsInitialLoading(true);
     try {
       const q = query(collection(db, 'orders'), orderBy('createdAt', 'desc'), limit(100));
       const snapshot = await getDocs(q);
       const ordersData: Order[] = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Order));
       setOrders(ordersData);
+      try {
+        localStorage.setItem('admin_orders_cache', JSON.stringify(ordersData.slice(0, 15)));
+      } catch (cErr) {
+        console.warn("Storage quota exceeded on admin_orders_cache", cErr);
+      }
     } catch (error) {
       handleFirestoreError(error, OperationType.LIST, 'orders');
     } finally {

@@ -39,8 +39,8 @@ const CategoryQuickNav = ({ categories, isAdmin }: CategoryQuickNavProps) => {
   };
 
   return (
-    <div className="mb-14 px-4 sm:px-6">
-      <div className="mb-6 flex items-end justify-between">
+    <div className="mb-5 px-4 sm:px-6">
+      <div className="mb-3 flex items-end justify-between">
         <div className="flex flex-col">
           <h2 className="text-xs font-black text-black uppercase tracking-[0.25em]">Shop by Category</h2>
           <span className="text-[9px] text-black/40 font-bold uppercase tracking-widest mt-0.5">Slide to explore collections</span>

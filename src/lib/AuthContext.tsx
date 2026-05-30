@@ -45,8 +45,11 @@ interface FirestoreErrorInfo {
 }
 
 function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
+  const errMsg = error instanceof Error ? error.message : String(error);
+  const isOffline = errMsg.toLowerCase().includes('offline') || errMsg.toLowerCase().includes('failed to get document') || !navigator.onLine;
+
   const errInfo: FirestoreErrorInfo = {
-    error: error instanceof Error ? error.message : String(error),
+    error: errMsg,
     authInfo: {
       userId: auth.currentUser?.uid,
       email: auth.currentUser?.email,
@@ -62,10 +65,62 @@ function handleFirestoreError(error: unknown, operationType: OperationType, path
     },
     operationType,
     path
+  };
+
+  if (isOffline) {
+    console.warn('Firestore is Offline (Graceful Warning):', JSON.stringify(errInfo));
+  } else {
+    console.error('Firestore Error: ', JSON.stringify(errInfo));
   }
-  console.error('Firestore Error: ', JSON.stringify(errInfo));
-  // Don't throw here to avoid crashing the auth flow, but we can log it
 }
+
+export interface SiteConfig {
+  brandName: string;
+  primaryColor: string;
+  homeBackgroundColor: string;
+  secondaryBackgroundColor: string;
+  announcementText: string;
+  announcementBg: string;
+  announcementTextColor: string;
+  heroSubtitle: string;
+  heroButtonText: string;
+  heroImageUrl: string;
+  shopTitle: string;
+  shopSubtitle: string;
+  regalTitle: string;
+  regalSubtitle: string;
+  tribeTitle: string;
+  tribeSubtitle: string;
+  showAnnouncement: boolean;
+  announcementFont: string;
+  discountGalleryTitle?: string;
+  discountGallerySubtitle?: string;
+  aboutText?: string;
+}
+
+export const DEFAULT_SITE_CONFIG: SiteConfig = {
+  brandName: "NAMATE",
+  primaryColor: "#000000",
+  homeBackgroundColor: "#F7F4F0",
+  secondaryBackgroundColor: "#FAF8F5",
+  announcementText: "FREE SHIPPING ON ALL ORDERS ABOVE ₹1999!",
+  announcementBg: "#000000",
+  announcementTextColor: "#FFFFFF",
+  heroSubtitle: "Timeless pieces. Naturally made.",
+  heroButtonText: "SHOP COLLECTION",
+  heroImageUrl: "",
+  shopTitle: "THE CHRONICLES",
+  shopSubtitle: "SUSTAINABLY CRAFTED. FOR YOUR STYLE.",
+  regalTitle: "NAMATE REGAL",
+  regalSubtitle: "Welcome to the absolute pinnacle of the tribe aesthetic.",
+  tribeTitle: "THE TRIBE JOURNAL",
+  tribeSubtitle: "Organic snapshots of nature, style, and design.",
+  showAnnouncement: true,
+  announcementFont: "sans",
+  discountGalleryTitle: "Exclusive Deals",
+  discountGallerySubtitle: "Limited Time Offers",
+  aboutText: "Namate is a creative sandbox for premium design, crafted natural fabrics, and absolute freedom of self-expression. We believe that true luxury lies in absolute comfort, visual harmony, and sustainable, ethical choices. Every collection is an open-ended narrative made for those who walk their own pathways. Join our tribe today and form the ultimate curated lookbook."
+};
 
 interface AuthContextType {
   user: User | null;
@@ -77,6 +132,7 @@ interface AuthContextType {
   isNative: boolean;
   splashImageUrl: string;
   splashDuration: number;
+  siteConfig: SiteConfig;
   loginWithGoogle: () => Promise<void>;
   loginWithEmail: (identifier: string, password: string) => Promise<void>;
   signupWithEmail: (email: string, phone: string, password: string, name: string) => Promise<void>;
@@ -85,6 +141,7 @@ interface AuthContextType {
   toggleMaintenanceMode: (enabled: boolean) => Promise<void>;
   updateSplashImage: (url: string) => Promise<void>;
   updateSplashDuration: (durationMs: number) => Promise<void>;
+  updateSiteConfig: (config: Partial<SiteConfig>) => Promise<void>;
   requestNativeLocation: () => void;
   requestNotificationToken: () => void;
   requestImagePick: (source: 'gallery' | 'camera', context?: string) => void;
@@ -113,6 +170,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return stored ? parseInt(stored, 10) : 1200;
     } catch (e) {
       return 1200;
+    }
+  });
+
+  const [siteConfig, setSiteConfig] = useState<SiteConfig>(() => {
+    try {
+      const cached = localStorage.getItem('site_config_cache');
+      return cached ? { ...DEFAULT_SITE_CONFIG, ...JSON.parse(cached) } : DEFAULT_SITE_CONFIG;
+    } catch {
+      return DEFAULT_SITE_CONFIG;
     }
   });
 
@@ -252,14 +318,43 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const configRef = doc(db, 'system_configs', 'main');
     const unsubscribe = onSnapshot(configRef, (snapshot) => {
       if (snapshot.exists()) {
-        setIsMaintenanceMode(snapshot.data().isMaintenanceMode || false);
-        const url = snapshot.data().splashImageUrl || '';
+        const data = snapshot.data();
+        setIsMaintenanceMode(data.isMaintenanceMode || false);
+        const url = data.splashImageUrl || '';
         setSplashImageUrl(url);
-        const duration = snapshot.data().splashDuration || 1200;
+        const duration = data.splashDuration || 1200;
         setSplashDuration(duration);
+
+        // Parse custom appearance parameters with defaults
+        const appearance: SiteConfig = {
+          brandName: data.brandName || DEFAULT_SITE_CONFIG.brandName,
+          primaryColor: data.primaryColor || DEFAULT_SITE_CONFIG.primaryColor,
+          homeBackgroundColor: data.homeBackgroundColor || DEFAULT_SITE_CONFIG.homeBackgroundColor,
+          secondaryBackgroundColor: data.secondaryBackgroundColor || DEFAULT_SITE_CONFIG.secondaryBackgroundColor,
+          announcementText: data.announcementText || DEFAULT_SITE_CONFIG.announcementText,
+          announcementBg: data.announcementBg || DEFAULT_SITE_CONFIG.announcementBg,
+          announcementTextColor: data.announcementTextColor || DEFAULT_SITE_CONFIG.announcementTextColor,
+          heroSubtitle: data.heroSubtitle || DEFAULT_SITE_CONFIG.heroSubtitle,
+          heroButtonText: data.heroButtonText || DEFAULT_SITE_CONFIG.heroButtonText,
+          heroImageUrl: data.heroImageUrl || DEFAULT_SITE_CONFIG.heroImageUrl,
+          shopTitle: data.shopTitle || DEFAULT_SITE_CONFIG.shopTitle,
+          shopSubtitle: data.shopSubtitle || DEFAULT_SITE_CONFIG.shopSubtitle,
+          regalTitle: data.regalTitle || DEFAULT_SITE_CONFIG.regalTitle,
+          regalSubtitle: data.regalSubtitle || DEFAULT_SITE_CONFIG.regalSubtitle,
+          tribeTitle: data.tribeTitle || DEFAULT_SITE_CONFIG.tribeTitle,
+          tribeSubtitle: data.tribeSubtitle || DEFAULT_SITE_CONFIG.tribeSubtitle,
+          showAnnouncement: data.showAnnouncement !== undefined ? data.showAnnouncement : DEFAULT_SITE_CONFIG.showAnnouncement,
+          announcementFont: data.announcementFont || DEFAULT_SITE_CONFIG.announcementFont,
+          discountGalleryTitle: data.discountGalleryTitle || DEFAULT_SITE_CONFIG.discountGalleryTitle,
+          discountGallerySubtitle: data.discountGallerySubtitle || DEFAULT_SITE_CONFIG.discountGallerySubtitle,
+          aboutText: data.aboutText || DEFAULT_SITE_CONFIG.aboutText
+        };
+        setSiteConfig(appearance);
+
         try {
           localStorage.setItem('splash_image_url', url);
           localStorage.setItem('splash_duration', String(duration));
+          localStorage.setItem('site_config_cache', JSON.stringify(appearance));
         } catch (e) {}
       } else {
         // Initialize if not exists
@@ -267,6 +362,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           isMaintenanceMode: false,
           splashImageUrl: '',
           splashDuration: 1200,
+          ...DEFAULT_SITE_CONFIG,
           updatedAt: serverTimestamp()
         }, { merge: true });
       }
@@ -392,6 +488,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const updateSiteConfig = async (config: Partial<SiteConfig>) => {
+    if (role !== 'admin') return;
+    try {
+      const updatedConfig = { ...siteConfig, ...config };
+      setSiteConfig(updatedConfig);
+      try {
+        localStorage.setItem('site_config_cache', JSON.stringify(updatedConfig));
+      } catch (e) {}
+      
+      const configRef = doc(db, 'system_configs', 'main');
+      await setDoc(configRef, {
+        ...config,
+        updatedAt: serverTimestamp(),
+        updatedBy: user?.uid
+      }, { merge: true });
+      toast.success("Site appearance updated successfully!");
+    } catch (error) {
+      console.error("Error updating site config:", error);
+      toast.error("Failed to update site appearance");
+      throw error;
+    }
+  };
+
   // Capture referral code from URL
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -447,7 +566,60 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             
             const userRef = doc(db, 'users', firebaseUser.uid);
             console.log("Fetching user doc for:", firebaseUser.uid);
-            const userSnap = await getDoc(userRef);
+            
+            let userSnap;
+            try {
+              userSnap = await getDoc(userRef);
+            } catch (err: any) {
+              const errMsg = err?.message || String(err);
+              const isOfflineErr = errMsg.toLowerCase().includes('offline') || errMsg.toLowerCase().includes('failed to get document') || !navigator.onLine;
+              if (isOfflineErr) {
+                console.warn("Firestore fetch offline fallback for uid:", firebaseUser.uid);
+                // Fallback to cache or simple profile
+                let fallbackData: any = {
+                  uid: firebaseUser.uid,
+                  email: firebaseUser.email,
+                  displayName: firebaseUser.displayName || 'Tribe Member',
+                  role: firebaseUser.email?.toLowerCase().trim() === 'geoapparelspvtltd@gmail.com' ? 'admin' : 'user',
+                  isTribeMember: false,
+                  walletBalance: 0,
+                  namatePoints: 0
+                };
+                try {
+                  const cached = localStorage.getItem(`cached_user_${firebaseUser.uid}`);
+                  if (cached) {
+                    fallbackData = { ...fallbackData, ...JSON.parse(cached) };
+                  }
+                } catch (e) {}
+                
+                setRole(fallbackData.role);
+                setUserData(fallbackData);
+                
+                // Set up snapshot listener too, as Firestore onSnapshot handles offline updates automatically!
+                userUnsubscribe = onSnapshot(userRef, (snapshot) => {
+                  if (snapshot.exists()) {
+                    const data = snapshot.data();
+                    if (firebaseUser.email?.toLowerCase().trim() === 'geoapparelspvtltd@gmail.com' && data.role !== 'admin') {
+                      setDoc(userRef, { role: 'admin' }, { merge: true });
+                      setRole('admin');
+                      setUserData({ ...data, role: 'admin' });
+                    } else {
+                      setRole(data.role || 'user');
+                      setUserData(data);
+                    }
+                    try {
+                      localStorage.setItem(`cached_user_${firebaseUser.uid}`, JSON.stringify(data));
+                    } catch (e) {}
+                  }
+                }, (snapErr) => {
+                  console.warn("User real-time sync offline wrapper:", snapErr.message);
+                });
+                
+                return; // Return early, we solved it!
+              } else {
+                throw err;
+              }
+            }
 
             if (!userSnap.exists()) {
               // New user registration
@@ -492,9 +664,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 createdAt: serverTimestamp()
               };
               await setDoc(userRef, newUser);
+              try {
+                localStorage.setItem(`cached_user_${firebaseUser.uid}`, JSON.stringify(newUser));
+              } catch (e) {}
             } else {
               // Check if existing user has referral code, if not generate one
               const data = userSnap.data();
+              if (data) {
+                try {
+                  localStorage.setItem(`cached_user_${firebaseUser.uid}`, JSON.stringify(data));
+                } catch (e) {}
+              }
               if (!data.referralCode) {
                 await setDoc(userRef, { 
                   referralCode: Math.random().toString(36).substring(2, 8).toUpperCase()
@@ -506,6 +686,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             userUnsubscribe = onSnapshot(userRef, (snapshot) => {
               if (snapshot.exists()) {
                 const data = snapshot.data();
+                if (data) {
+                  try {
+                    localStorage.setItem(`cached_user_${firebaseUser.uid}`, JSON.stringify(data));
+                  } catch (e) {}
+                }
                 if (firebaseUser.email?.toLowerCase().trim() === 'geoapparelspvtltd@gmail.com' && data.role !== 'admin') {
                   setDoc(userRef, { role: 'admin' }, { merge: true });
                   setRole('admin');
@@ -515,10 +700,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                   setUserData(data);
                 }
               }
+            }, (snapError) => {
+              console.warn("User onSnapshot error (Gracefully handled):", snapError.message);
             });
-          } catch (error) {
-            console.error("Error in Auth State Sync:", error);
-            handleFirestoreError(error, OperationType.GET, `users/${firebaseUser.uid}`);
+          } catch (error: any) {
+            const errString = error?.message || String(error);
+            const isOfflineError = errString.toLowerCase().includes('offline') || errString.toLowerCase().includes('failed to get document') || !navigator.onLine;
+            if (isOfflineError) {
+              console.warn("Gracefully suppressed offline error in Auth State Sync:", errString);
+            } else {
+              console.error("Error in Auth State Sync:", error);
+              handleFirestoreError(error, OperationType.GET, `users/${firebaseUser.uid}`);
+            }
             // Still set the user and role even if firestore sync fails
             if (firebaseUser.email?.toLowerCase().trim() === 'geoapparelspvtltd@gmail.com') {
               setRole('admin');
@@ -696,6 +889,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       isNative,
       splashImageUrl,
       splashDuration,
+      siteConfig,
       loginWithGoogle, 
       loginWithEmail,
       signupWithEmail,
@@ -704,6 +898,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       toggleMaintenanceMode,
       updateSplashImage,
       updateSplashDuration,
+      updateSiteConfig,
       requestNativeLocation,
       requestNotificationToken,
       requestImagePick

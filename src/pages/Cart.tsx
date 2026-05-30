@@ -10,7 +10,7 @@ import { useAuth } from '@/lib/AuthContext';
 import { cn } from '@/lib/utils';
 import { collection, addDoc, serverTimestamp, doc, writeBatch, increment, query, where, getDocs } from 'firebase/firestore';
 import { db, auth } from '@/lib/firebase';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { toast } from 'sonner';
 
 enum OperationType {
@@ -101,6 +101,9 @@ export default function Cart() {
     }
   }, [userData, user?.displayName]);
 
+  const [couponCode, setCouponCode] = useState('');
+  const [appliedCoupon, setAppliedCoupon] = useState<any>(null);
+
   const subtotal = items.reduce((acc, item) => acc + (item.price * item.quantity), 0);
   const shipping = 0;
   
@@ -109,7 +112,19 @@ export default function Cart() {
   const pointsDiscount = usePoints ? maxPointsPossible : 0;
   const pointsToSpend = usePoints ? maxPointsPossible : 0;
   
-  const total = Math.max(0, subtotal + shipping - pointsDiscount);
+  // Coupon logic
+  const couponDiscount = useMemo(() => {
+    if (!appliedCoupon) return 0;
+    if (appliedCoupon.code === 'TRIBE10') {
+      return Math.round(subtotal * 0.1);
+    }
+    if (appliedCoupon.code === 'WELCOME250') {
+      return subtotal >= 1499 ? 250 : 0;
+    }
+    return 0;
+  }, [appliedCoupon, subtotal]);
+
+  const total = Math.max(0, subtotal + shipping - pointsDiscount - couponDiscount);
 
   const fetchCityStateByPincode = async (pincode: string) => {
     if (pincode.length === 6) {
@@ -869,6 +884,66 @@ export default function Cart() {
             </div>
           )}
 
+          {/* Coupon Input Box */}
+          <div className="bg-black/5 rounded-[32px] p-6 mb-4">
+            <p className="text-[10px] font-black uppercase tracking-widest mb-4 text-black/40">Promo Coupon Code</p>
+            {appliedCoupon ? (
+              <div className="flex items-center justify-between bg-[#C5A059]/10 border border-[#C5A059]/30 p-3.5 rounded-2xl animate-fade-in text-left">
+                <div>
+                  <p className="text-xs font-black text-black uppercase tracking-wider">{appliedCoupon.code} APPLIED</p>
+                  <p className="text-[9px] font-black text-[#C5A059] uppercase mt-0.5">
+                    {appliedCoupon.code === 'TRIBE10' ? 'Flat 10% Community Saving' : '₹250 Welcome Saved'}
+                  </p>
+                </div>
+                <button 
+                  onClick={() => {
+                    triggerHaptic('light');
+                    setAppliedCoupon(null);
+                    setCouponCode('');
+                    toast.success("Coupon removed");
+                  }}
+                  className="text-[10px] font-black text-rose-500 hover:underline uppercase tracking-widest"
+                >
+                  Remove
+                </button>
+              </div>
+            ) : (
+              <div className="flex gap-2">
+                <input 
+                  type="text"
+                  value={couponCode}
+                  onChange={(e) => setCouponCode(e.target.value.toUpperCase().trim())}
+                  placeholder="Enter TRIBE10, WELCOME250, etc."
+                  className="flex-1 h-12 bg-white border border-black/5 rounded-2xl px-4 font-bold text-xs uppercase focus:outline-none text-black"
+                />
+                <button
+                  onClick={() => {
+                    triggerHaptic('medium');
+                    const code = couponCode.trim().toUpperCase();
+                    if (code === 'TRIBE10') {
+                      setAppliedCoupon({ code });
+                      toast.success("Tribe 10% coupon applied successfully!");
+                    } else if (code === 'WELCOME250') {
+                      if (subtotal < 1499) {
+                        toast.error("Valid only on order totals above ₹1,499");
+                      } else {
+                        setAppliedCoupon({ code });
+                        toast.success("₹250 Welcome discount applied successfully!");
+                      }
+                    } else if (code === 'FREESHIP') {
+                      toast.success("Free shipping applied! (Already complimentary)");
+                    } else {
+                      toast.error("Invalid coupon code");
+                    }
+                  }}
+                  className="h-12 bg-black text-white font-black text-[10px] uppercase tracking-widest px-6 rounded-2xl hover:opacity-90 active:scale-95 transition-all"
+                >
+                  APPLY
+                </button>
+              </div>
+            )}
+          </div>
+
           <div className="flex justify-between items-center">
             <span className="text-xs font-bold text-black/40 uppercase tracking-widest">Subtotal</span>
             <span className="text-sm font-black text-black">₹{subtotal}</span>
@@ -877,6 +952,12 @@ export default function Cart() {
             <div className="flex justify-between items-center">
               <span className="text-xs font-bold text-[#C5A059] uppercase tracking-widest">Points Discount</span>
               <span className="text-sm font-black text-[#C5A059]">-₹{pointsDiscount}</span>
+            </div>
+          )}
+          {couponDiscount > 0 && (
+            <div className="flex justify-between items-center">
+              <span className="text-xs font-bold text-[#C5A059] uppercase tracking-widest">Promo Saved</span>
+              <span className="text-sm font-black text-[#C5A059]">-₹{couponDiscount}</span>
             </div>
           )}
           <div className="flex justify-between items-center">

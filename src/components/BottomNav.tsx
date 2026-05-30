@@ -6,11 +6,13 @@ import { motion } from 'motion/react';
 import { useCart } from '@/lib/CartContext';
 import { useWishlist } from '@/lib/WishlistContext';
 import { triggerHaptic } from '@/lib/haptics';
+import { useAuth } from '@/lib/AuthContext';
 
 const BottomNav = memo(() => {
   const location = useLocation();
   const { items } = useCart();
   const { wishlist } = useWishlist();
+  const { siteConfig } = useAuth();
 
   const itemCount = items.reduce((acc, item) => acc + item.quantity, 0);
 
@@ -45,10 +47,13 @@ const BottomNav = memo(() => {
   );
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 md:left-1/2 md:-translate-x-1/2 z-[120] w-full md:max-w-[430px] bg-[#F7F4F0]/95 backdrop-blur-md border-t border-neutral-200/50 shadow-[0_-8px_40px_rgba(0,0,0,0.02)] pb-safe">
+    <div 
+      className="fixed bottom-0 left-0 right-0 md:left-1/2 md:-translate-x-1/2 z-[120] w-full md:max-w-[430px] backdrop-blur-md border-t border-neutral-200/50 shadow-[0_-8px_40px_rgba(0,0,0,0.02)] pb-safe transition-colors duration-200"
+      style={{ backgroundColor: `${siteConfig?.homeBackgroundColor || '#F7F4F0'}F2` }}
+    >
       <div className="max-w-xl mx-auto flex items-center justify-between py-2 px-2">
         {/* Home replaced with Namate Logo */}
-        <NavLink to="/" label="Namate" isActive={location.pathname === '/'}>
+        <NavLink to="/" label={siteConfig?.brandName ? siteConfig.brandName.toLowerCase() : "Namate"} isActive={location.pathname === '/'}>
           <div 
             className="w-6 h-6 bg-current"
             style={{ 
@@ -83,7 +88,10 @@ const BottomNav = memo(() => {
           <div className="relative">
             <ShoppingBag className="w-4 h-4" strokeWidth={2.2} />
             {itemCount > 0 && (
-              <span className="absolute -top-1 -right-1.5 bg-black text-[#F7F4F0] text-[6px] font-black min-w-[12px] h-[12px] rounded-full flex items-center justify-center px-0.5">
+              <span 
+                className="absolute -top-1 -right-1.5 bg-black text-[6px] font-black min-w-[12px] h-[12px] rounded-full flex items-center justify-center px-0.5"
+                style={{ color: siteConfig?.homeBackgroundColor || '#F7F4F0' }}
+              >
                 {itemCount}
               </span>
             )}

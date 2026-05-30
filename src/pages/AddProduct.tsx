@@ -38,7 +38,7 @@ import {
 } from "@/components/ui/select";
 import { cn, compressImage, getCroppedImg, getYoutubeEmbedUrl } from '@/lib/utils';
 import ProductCard from '@/components/ProductCard';
-import { collection, addDoc, serverTimestamp, getDocs, query, orderBy, deleteDoc, doc, updateDoc, getDoc } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, getDocs, query, orderBy, deleteDoc, doc, updateDoc, getDoc, writeBatch } from 'firebase/firestore';
 import { db, auth as firebaseAuth } from '@/lib/firebase';
 import { seedProducts } from '@/lib/seedService';
 import { toast } from 'sonner';
@@ -659,33 +659,47 @@ export default function AddProduct() {
       };
 
       if (editingProductId) {
-        // Update main document - media, images, videoUrls are excluded to keep doc small
-        await updateDoc(doc(db, 'products', editingProductId), productData);
-        
-        // Handle Media/Reel Documents (Sub-collection)
+        // Use a single Write Batch to group all changes (main update, media deletes, media adds) into 1 single request!
+        const batch = writeBatch(db);
+        const productRef = doc(db, 'products', editingProductId);
+
+        // 1. Queue update main document
+        batch.update(productRef, productData);
+
+        // 2. Fetch and queue deletion of old media/reels and gallery
         const oldMediaSnap = await getDocs(collection(db, 'products', editingProductId, 'media'));
-        await Promise.all(oldMediaSnap.docs.map(d => deleteDoc(d.ref)));
-        
-        await Promise.all(formData.media.map((m, i) => 
-          addDoc(collection(db, 'products', editingProductId, 'media'), {
+        oldMediaSnap.docs.forEach(d => {
+          batch.delete(d.ref);
+        });
+
+        const oldGallerySnap = await getDocs(collection(db, 'products', editingProductId, 'gallery'));
+        oldGallerySnap.docs.forEach(d => {
+          batch.delete(d.ref);
+        });
+
+        // 3. Queue creation of new media elements
+        formData.media.forEach((m, i) => {
+          const mediaDocRef = doc(collection(productRef, 'media'));
+          batch.set(mediaDocRef, {
             ...m,
             order: i,
             createdAt: serverTimestamp()
-          })
-        ));
+          });
+        });
 
-        // Handle Gallery Documents (Sub-collection)
-        const oldGallerySnap = await getDocs(collection(db, 'products', editingProductId, 'gallery'));
-        await Promise.all(oldGallerySnap.docs.map(d => deleteDoc(d.ref)));
-        
-        await Promise.all(formData.galleryMedia.map((m, i) => 
-          addDoc(collection(db, 'products', editingProductId, 'gallery'), {
+        // 4. Queue creation of new gallery images
+        formData.galleryMedia.forEach((m, i) => {
+          const galleryDocRef = doc(collection(productRef, 'gallery'));
+          batch.set(galleryDocRef, {
             url: m.url,
             type: 'image',
             order: i,
             createdAt: serverTimestamp()
-          })
-        ));
+          });
+        });
+
+        // 5. Commit all operations atomicly in a single network round-trip!
+        await batch.commit();
 
         toast.success("Product updated successfully!");
         resetForm();
@@ -694,27 +708,35 @@ export default function AddProduct() {
         productData.isNew = true;
         productData.createdAt = serverTimestamp();
         
-        // Save main product
-        const docRef = await addDoc(collection(db, 'products'), productData);
-        
-        // Save media to sub-collection
-        await Promise.all(formData.media.map((m, i) => 
-          addDoc(collection(docRef, 'media'), {
+        const batch = writeBatch(db);
+        const productRef = doc(collection(db, 'products'));
+
+        // 1. Queue creation of main product doc
+        batch.set(productRef, productData);
+
+        // 2. Queue creation of new media
+        formData.media.forEach((m, i) => {
+          const mediaDocRef = doc(collection(productRef, 'media'));
+          batch.set(mediaDocRef, {
             ...m,
             order: i,
             createdAt: serverTimestamp()
-          })
-        ));
+          });
+        });
 
-        // Handle Gallery Documents (Sub-collection)
-        await Promise.all(formData.galleryMedia.map((m, i) => 
-          addDoc(collection(docRef, 'gallery'), {
+        // 3. Queue creation of new gallery
+        formData.galleryMedia.forEach((m, i) => {
+          const galleryDocRef = doc(collection(productRef, 'gallery'));
+          batch.set(galleryDocRef, {
             url: m.url,
             type: 'image',
             order: i,
             createdAt: serverTimestamp()
-          })
-        ));
+          });
+        });
+
+        // 4. Commit atomicly!
+        await batch.commit();
 
         toast.success("Product published successfully!");
         resetForm();

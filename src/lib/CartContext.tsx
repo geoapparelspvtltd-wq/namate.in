@@ -26,6 +26,23 @@ interface CartContextType {
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
+// Utility to remove undefined fields before sending to firestore
+function cleanUndefined(obj: any): any {
+  if (!obj || typeof obj !== 'object') return obj;
+  const newObj: any = {};
+  Object.keys(obj).forEach(key => {
+    const val = obj[key];
+    if (val !== undefined) {
+      if (val && typeof val === 'object' && !Array.isArray(val)) {
+        newObj[key] = cleanUndefined(val);
+      } else {
+        newObj[key] = val;
+      }
+    }
+  });
+  return newObj;
+}
+
 export function CartProvider({ children }: { children: React.ReactNode }) {
   const { user, loginWithGoogle } = useAuth();
   const [items, setItems] = useState<CartItem[]>([]);
@@ -58,7 +75,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         guestItemsBuffer.current.forEach(item => {
           const itemPath = `${item.id}${item.size ? `-${item.size}` : ''}`;
           const itemRef = doc(db, 'users', user.uid, 'cart', itemPath);
-          batch.set(itemRef, { ...item, addedAt: serverTimestamp() }, { merge: true });
+          batch.set(itemRef, cleanUndefined({ ...item, addedAt: serverTimestamp() }), { merge: true });
         });
         await batch.commit();
         guestItemsBuffer.current = [];
@@ -108,11 +125,11 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         const firestoreItem = items.find(item => item.id === product.id && item.size === size);
         const quantity = firestoreItem ? firestoreItem.quantity + 1 : 1;
         
-        await setDoc(itemRef, {
+        await setDoc(itemRef, cleanUndefined({
           ...newItem,
           quantity,
           addedAt: serverTimestamp()
-        }, { merge: true });
+        }), { merge: true });
       } catch (err) {
         console.error("Error adding to firestore cart:", err);
       } finally {

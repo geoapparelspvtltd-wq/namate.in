@@ -822,6 +822,22 @@ export default function Profile() {
             </div>
             
             <Link 
+              to="/manage-appearance"
+              className="w-full flex items-center justify-between p-8 bg-black/5 border-2 border-black/5 text-black rounded-[32px] hover:border-black/20 transition-all group animate-fade-in"
+            >
+              <div className="flex items-center gap-6">
+                <div className="w-14 h-14 bg-black/10 rounded-2xl flex items-center justify-center group-hover:bg-black transition-colors">
+                  <Layout className="w-8 h-8 text-black group-hover:text-white" />
+                </div>
+                <div className="text-left">
+                  <h3 className="text-xl font-black uppercase tracking-tighter col-layout">Site Aesthetics</h3>
+                  <p className="text-black/40 text-[10px] font-bold uppercase tracking-widest">Change branding, banner colors, text styles</p>
+                </div>
+              </div>
+              <ChevronRight className="w-6 h-6 text-black/20 group-hover:text-black transition-colors" />
+            </Link>
+
+            <Link 
               to="/manage-notifications"
               className="w-full flex items-center justify-between p-8 bg-black/5 border-2 border-black/5 text-black rounded-[32px] hover:border-black/20 transition-all group"
             >

@@ -13,7 +13,7 @@ const Navbar = memo(() => {
   const navigate = useNavigate();
   const { wishlist } = useWishlist();
   const { items } = useCart();
-  const { user, role, logout } = useAuth();
+  const { user, role, logout, siteConfig } = useAuth();
   const [scrolled, setScrolled] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const bagRef = useRef<HTMLDivElement>(null);
@@ -104,7 +104,7 @@ const Navbar = memo(() => {
   } else {
     // Fallback title formatting
     const path = location.pathname.substring(1).replace('-', ' ');
-    headerTitle = path ? path.toUpperCase() : "NAMATE";
+    headerTitle = path ? path.toUpperCase() : (siteConfig?.brandName || "NAMATE");
   }
 
   return (
@@ -114,7 +114,7 @@ const Navbar = memo(() => {
           "fixed left-0 right-0 md:left-1/2 md:-translate-x-1/2 z-[100] w-full md:max-w-[430px] transition-all duration-300 bg-transparent border-none",
           scrolled ? "py-2.5" : "py-4"
         )}
-        style={{ top: 'var(--app-banner-height, 0px)' }}
+        style={{ top: 'calc(var(--app-banner-height, 0px) + var(--announcement-height, 0px))' }}
       >
         <div className="max-w-7xl mx-auto px-4 h-12 flex items-center justify-between">
           
@@ -178,8 +178,11 @@ const Navbar = memo(() => {
               animate={{ x: 0 }}
               exit={{ x: '-100%' }}
               transition={{ type: "spring", damping: 30, stiffness: 350 }}
-              className="fixed top-0 bottom-0 left-0 w-80 max-w-[85vw] bg-[#F7F4F0] z-[1001] shadow-2xl flex flex-col justify-between p-8"
-              style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 2rem)' }}
+              className="fixed top-0 bottom-0 left-0 w-80 max-w-[85vw] z-[1001] shadow-2xl flex flex-col justify-between p-8"
+              style={{ 
+                paddingBottom: 'calc(env(safe-area-inset-bottom) + 2rem)',
+                backgroundColor: siteConfig?.homeBackgroundColor || '#F7F4F0'
+              }}
             >
               <div>
                 <div className="flex items-center justify-between mb-10">
@@ -191,7 +194,7 @@ const Navbar = memo(() => {
                       referrerPolicy="no-referrer"
                     />
                     <span className="text-[11px] font-brand font-black tracking-[0.3em] text-[#111]">
-                      NAMATE
+                      {siteConfig?.brandName || 'NAMATE'}
                     </span>
                     <span className="text-[7px] tracking-[0.2em] font-medium text-black/30 uppercase mt-0.5">
                       Premium Apparel

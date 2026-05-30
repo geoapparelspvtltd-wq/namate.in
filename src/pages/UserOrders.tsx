@@ -119,8 +119,22 @@ interface Order {
 export default function UserOrders() {
   const navigate = useNavigate();
   const { user, loading } = useAuth();
-  const [orders, setOrders] = useState<Order[]>([]);
-  const [isInitialLoading, setIsInitialLoading] = useState(true);
+  const [orders, setOrders] = useState<Order[]>(() => {
+    try {
+      const cached = localStorage.getItem('user_orders_cache');
+      return cached ? JSON.parse(cached) : [];
+    } catch {
+      return [];
+    }
+  });
+  const [isInitialLoading, setIsInitialLoading] = useState(() => {
+    try {
+      const cached = localStorage.getItem('user_orders_cache');
+      return !cached;
+    } catch {
+      return true;
+    }
+  });
 
   // Return & Exchange states
   const [returnOrder, setReturnOrder] = useState<Order | null>(null);
@@ -173,6 +187,11 @@ export default function UserOrders() {
         ordersData.push({ id: doc.id, ...doc.data() } as Order);
       });
       setOrders(ordersData);
+      try {
+        localStorage.setItem('user_orders_cache', JSON.stringify(ordersData.slice(0, 10)));
+      } catch (cErr) {
+        console.warn("Could not save user orders in cache:", cErr);
+      }
       setIsInitialLoading(false);
     }, (error) => {
       handleFirestoreError(error, OperationType.LIST, 'orders');

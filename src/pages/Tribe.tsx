@@ -11,7 +11,7 @@ import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 
 export default function Tribe() {
-  const { user, userData, loginWithGoogle } = useAuth();
+  const { user, userData, loginWithGoogle, siteConfig } = useAuth();
   const [isJoining, setIsJoining] = useState(false);
   const navigate = useNavigate();
   const isTribeMember = userData?.isTribeMember || false;
@@ -55,10 +55,10 @@ export default function Tribe() {
             transition={{ duration: 0.5 }}
           >
             <h1 className="text-5xl sm:text-8xl font-heading font-black uppercase tracking-tighter mb-6 text-white flex items-center justify-center gap-4">
-              <span className="px-4 bg-liquid-gold text-black shadow-[0_0_20px_rgba(255,215,0,0.4)]">TRIBE</span>
+              <span className="px-4 bg-liquid-gold text-black shadow-[0_0_20px_rgba(255,215,0,0.4)]">{siteConfig?.tribeTitle || "TRIBE"}</span>
             </h1>
             <p className="text-xl sm:text-2xl font-bold text-white max-w-2xl mx-auto mb-10">
-              The ultimate loyalty program for the bold and the quirky. Save more, get more.
+              {siteConfig?.tribeSubtitle || "The ultimate loyalty program for the bold and the quirky. Save more, get more."}
             </p>
             <Button 
               size="lg" 

@@ -36,6 +36,23 @@ interface WishlistContextType {
 
 const WishlistContext = createContext<WishlistContextType | undefined>(undefined);
 
+// Utility to remove undefined fields before sending to firestore
+function cleanUndefined(obj: any): any {
+  if (!obj || typeof obj !== 'object') return obj;
+  const newObj: any = {};
+  Object.keys(obj).forEach(key => {
+    const val = obj[key];
+    if (val !== undefined) {
+      if (val && typeof val === 'object' && !Array.isArray(val)) {
+        newObj[key] = cleanUndefined(val);
+      } else {
+        newObj[key] = val;
+      }
+    }
+  });
+  return newObj;
+}
+
 export function WishlistProvider({ children }: { children: React.ReactNode }) {
   const { user, loginWithGoogle } = useAuth();
   const [wishlist, setWishlist] = useState<WishlistItem[]>([]);
@@ -74,7 +91,7 @@ export function WishlistProvider({ children }: { children: React.ReactNode }) {
         const batch = writeBatch(db);
         guestWishlistBuffer.current.forEach(item => {
           const itemRef = doc(db, 'users', user.uid, 'wishlist', item.id);
-          batch.set(itemRef, { ...item, addedAt: serverTimestamp() }, { merge: true });
+          batch.set(itemRef, cleanUndefined({ ...item, addedAt: serverTimestamp() }), { merge: true });
         });
         await batch.commit();
         guestWishlistBuffer.current = [];
@@ -139,10 +156,10 @@ export function WishlistProvider({ children }: { children: React.ReactNode }) {
       isSyncing.current = true;
       try {
         const itemRef = doc(db, 'users', user.uid, 'wishlist', normalizedProduct.id);
-        await setDoc(itemRef, {
+        await setDoc(itemRef, cleanUndefined({
           ...normalizedProduct,
           addedAt: serverTimestamp()
-        });
+        }));
       } catch (err) {
         console.error("Error adding to firestore wishlist:", err);
       } finally {

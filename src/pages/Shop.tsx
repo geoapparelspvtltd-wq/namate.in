@@ -9,8 +9,9 @@ import {
   AccordionItem, 
   AccordionTrigger 
 } from '@/components/ui/accordion';
-import { Filter, ChevronDown, SlidersHorizontal, Heart, Sparkles, TrendingUp, Star, RotateCcw, Search } from 'lucide-react';
+import { Filter, ChevronDown, SlidersHorizontal, Heart, Sparkles, TrendingUp, Star, RotateCcw, Search, Camera, X } from 'lucide-react';
 import AlternatingSearchIcon from '@/components/AlternatingSearchIcon';
+import SmartScannerModal from '@/components/SmartScannerModal';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { cn } from '@/lib/utils';
 import { auth } from '@/lib/firebase';
@@ -133,7 +134,7 @@ const updateShopPageCache = (updates: { products?: any[]; configs?: any[] }) => 
 
 export default function Shop() {
   const { searchQuery, setSearchQuery } = useSearch();
-  const { role, user } = useAuth();
+  const { role, user, siteConfig } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const activeCategory = searchParams.get('category');
   const activeSubcategory = searchParams.get('subcategory');
@@ -173,6 +174,7 @@ export default function Shop() {
   const [selectedFabrics, setSelectedFabrics] = useState<string[]>([]);
   const [minDiscount, setMinDiscount] = useState<number>(0);
   const [onlyExpress, setOnlyExpress] = useState<boolean>(false);
+  const [isScanningOpen, setIsScanningOpen] = useState(false);
 
   const isAdmin = role === 'admin' || user?.email?.toLowerCase().trim() === 'geoapparelspvtltd@gmail.com';
 
@@ -522,10 +524,12 @@ export default function Shop() {
     <div className="space-y-8 pb-12">
       <div>
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-sm font-black uppercase tracking-widest text-[#C5A059]">Collection</h3>
-          {(priceFilters.length > 0 || selectedSizes.length > 0 || minRating > 0 || selectedPatterns.length > 0 || selectedFabrics.length > 0 || minDiscount > 0 || onlyExpress) && (
+          <h3 className="text-sm font-black uppercase tracking-widest text-[#C5A059]">Collection Categories</h3>
+          {(activeCategory || activeSubcategory || priceFilters.length > 0 || selectedSizes.length > 0 || minRating > 0 || selectedPatterns.length > 0 || selectedFabrics.length > 0 || minDiscount > 0 || onlyExpress) && (
             <button 
               onClick={() => {
+                setActiveCategory(null);
+                setActiveSubcategory(null);
                 setPriceFilters([]);
                 setSelectedSizes([]);
                 setMinRating(0);
@@ -542,24 +546,54 @@ export default function Shop() {
           )}
         </div>
         <div className="flex flex-col gap-2">
-          {availableCategories.map(cat => (
-            <button 
-              key={cat}
-              onClick={() => setActiveCategory(cat)}
-              className={cn(
-                "group flex items-center justify-between py-3 px-5 rounded-[20px] text-sm font-bold transition-all border",
-                activeCategory === cat 
-                  ? "bg-black text-white border-black shadow-xl shadow-black/10 scale-[1.02]" 
-                  : "bg-black/5 text-black/40 border-transparent hover:bg-black/10 hover:text-black hover:border-black/5"
-              )}
-            >
-              <span className="uppercase tracking-tight">{cat}</span>
-              <ChevronDown className={cn(
-                "w-4 h-4 transition-transform",
-                activeCategory === cat ? "-rotate-90 text-[#C5A059]" : "opacity-0 -group-hover:translate-x-1 group-hover:opacity-100"
-              )} />
-            </button>
-          ))}
+          {availableCategories.map(cat => {
+            const isSelected = activeCategory === cat;
+            return (
+              <div key={cat} className="space-y-2">
+                <button 
+                  onClick={() => setActiveCategory(isSelected ? null : cat)}
+                  className={cn(
+                    "group flex items-center justify-between py-3 px-5 rounded-[20px] text-xs font-black uppercase tracking-wider transition-all border w-full",
+                    isSelected 
+                      ? "bg-black text-white border-black shadow-lg shadow-black/5 scale-[1.01]" 
+                      : "bg-black/5 text-black/45 border-transparent hover:bg-black/10 hover:text-black hover:border-black/5"
+                  )}
+                >
+                  <span className="tracking-tight">{cat}</span>
+                  <div className="flex items-center gap-1.5 text-[9px] font-black text-[#C5A059]">
+                    {isSelected && <span className="uppercase tracking-widest text-[#C5A059]/80 mr-1 font-sans">Active</span>}
+                    <ChevronDown className={cn(
+                      "w-3.5 h-3.5 transition-transform duration-300",
+                      isSelected ? "rotate-180 text-[#C5A059]" : "-rotate-90 opacity-40 group-hover:opacity-100"
+                    )} />
+                  </div>
+                </button>
+
+                {/* Nested subcategories of active category */}
+                {isSelected && subcategoriesByCategory[cat]?.length > 0 && (
+                  <div className="pl-4 pr-1 py-1.5 flex flex-wrap gap-1.5 bg-black/[0.02] rounded-2xl border border-black/[0.03]">
+                    {subcategoriesByCategory[cat].map(sub => {
+                      const isSubSelected = activeSubcategory === sub;
+                      return (
+                        <button
+                          key={sub}
+                          onClick={() => setActiveSubcategory(isSubSelected ? null : sub)}
+                          className={cn(
+                            "whitespace-nowrap text-[8px] font-black uppercase tracking-widest px-2.5 py-1.5 rounded-full transition-all border",
+                            isSubSelected 
+                              ? "bg-[#C5A059] text-white border-[#C5A059]" 
+                              : "bg-white text-black/50 border-black/5 hover:border-black/20"
+                          )}
+                        >
+                          {sub}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       </div>
 
@@ -836,19 +870,22 @@ export default function Shop() {
   })();
 
   return (
-    <div className="bg-[#F7F4F0] min-h-screen pb-48 pt-24 relative">
+    <div 
+      className="min-h-screen pb-24 pt-8 real-top-padding relative transition-colors duration-300 animate-fade-in"
+      style={{ backgroundColor: siteConfig?.homeBackgroundColor || '#F7F4F0' }}
+    >
       {/* Explore Collection Title (Goes up with page when scrolled) */}
-      <div className="px-4 mb-4 text-center animate-fade-in select-none">
-        <h1 className="text-[12px] font-black tracking-[0.3em] text-[#111] uppercase">
-          Explore Collection
+      <div className="px-4 mb-2 text-center select-none">
+        <h1 className="text-[11px] font-black tracking-[0.3em] text-[#111] uppercase">
+          {siteConfig?.shopTitle || "Explore Collection"}
         </h1>
-        <p className="text-[7px] text-[#C5A059] font-black uppercase tracking-[0.2em] mt-1.5">
-          Curated Premium Looks
+        <p className="text-[6px] text-[#C5A059] font-black uppercase tracking-[0.2em] mt-1">
+          {siteConfig?.shopSubtitle || "Curated Premium Looks"}
         </p>
       </div>
 
       {/* Interactive Search Option */}
-      <div className="px-4 mb-6 animate-fade-in">
+      <div className="px-4 mb-3.5 animate-fade-in">
         <div className="relative flex items-center bg-white/75 backdrop-blur-md rounded-2xl border border-black/[0.04] shadow-sm hover:border-[#C5A059]/35 focus-within:border-[#C5A059] transition-all duration-300">
           <Search className="absolute left-4 w-4 h-4 text-[#C5A059]" strokeWidth={2.5} />
           <input 
@@ -859,149 +896,35 @@ export default function Shop() {
               triggerHaptic('light');
             }}
             placeholder="Search custom looks, fabrics, vibes..."
-            className="w-full bg-transparent pl-11 pr-10 py-3.5 text-xs text-black placeholder-black/35 font-medium tracking-wide focus:outline-none"
+            className="w-full bg-transparent pl-11 pr-20 py-3 text-[11px] text-black placeholder-black/35 font-medium tracking-wide focus:outline-none"
           />
-          {searchQuery && (
-            <button 
+          <div className="absolute right-3.5 flex items-center gap-2">
+            {searchQuery && (
+              <button 
+                onClick={() => {
+                  setSearchQuery('');
+                  triggerHaptic('medium');
+                }}
+                className="text-black/30 hover:text-black transition-colors"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
+            <button
               onClick={() => {
-                setSearchQuery('');
                 triggerHaptic('medium');
+                setIsScanningOpen(true);
               }}
-              className="absolute right-4 text-black/30 hover:text-black transition-colors"
+              title="Scan Clothing Silhouette"
+              className="w-7 h-7 rounded-lg bg-black/5 hover:bg-black hover:text-[#C5A059] flex items-center justify-center transition-all text-black/75 active:scale-95 border border-black/5"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-3.5 h-3.5">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
-              </svg>
+              <Camera className="w-3.5 h-3.5" />
             </button>
-          )}
+          </div>
         </div>
       </div>
 
-      {/* 1. Curated Looks Category Circles at the Top */}
-          <div className="px-4 mb-4">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-[9px] font-black tracking-[0.25em] text-[#C5A059] uppercase block">
-                Top Categories
-              </span>
-              {isAdmin && (
-                <Link 
-                  to="/manage-categories"
-                  onClick={() => triggerHaptic('light')}
-                  className="flex items-center gap-1.5 text-[9px] font-black text-[#C5A059] uppercase tracking-widest hover:opacity-80 transition-opacity"
-                >
-                  <Edit2 className="w-2.5 h-2.5" />
-                  Edit
-                </Link>
-              )}
-            </div>
-            
-            <div className="flex items-center gap-4 overflow-x-auto no-scrollbar py-2 -mx-4 px-4 scroll-smooth">
-              {/* ALL Looks Category option */}
-              <div 
-                onClick={() => {
-                  triggerHaptic('light');
-                  setActiveCategory(null);
-                  setActiveSubcategory(null);
-                }}
-                className="flex flex-col items-center gap-1.5 flex-shrink-0 cursor-pointer group"
-              >
-                <div className={cn(
-                  "w-16 h-16 rounded-full flex items-center justify-center transition-all bg-black/[0.03] border-2",
-                  (!activeCategory && !activeSubcategory)
-                    ? "border-black scale-105 shadow-md bg-white"
-                    : "border-transparent bg-neutral-100 group-hover:border-black/10"
-                )}>
-                  <div className="w-[52px] h-[52px] rounded-full bg-black/5 flex items-center justify-center font-black text-[9px] uppercase tracking-widest text-[#C5A059]">
-                    ALL
-                  </div>
-                </div>
-                <span className={cn(
-                  "text-[8px] font-black tracking-wider uppercase text-center transition-colors",
-                  (!activeCategory && !activeSubcategory) ? "text-[#C5A059] font-black" : "text-black/40"
-                )}>
-                  All Looks
-                </span>
-              </div>
-
-              {availableCategories.map((cat, idx) => {
-                const config = categoryConfigs.find(c => c.name === cat);
-                const categoryImage = config?.imageUrl || products.find(p => p.category === cat)?.image;
-                const isSelected = activeCategory === cat;
-
-                return (
-                  <div 
-                    key={cat}
-                    onClick={() => {
-                      triggerHaptic('light');
-                      setActiveCategory(isSelected ? null : cat);
-                      setActiveSubcategory(null);
-                    }}
-                    className="flex flex-col items-center gap-1.5 flex-shrink-0 cursor-pointer group"
-                  >
-                    <div className={cn(
-                      "w-16 h-16 rounded-full flex items-center justify-center transition-all border-2 overflow-hidden bg-white/50",
-                      isSelected
-                        ? "border-black scale-105 shadow-md bg-white"
-                        : "border-transparent group-hover:border-black/10"
-                    )}>
-                      {categoryImage ? (
-                        <img 
-                          src={categoryImage} 
-                          alt={cat} 
-                          className="w-[52px] h-[52px] rounded-full object-cover"
-                          referrerPolicy="no-referrer"
-                        />
-                      ) : (
-                        <div className="w-[52px] h-[52px] rounded-full bg-gradient-to-br from-[#FFDEE9] to-[#B5FFFC] flex items-center justify-center font-black text-white text-xs">
-                          {cat.charAt(0)}
-                        </div>
-                      )}
-                    </div>
-                    <span className={cn(
-                      "text-[8px] font-black tracking-wider uppercase text-center transition-colors",
-                      isSelected ? "text-black font-black" : "text-black/40"
-                    )}>
-                      {cat}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* 2. Subcategories horizontal filter badges (always present, category-specific or overall) */}
-          <div className="flex items-center gap-2 px-4 py-1.5 overflow-x-auto no-scrollbar scroll-smooth mb-4 border-b border-black/5 pb-3">
-            <button 
-              onClick={() => {
-                triggerHaptic('light');
-                setActiveSubcategory(null);
-              }}
-              className={cn(
-                "whitespace-nowrap text-[8px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full transition-all border",
-                !activeSubcategory ? "bg-black text-white border-black" : "text-black/50 border-black/5 hover:border-black/20"
-              )}
-            >
-              {activeCategory ? `All ${activeCategory}` : 'All Looks'}
-            </button>
-            
-            {(activeCategory ? subcategoriesByCategory[activeCategory] || [] : allAvailableSubcategories).map(sub => (
-              <button
-                key={sub}
-                onClick={() => {
-                  triggerHaptic('light');
-                  setActiveSubcategory(sub);
-                }}
-                className={cn(
-                  "whitespace-nowrap text-[8px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full transition-all border",
-                  activeSubcategory === sub ? "bg-black text-white border-black" : "text-black/50 border-black/5 hover:border-black/20"
-                )}
-              >
-                {sub}
-              </button>
-            ))}
-          </div>
-
-          {/* Hide the old grid layout so we don't have visual duplicate */}
+      {/* Hide the old grid layout so we don't have visual duplicate */}
           <div className="hidden">
             <div className="px-4 mb-8 flex items-center justify-between">
             <h2 className="text-xs font-bold text-black uppercase tracking-[0.3em]">Shop by Category</h2>
@@ -1139,7 +1062,7 @@ export default function Shop() {
 
           <div className="max-w-7xl mx-auto py-6">
             {/* Toolbar */}
-            <div className="flex justify-between items-center mb-10 px-4">
+            <div className="flex justify-between items-center mb-4 px-4">
               <div className="flex items-center gap-2">
                 <TrendingUp className="w-5 h-5 text-black/60" />
                 <h2 className="text-xs font-bold text-black uppercase tracking-[0.3em]">
@@ -1201,11 +1124,11 @@ export default function Shop() {
                 ))}
               </div>
             ) : activeCategory && !activeSubcategory && !searchQuery ? (
-              <div className="space-y-16">
+              <div className="space-y-6">
                 {productsBySubcategory.map((group) => (
                   <section key={group.title} className="relative">
-                    <div className="flex items-center gap-3 mb-6 px-4">
-                      <div className="w-1 h-8 bg-black rounded-full" />
+                    <div className="flex items-center gap-3 mb-3.5 px-4">
+                      <div className="w-0.5 h-4 bg-black rounded-full" />
                       <h3 className="text-xs font-bold text-black uppercase tracking-[0.3em]">
                         {group.title}
                       </h3>
@@ -1382,6 +1305,12 @@ export default function Shop() {
       </div>
 
       <BrandSignature variant="dark" className="mt-12 mb-20 opacity-30" />
+
+      <SmartScannerModal 
+        isOpen={isScanningOpen} 
+        onClose={() => setIsScanningOpen(false)} 
+        products={products} 
+      />
     </div>
   );
 }

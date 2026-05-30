@@ -25,9 +25,11 @@ const ManageCategories = lazy(() => import('./pages/ManageCategories'));
 const ManageNotifications = lazy(() => import('./pages/ManageNotifications'));
 const Notifications = lazy(() => import('./pages/Notifications'));
 const TrialRoom = lazy(() => import('./pages/TrialRoom'));
+const ManageCustomization = lazy(() => import('./pages/ManageCustomization'));
 
 import Navbar from './components/Navbar';
 import BottomNav from './components/BottomNav';
+import AnnouncementBar from './components/AnnouncementBar';
 import FloatingCart from './components/FloatingCart';
 import FloatingBag from './components/FloatingBag';
 import { CartProvider, useCart } from './lib/CartContext';
@@ -46,6 +48,7 @@ import { doc, getDocFromServer } from 'firebase/firestore';
 import { Toaster } from 'sonner';
 import { useAuth } from './lib/AuthContext';
 import MaintenanceMode from './components/MaintenanceMode';
+import ScreenshotWishlistListener from './components/ScreenshotWishlistListener';
 
 function AnimatedRoutes() {
   const location = useLocation();
@@ -83,6 +86,7 @@ function AnimatedRoutes() {
             <Route path="/manage-notifications" element={<PageWrapper><ManageNotifications /></PageWrapper>} />
             <Route path="/notifications" element={<PageWrapper><Notifications /></PageWrapper>} />
             <Route path="/trial-room" element={<PageWrapper><TrialRoom /></PageWrapper>} />
+            <Route path="/manage-appearance" element={<PageWrapper><ManageCustomization /></PageWrapper>} />
           </Routes>
         </Suspense>
       </motion.div>
@@ -199,7 +203,7 @@ function AdminMaintenanceBadge() {
 }
 
 function AppContent({ isLoading, setIsLoading }: { isLoading: boolean, setIsLoading: (val: boolean) => void }) {
-  const { isMaintenanceMode, role, isNative } = useAuth();
+  const { isMaintenanceMode, role, isNative, siteConfig } = useAuth();
 
   const showSplash = isLoading;
   
@@ -210,6 +214,7 @@ function AppContent({ isLoading, setIsLoading }: { isLoading: boolean, setIsLoad
         <WishlistProvider>
           <CartProvider>
             <GlobalCartAnimation />
+            <ScreenshotWishlistListener />
             <AdminMaintenanceBadge />
             {showSplash && <SplashScreen onComplete={() => setIsLoading(false)} />}
             
@@ -220,11 +225,15 @@ function AppContent({ isLoading, setIsLoading }: { isLoading: boolean, setIsLoad
                   "min-h-screen flex flex-col font-sans selection:bg-primary selection:text-primary-foreground relative overflow-hidden transition-opacity duration-300 w-full md:max-w-[430px] shadow-none md:shadow-[0_0_100px_rgba(0,0,0,0.08)] md:border-x md:border-black/[0.04]",
                   showSplash ? "opacity-0" : "opacity-100"
                 )}
-                style={{ backgroundColor: '#F7F4F0', paddingTop: 'var(--app-banner-height, 0px)' }}
+                style={{ 
+                  backgroundColor: siteConfig?.homeBackgroundColor || '#F7F4F0', 
+                  paddingTop: 'calc(var(--app-banner-height, 0px) + var(--announcement-height, 0px))' 
+                }}
               >
                 {/* Subtle natural linen grain feel */}
                 <div className="absolute inset-0 pointer-events-none opacity-[0.015] bg-[radial-gradient(#111_1px,transparent_1px)] [background-size:12px_12px] z-0" />
 
+                <AnnouncementBar />
                 <Navbar />
                 <NativeAppBanner />
                 <NotificationBridge />

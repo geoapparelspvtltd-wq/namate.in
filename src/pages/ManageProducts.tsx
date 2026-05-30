@@ -26,12 +26,26 @@ import { cn } from '@/lib/utils';
 export default function ManageProducts() {
   const navigate = useNavigate();
   const { user, role, loading } = useAuth();
-  const [products, setProducts] = useState<any[]>([]);
+  const [products, setProducts] = useState<any[]>(() => {
+    try {
+      const cached = localStorage.getItem('admin_products_cache');
+      return cached ? JSON.parse(cached) : [];
+    } catch {
+      return [];
+    }
+  });
   const [searchQuery, setSearchQuery] = useState('');
   const [isDeleting, setIsDeleting] = useState<string | null>(null);
   const [isPromoting, setIsPromoting] = useState<string | null>(null);
   const [isTogglingBest, setIsTogglingBest] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(() => {
+    try {
+      const cached = localStorage.getItem('admin_products_cache');
+      return !cached;
+    } catch {
+      return true;
+    }
+  });
   const [lastVisibleDoc, setLastVisibleDoc] = useState<any>(null);
   const [hasMore, setHasMore] = useState(true);
   const [isFetchingMore, setIsFetchingMore] = useState(false);
@@ -42,7 +56,6 @@ export default function ManageProducts() {
     if (!isAdmin) return;
 
     const fetchProducts = async () => {
-      setIsLoading(true);
       try {
         const q = query(collection(db, 'products'), orderBy('createdAt', 'desc'), limit(50));
         const snapshot = await getDocs(q);
@@ -64,6 +77,12 @@ export default function ManageProducts() {
         }
 
         setProducts(firestoreProducts);
+        try {
+          // Save top 15 products in cache for rapid preview load
+          localStorage.setItem('admin_products_cache', JSON.stringify(firestoreProducts.slice(0, 15)));
+        } catch (cErr) {
+          console.warn("Storage quota exceeded of admin products cache", cErr);
+        }
       } catch (error) {
         console.error("Error fetching products:", error);
         toast.error("Failed to load products");

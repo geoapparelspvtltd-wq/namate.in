@@ -6,7 +6,10 @@ import { collection, onSnapshot, query, where, orderBy } from 'firebase/firestor
 import { db } from '@/lib/firebase';
 import ProductCard from '@/components/ProductCard';
 import AnimatedBrandName from '@/components/AnimatedBrandName';
+import { useAuth } from '@/lib/AuthContext';
+
 export default function Regal() {
+  const { siteConfig } = useAuth();
   const [products, setProducts] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const premiumProducts = products.filter(p => p.isPremium);
@@ -49,10 +52,10 @@ export default function Regal() {
         >
           <Crown className="w-12 h-12 text-[#C5A059] mb-6" />
           <h1 className="text-5xl sm:text-8xl font-heading font-black uppercase tracking-tighter mb-4 flex items-center justify-center gap-4">
-            <AnimatedBrandName text="REGAL" className="text-[#C5A059]" />
+            <AnimatedBrandName text={siteConfig?.regalTitle || "REGAL"} className="text-[#C5A059]" />
           </h1>
           <p className="text-xl text-black/60 max-w-2xl mx-auto font-medium">
-            The pinnacle of the Namate experience. Exclusive access for our most dedicated members.
+            {siteConfig?.regalSubtitle || "The pinnacle of the Namate experience. Exclusive access for our most dedicated members."}
           </p>
         </motion.div>
       </section>

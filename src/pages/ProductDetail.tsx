@@ -23,7 +23,8 @@ import {
   Info, 
   CheckCircle,
   Clock,
-  ChevronDown
+  ChevronDown,
+  Camera
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import ProductCard from '@/components/ProductCard';
@@ -277,6 +278,18 @@ export default function ProductDetail() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, [fetchProductData]);
 
+  // Listen to keyboard screenshot requests for this detail page
+  useEffect(() => {
+    const handleRequestScreenshot = () => {
+      if (product) {
+        const event = new CustomEvent('simulate-screenshot', { detail: { product } });
+        window.dispatchEvent(event);
+      }
+    };
+    window.addEventListener('request-product-screenshot', handleRequestScreenshot);
+    return () => window.removeEventListener('request-product-screenshot', handleRequestScreenshot);
+  }, [product]);
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-white">
@@ -330,6 +343,20 @@ export default function ProductDetail() {
             className="w-full relative h-[450px] sm:h-[600px] bg-white border border-neutral-100 rounded-3xl overflow-hidden shadow-sm group select-none"
             onClick={handleImageDoubleTap}
           >
+            {/* Screenshot Simulation Button overlay */}
+            <div 
+              className="absolute top-4 left-4 z-40 bg-black/75 hover:bg-black text-white hover:text-[#C5A059] transition-all py-1.5 px-3 rounded-full flex items-center gap-1.5 text-[8.5px] font-black uppercase tracking-widest cursor-pointer shadow-md select-none active:scale-95 border border-white/10"
+              onClick={(e) => {
+                e.stopPropagation();
+                const event = new CustomEvent('simulate-screenshot', { detail: { product } });
+                window.dispatchEvent(event);
+              }}
+              title="Save Snapshot and Add to Wishlist"
+            >
+              <Camera className="w-3.5 h-3.5" />
+              <span>Snapshot</span>
+            </div>
+
             {/* Pagination Floating Capsule */}
             <div className="absolute bottom-4 right-4 z-40 bg-black/60 backdrop-blur-md px-3 py-1 rounded-full text-white text-[9px] font-black tracking-widest">
               {activeImageIndex + 1} / {galleryImages.length}

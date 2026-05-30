@@ -1,6 +1,6 @@
 import React, { useRef, useState, memo, useEffect, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Heart, ShoppingCart, Plus, Play, Trash2, Share2, Crown, Star, Sparkles, Wand2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Heart, ShoppingCart, Plus, Play, Trash2, Share2, Crown, Star, Sparkles, Wand2, ChevronLeft, ChevronRight, Camera, TrendingDown, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { motion, AnimatePresence, useScroll, useTransform } from 'motion/react';
@@ -65,6 +65,7 @@ const ProductCard = memo(({ id, name, price, originalPrice, image, images = [], 
   const [isDeleting, setIsDeleting] = useState(false);
   const [fetchedMedia, setFetchedMedia] = useState<any[]>([]);
   const [isInView, setIsInView] = useState(false);
+  const [loadMedia, setLoadMedia] = useState(false);
 
   const deliveryText = useMemo(() => {
     const today = new Date();
@@ -90,7 +91,7 @@ const ProductCard = memo(({ id, name, price, originalPrice, image, images = [], 
   }, []);
 
   useEffect(() => {
-    if (isInView && id && !isWishlistPage) {
+    if (loadMedia && id) {
       const fetchMediaSub = async () => {
         try {
           const { collection, query, orderBy, getDocs } = await import('firebase/firestore');
@@ -130,24 +131,30 @@ const ProductCard = memo(({ id, name, price, originalPrice, image, images = [], 
       };
       fetchMediaSub();
     }
-  }, [id, isInView]);
+  }, [id, loadMedia, isWishlistPage]);
 
   const displayMedia = useMemo(() => {
-    if (isWishlistPage) {
-      const url = image || (images && images.length > 0 ? images[0] : 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=600&q=80');
-      return [{ type: 'image' as const, url }];
-    }
-
     const combinedList: { type: 'video' | 'youtube' | 'image'; url: string }[] = [];
     const seenUrls = new Set<string>();
+
+    const getUrlString = (img: any): string => {
+      if (!img) return '';
+      if (typeof img === 'string') return img;
+      if (typeof img === 'object') {
+        if ('url' in img && typeof img.url === 'string') return img.url;
+        if ('src' in img && typeof img.src === 'string') return img.src;
+      }
+      return '';
+    };
 
     // 1. Add props.media if present
     if (props.media && Array.isArray(props.media)) {
       props.media.forEach((m: any) => {
-        if (m && m.url) {
-          const youtubeUrl = m.type === 'video' ? getYoutubeEmbedUrl(m.url) : null;
-          const type = youtubeUrl ? 'youtube' : m.type;
-          const url = youtubeUrl || m.url;
+        const mUrl = getUrlString(m);
+        if (mUrl) {
+          const youtubeUrl = m.type === 'video' ? getYoutubeEmbedUrl(mUrl) : null;
+          const type = youtubeUrl ? 'youtube' : (m.type || 'image');
+          const url = youtubeUrl || mUrl;
           if (!seenUrls.has(url)) {
             seenUrls.add(url);
             combinedList.push({ type, url });
@@ -159,10 +166,11 @@ const ProductCard = memo(({ id, name, price, originalPrice, image, images = [], 
     // 2. Add fetchedMedia
     if (fetchedMedia && Array.isArray(fetchedMedia)) {
       fetchedMedia.forEach((m: any) => {
-        if (m && m.url) {
-          const youtubeUrl = m.type === 'video' ? getYoutubeEmbedUrl(m.url) : null;
-          const type = youtubeUrl ? 'youtube' : m.type;
-          const url = youtubeUrl || m.url;
+        const mUrl = getUrlString(m);
+        if (mUrl) {
+          const youtubeUrl = m.type === 'video' ? getYoutubeEmbedUrl(mUrl) : null;
+          const type = youtubeUrl ? 'youtube' : (m.type || 'image');
+          const url = youtubeUrl || mUrl;
           if (!seenUrls.has(url)) {
             seenUrls.add(url);
             combinedList.push({ type, url });
@@ -174,10 +182,11 @@ const ProductCard = memo(({ id, name, price, originalPrice, image, images = [], 
     // 3. Add videoUrls / videoUrl
     const vUrls = (videoUrls && videoUrls.length > 0) ? videoUrls : (videoUrl ? [videoUrl] : []);
     vUrls.forEach(url => {
-      if (url && typeof url === 'string') {
-        const youtubeUrl = getYoutubeEmbedUrl(url);
+      const vUrl = getUrlString(url);
+      if (vUrl) {
+        const youtubeUrl = getYoutubeEmbedUrl(vUrl);
         const type = youtubeUrl ? 'youtube' : 'video';
-        const finalUrl = youtubeUrl || url;
+        const finalUrl = youtubeUrl || vUrl;
         if (!seenUrls.has(finalUrl)) {
           seenUrls.add(finalUrl);
           combinedList.push({ type, url: finalUrl });
@@ -187,8 +196,9 @@ const ProductCard = memo(({ id, name, price, originalPrice, image, images = [], 
 
     // 4. Add images / image prop
     const imgs = (images && images.length > 0) ? images : (image ? [image] : []);
-    imgs.forEach(url => {
-      if (url && typeof url === 'string' && !seenUrls.has(url)) {
+    imgs.forEach(item => {
+      const url = getUrlString(item);
+      if (url && !seenUrls.has(url)) {
         seenUrls.add(url);
         combinedList.push({ type: 'image', url });
       }
@@ -197,6 +207,10 @@ const ProductCard = memo(({ id, name, price, originalPrice, image, images = [], 
     // Fallback if empty
     if (combinedList.length === 0) {
       combinedList.push({ type: 'image', url: 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=600&q=80' });
+    }
+
+    if (isWishlistPage) {
+      return [{ type: 'image' as const, url: combinedList[0].url }];
     }
 
     return combinedList;
@@ -274,6 +288,17 @@ const ProductCard = memo(({ id, name, price, originalPrice, image, images = [], 
     navigate('/trial-room', { state: { tryOnProduct: { id, name, price, image, description: props.description } } });
   };
 
+  const handleScreenshotSimulation = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const event = new CustomEvent('simulate-screenshot', { 
+      detail: { 
+        product: { id, name, price, image, images } 
+      } 
+    });
+    window.dispatchEvent(event);
+  };
+
   const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
     const scrollLeft = e.currentTarget.scrollLeft;
     const width = e.currentTarget.offsetWidth;
@@ -307,6 +332,9 @@ const ProductCard = memo(({ id, name, price, originalPrice, image, images = [], 
     <motion.div 
       ref={cardRef}
       whileTap={{ scale: 0.98 }}
+      onMouseEnter={() => setLoadMedia(true)}
+      onTouchStart={() => setLoadMedia(true)}
+      onPointerEnter={() => setLoadMedia(true)}
       className={cn(
         "group relative flex flex-col h-full transition-all border-r-[0.5px] border-b-[0.5px] border-[#e5e5e5]",
         variant === 'default' ? "bg-white" : "bg-transparent"
@@ -429,6 +457,19 @@ const ProductCard = memo(({ id, name, price, originalPrice, image, images = [], 
           </button>
         )}
 
+        {/* Screenshot snapshot simulation button */}
+        <button 
+          onClick={handleScreenshotSimulation}
+          data-screenshot-target="true"
+          title="Take Snapshot to Wishlist"
+          className={cn(
+            "absolute z-20 w-7 h-7 bg-white/95 backdrop-blur-sm text-black hover:text-[#C5A059] rounded-full flex items-center justify-center shadow-sm transition-all active:scale-95 border border-black/5 md:opacity-0 md:group-hover:opacity-100",
+            isAdmin ? "top-[38px] right-2" : "top-2 right-2"
+          )}
+        >
+          <Camera className="w-3.5 h-3.5" />
+        </button>
+
         {/* Quick Add Button - Always visible */}
         {!isUpcoming && (
           <div className="absolute bottom-2 right-2 z-20 transition-opacity">
@@ -513,7 +554,24 @@ const ProductCard = memo(({ id, name, price, originalPrice, image, images = [], 
             )}
           </div>
 
+          {/* Myntra-style Wishlist Urgency Notifications */}
+          {isWishlistPage && (
+            <div className="mt-2.5 space-y-1.5 pt-2 border-t border-black/5 animate-fade-in">
+              {/* Low stock tag - Myntra Style */}
+              <div className="flex items-center gap-1.5 text-[8.5px] font-extrabold uppercase tracking-wider text-red-600 bg-red-50/70 px-2 py-1 rounded-lg">
+                <AlertTriangle className="w-3 h-3 text-red-600 shrink-0" />
+                <span>Only 2 pieces left!</span>
+              </div>
 
+              {/* Price drop tag - Myntra Style */}
+              <div className="flex items-center gap-1.5 text-[8.5px] font-bold text-emerald-800 bg-emerald-50/70 px-2 py-1.5 rounded-lg border border-emerald-500/10">
+                <TrendingDown className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                <span className="leading-tight">
+                  Price dropped by <strong className="font-black text-emerald-950">₹{(originalPrice && originalPrice > price) ? (originalPrice - price) : (((id.charCodeAt(0) % 3) + 1) * 100 + 49)}</strong>
+                </span>
+              </div>
+            </div>
+          )}
 
         </div>
       </div>

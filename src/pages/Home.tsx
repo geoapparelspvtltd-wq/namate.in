@@ -1,11 +1,14 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
 import ProductCard from '@/components/ProductCard';
+import { toast } from 'sonner';
+import { ScrollHighlightText } from '@/components/ScrollHighlightText';
+import { DEFAULT_SITE_CONFIG } from '@/lib/AuthContext';
 import { collection, onSnapshot, query, orderBy, limit, getDocs, doc } from 'firebase/firestore';
 import { db, auth } from '@/lib/firebase';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { motion, AnimatePresence, useScroll, useTransform } from 'motion/react';
-import { ArrowRight, Sparkles, TrendingUp, Zap, Heart, Search, Mic, Image as LucideImage, ChevronRight, ChevronLeft, X } from 'lucide-react';
+import { ArrowRight, Sparkles, TrendingUp, Zap, Heart, Search, Mic, Image as LucideImage, ChevronRight, ChevronLeft, X, Percent, Maximize2 } from 'lucide-react';
 import AlternatingSearchIcon from '@/components/AlternatingSearchIcon';
 import { cn } from '@/lib/utils';
 import AnimatedBrandName from '@/components/AnimatedBrandName';
@@ -149,7 +152,7 @@ const toTitleCase = (str: string): string => {
 
 export default function Home() {
   const { searchQuery, setSearchQuery } = useSearch();
-  const { role, user } = useAuth();
+  const { role, user, siteConfig } = useAuth();
 
   // Load home data cache synchronously for instantaneous rendering without layout shift or loaders
   const cachedHomeData = useMemo(() => {
@@ -172,6 +175,7 @@ export default function Home() {
   const [subcategoryConfigs, setSubcategoryConfigs] = useState<any[]>(() => cachedHomeData?.subConfigs || []);
   const [currentGalleryIndex, setCurrentGalleryIndex] = useState(0);
   const [isAutoPlay, setIsAutoPlay] = useState(true);
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(() => !(cachedHomeData?.products?.length > 0));
   const { wishlist } = useWishlist();
   const [secondGallery, setSecondGallery] = useState<any>({
@@ -420,6 +424,19 @@ export default function Home() {
     return products.filter(p => !!p.isBestSeller);
   }, [products]);
 
+  const discountedProducts = useMemo(() => {
+    return products.filter(p => {
+      const d = Number(p.discount) || 0;
+      const op = Number(p.originalPrice) || 0;
+      const pr = Number(p.price) || 0;
+      return d > 0 || (op > pr && pr > 0 && op > 0);
+    }).sort((a, b) => {
+      const discA = Number(a.discount) || (a.originalPrice && a.price ? Math.round(((a.originalPrice - a.price) / a.originalPrice) * 100) : 0);
+      const discB = Number(b.discount) || (b.originalPrice && b.price ? Math.round(((b.originalPrice - b.price) / b.originalPrice) * 100) : 0);
+      return discB - discA;
+    });
+  }, [products]);
+
   if (isLoading && products.length === 0) {
     return (
       <div className="bg-background min-h-screen pb-40">
@@ -442,7 +459,10 @@ export default function Home() {
   }
 
   return (
-    <div className="bg-[#F7F4F0] min-h-screen pb-40">
+    <div 
+      className="min-h-screen pb-40 transition-colors duration-300 animate-fade-in"
+      style={{ backgroundColor: siteConfig?.homeBackgroundColor || '#F7F4F0' }}
+    >
       {/* Immersive Gallery Hero Section (Edge to Edge) */}
       <section ref={heroRef} className="relative w-full mb-10">
         <div className="relative h-[65vh] md:h-[75vh] w-full overflow-hidden shadow-sm group">
@@ -525,7 +545,7 @@ export default function Home() {
             );
             const slideSubcategory = currentSlide?.subcategory 
               ? `Collection: ${currentSlide.subcategory}`
-              : "Crafted for Breathability.";
+              : (siteConfig?.heroSubtitle || "Crafted for Breathability.");
 
             const targetCategory = currentSlide?.category;
             const targetSubcategory = currentSlide?.subcategory;
@@ -540,22 +560,32 @@ export default function Home() {
 
             return (
               <div className="absolute inset-x-0 bottom-0 p-8 sm:p-12 flex flex-col items-start text-white space-y-2 z-10 bg-gradient-to-t from-black/60 via-black/20 to-transparent pointer-events-none">
-                <span className="text-[10px] font-black uppercase tracking-[0.3em] text-[#F7F4F0]/80">
+                <span 
+                  className="text-[10px] font-black uppercase tracking-[0.3em]"
+                  style={{ color: `${siteConfig?.homeBackgroundColor || '#F7F4F0'}CC` }}
+                >
                   {slideCategory}
                 </span>
-                <h2 className="text-3xl sm:text-5xl font-brand font-black uppercase tracking-[0.1em] text-[#F7F4F0]">
+                <h2 
+                  className="text-3xl sm:text-5xl font-brand font-black uppercase tracking-[0.1em]"
+                  style={{ color: siteConfig?.homeBackgroundColor || '#F7F4F0' }}
+                >
                   {slideCaption}
                 </h2>
-                <p className="font-serif italic text-sm sm:text-base text-[#F7F4F0]/90">
+                <p 
+                  className="font-serif italic text-sm sm:text-base text-white/95"
+                  style={{ color: `${siteConfig?.homeBackgroundColor || '#F7F4F0'}E6` }}
+                >
                   {slideSubcategory}
                 </p>
                 <div className="pt-4 pointer-events-auto">
                   <Link 
                     to={exploreUrl} 
                     onClick={() => triggerHaptic('medium')}
-                    className="inline-block bg-black hover:bg-neutral-900 text-[#F7F4F0] text-[9px] font-black uppercase tracking-widest px-8 py-3.5 rounded-sm transition-all shadow-md active:scale-95 animate-pulse-slow"
+                    className="inline-block bg-black hover:bg-neutral-900 text-[9px] font-black uppercase tracking-widest px-8 py-3.5 rounded-sm transition-all shadow-md active:scale-95 animate-pulse-slow"
+                    style={{ color: siteConfig?.homeBackgroundColor || '#F7F4F0' }}
                   >
-                    EXPLORE NOW
+                    {siteConfig?.heroButtonText || "EXPLORE NOW"}
                   </Link>
                 </div>
               </div>
@@ -565,13 +595,13 @@ export default function Home() {
       </section>
 
       {/* Quick Category Navigation */}
-      <section className="mb-10">
+      <section className="mb-3">
         <CategoryQuickNav categories={quickNavCategories} isAdmin={isAdmin} />
       </section>
 
       {/* Search Results Or Curated Page Contents */}
       {searchQuery ? (
-        <section className="mb-16">
+        <section className="mb-8">
           <motion.div 
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -650,8 +680,8 @@ export default function Home() {
       ) : (
         <>
           {/* NEW ARRIVALS Section with Horizontal Scroll exactly matches mockup */}
-          <section className="mb-12">
-            <div className="flex items-center justify-between mb-4 px-4">
+          <section className="mb-7">
+            <div className="flex items-center justify-between mb-3.5 px-4">
               <h2 className="text-2xl font-brand font-semibold tracking-tight text-neutral-900">
                 New Arrivals
               </h2>
@@ -673,9 +703,104 @@ export default function Home() {
             </div>
           </section>
 
+          {/* THE GALLERY PORT SECTION */}
+          <section className="mb-7 animate-fade-in">
+            <div className="flex flex-col mb-3.5 px-4 select-none">
+              <span className="text-[9px] text-[#C5A059] font-black uppercase tracking-[0.2em] leading-none mb-1.5">Interactive Lookbook</span>
+              <div className="flex items-center justify-between">
+                <h2 className="text-xl font-brand font-semibold tracking-tight text-neutral-900 uppercase leading-none">
+                  Gallery Port
+                </h2>
+                <span className="text-[8px] font-black uppercase bg-[#C5A059] text-black px-2.5 py-1 rounded-full tracking-widest leading-none">
+                  Live View
+                </span>
+              </div>
+            </div>
+
+            {/* Horizontally scrolling gallery grid with elegant lookbook frames */}
+            <div className="flex gap-4 overflow-x-auto pb-4 no-scrollbar snap-x snap-mandatory px-4">
+              {(galleryImages.length > 0 ? galleryImages : [
+                { url: "https://images.unsplash.com/photo-1620799140408-edc6dcb6d633?auto=format&fit=crop&w=600&q=80", caption: "Premium Wool Blend Silhouette", category: "SILHOUETTE 01" },
+                { url: "https://images.unsplash.com/photo-1576016770956-debb63d900bb?auto=format&fit=crop&w=600&q=80", caption: "Raw Stonewashed Softness", category: "STONEWASH 02" },
+                { url: "https://images.unsplash.com/photo-1441986300917-64674bd600d8?auto=format&fit=crop&w=600&q=80", caption: "Textured Knit Weaves", category: "TEXTURES 03" }
+              ]).map((img, idx) => (
+                <div 
+                  key={img.id || idx}
+                  onClick={() => {
+                    triggerHaptic('medium');
+                    setLightboxIndex(idx);
+                  }}
+                  className="min-w-[240px] w-[240px] aspect-[4/5] snap-start bg-neutral-950 rounded-[32px] p-1 border border-neutral-200/50 relative shrink-0 overflow-hidden group shadow-sm hover:shadow-md cursor-zoom-in transition-all duration-300"
+                >
+                  <div className="absolute inset-1.5 overflow-hidden rounded-[26px] h-[calc(100%-12px)]">
+                    <img 
+                      src={img.url} 
+                      alt={img.caption || "Lookbook shot"} 
+                      className="absolute inset-x-0 top-0 h-full w-full object-cover transition-transform duration-[1200ms] ease-out group-hover:scale-105 brightness-[0.88] group-hover:brightness-95"
+                      referrerPolicy="no-referrer"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/15 to-transparent" />
+                    
+                    {/* Top Right Zoom Badge */}
+                    <div className="absolute top-3.5 right-3.5 bg-white/10 hover:bg-white/20 border border-white/20 w-7 h-7 rounded-full flex items-center justify-center backdrop-blur-sm transition-colors">
+                      <Maximize2 className="w-3.5 h-3.5 text-white" />
+                    </div>
+
+                    <div className="absolute bottom-4 left-4 right-4 text-left">
+                      <span className="text-[7.5px] font-black uppercase tracking-[0.25em] text-[#C5A059] mb-1 block">
+                        {img.category && img.category !== 'NONE' ? img.category : "DEBUT CONCEPT"}
+                      </span>
+                      <h3 className="text-white text-xs font-brand font-black uppercase tracking-tight leading-tight mb-1">
+                        {img.caption || "LOOKBOOK FRAME"}
+                      </h3>
+                      <p className="text-white/45 text-[8px] uppercase tracking-widest font-mono">
+                        View Frame &bull; Open Lightbox
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          {/* DISCOUNT GALLERY Section with compact Horizontal Scroll */}
+          {discountedProducts.length > 0 && (
+            <section className="mb-7 animate-fade-in">
+              <div className="flex items-center justify-between mb-3.5 px-4">
+                <div className="flex items-center gap-2">
+                  <Percent className="w-4 h-4 text-rose-500" />
+                  <div>
+                    <h2 className="text-xl font-brand font-semibold tracking-tight text-neutral-900 leading-none">
+                      {siteConfig?.discountGalleryTitle || "Exclusive Deals"}
+                    </h2>
+                    <p className="text-[9px] text-[#C5A059] font-black uppercase tracking-[0.15em] mt-1">
+                      {siteConfig?.discountGallerySubtitle || "Limited Time Offers"}
+                    </p>
+                  </div>
+                </div>
+                <Link 
+                  to="/shop?sort=discount"
+                  className="text-xs font-brand font-medium text-neutral-200 hover:text-black transition-colors"
+                  style={{ color: '#C5A059' }}
+                >
+                  View Deals
+                </Link>
+              </div>
+
+              {/* Scrollable list of discounted items, compact/small size */}
+              <div className="flex gap-3 overflow-x-auto pb-4 no-scrollbar snap-x snap-mandatory px-4">
+                {discountedProducts.slice(0, 8).map((product, index) => (
+                  <div key={product.id} className="min-w-[145px] w-[145px] snap-start bg-white rounded-2xl p-1.5 border border-neutral-200/40 shadow-sm relative shrink-0">
+                    <ProductCard {...product} priority={index < 3} />
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+
           {/* BEST SELLERS SECTION */}
-          <section className="mb-12">
-            <div className="flex items-center justify-between mb-4 px-4">
+          <section className="mb-7">
+            <div className="flex items-center justify-between mb-3.5 px-4">
               <div className="flex items-center gap-2">
                 <TrendingUp className="w-5 h-5 text-amber-500" />
                 <h2 className="text-2xl font-brand font-semibold tracking-tight text-neutral-900">
@@ -714,7 +839,7 @@ export default function Home() {
           </section>
 
           {/* Curated Spotlight / Offers Card (Moved under Best Sellers and made BIG photo size) */}
-          <section className="mb-14 px-4">
+          <section className="mb-8 px-4">
             <div className="relative rounded-3xl overflow-hidden h-[450px] md:h-[500px] border border-neutral-200/25 shadow-md">
               <div className="absolute inset-0">
                 <img 
@@ -747,58 +872,9 @@ export default function Home() {
             </div>
           </section>
 
-          {/* Core Perks row: 4 neat minimalist blocks matching image */}
-          <section className="mb-14 px-6 border-y border-neutral-200/50 py-8 bg-[#FAF8F5]">
-            <div className="grid grid-cols-4 gap-2 text-center">
-              <div className="flex flex-col items-center space-y-2">
-                <div className="w-8 h-8 rounded-full bg-[#111]/5 flex items-center justify-center text-[#C5A059]">
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                  </svg>
-                </div>
-                <span className="text-[7.5px] font-black uppercase tracking-wider text-black leading-tight max-w-[70px]">
-                  PREMIUM QUALITY
-                </span>
-              </div>
-
-              <div className="flex flex-col items-center space-y-2">
-                <div className="w-8 h-8 rounded-full bg-[#111]/5 flex items-center justify-center text-[#C5A059]">
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707m0-12.728l.707.707m12.728 12.728l.707-.707M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                </div>
-                <span className="text-[7.5px] font-black uppercase tracking-wider text-black leading-tight max-w-[70px]">
-                  NATURAL FABRICS
-                </span>
-              </div>
-
-              <div className="flex flex-col items-center space-y-2">
-                <div className="w-8 h-8 rounded-full bg-[#111]/5 flex items-center justify-center text-[#C5A059]">
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.907c.961 0 1.36 1.248.58 1.8L16.8 12.98h-.001l-.001.001M16.8 12.98l1.518 4.674c.3.922-.755 1.688-1.538 1.11L13 15.82a1 1 0 00-1.176 0l-3.953 2.871c-.783.57-1.838-.197-1.538-1.11L7.86 12.98l-3.111-2.262c-.78-.553-.381-1.8.58-1.8h4.907a1 1 0 00.95-.69L11.049 2.927z" />
-                  </svg>
-                </div>
-                <span className="text-[7.5px] font-black uppercase tracking-wider text-black leading-tight max-w-[70px]">
-                  TIMELESS DESIGNS
-                </span>
-              </div>
-
-              <div className="flex flex-col items-center space-y-2">
-                <div className="w-8 h-8 rounded-full bg-[#111]/5 flex items-center justify-center text-[#C5A059]">
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.21 7.89M9 11l3-3 3 3m-3-3v12" />
-                  </svg>
-                </div>
-                <span className="text-[7.5px] font-black uppercase tracking-wider text-black leading-tight max-w-[70px]">
-                  EASY RETURNS
-                </span>
-              </div>
-            </div>
-          </section>
-
           {/* Join Tribe Promotion Gallery Section */}
-          <section className="mb-14">
-            <div className="px-4 mb-5 flex flex-col sm:flex-row sm:items-end justify-between gap-2">
+          <section className="mb-8">
+            <div className="px-4 mb-3.5 flex flex-col sm:flex-row sm:items-end justify-between gap-2">
               <div>
                 <div className="flex items-center gap-2 mb-1.5 select-none">
                   <span className="text-[9px] font-black uppercase tracking-[0.2em] bg-amber-100 text-[#C5A059] px-2.5 py-1 rounded-full w-fit">
@@ -871,11 +947,158 @@ export default function Home() {
                 JOIN THE TRIBE &bull; ₹299/YR
               </Link>
             </div>
+
+            {/* Premium Coupon Display Section */}
+            <div className="mx-4 mt-6 bg-white/40 border border-[#C5A059]/10 rounded-[36px] p-6 text-center select-none backdrop-blur-sm animate-fade-in relative z-10">
+              <p className="text-[9px] font-black uppercase tracking-[0.25em] text-[#C5A059] mb-2">Exclusive Member Coupons</p>
+              <h4 className="text-sm font-brand font-black text-black uppercase tracking-tight mb-4">
+                Unlock Flat Savings at Checkout
+              </h4>
+              
+              <div className="grid grid-cols-1 gap-4">
+                {[
+                  { code: 'TRIBE10', label: '10% OFF EVERYTHING', sub: 'Tribe exclusive discount coupon', min: 'No min order' },
+                  { code: 'WELCOME250', label: '₹250 FLAT DISCOUNT', sub: 'Valid on first regal look orders', min: 'Above ₹1,499' },
+                  { code: 'FREESHIP', label: 'FREE EXPRESS SHIPPING', sub: 'Receive free premium packaging', min: 'Above ₹999' }
+                ].map((coupon) => (
+                  <div 
+                    key={coupon.code} 
+                    className="flex flex-col sm:flex-row items-center justify-between p-3.5 bg-white border border-dashed border-[#C5A059]/30 rounded-2xl relative overflow-hidden active:scale-[0.98] transition-transform duration-300 gap-3"
+                  >
+                    {/* Decorative circular notch left & right */}
+                    <div className="absolute left-0 top-1/2 -translate-y-1/2 -ml-2.5 w-5 h-5 bg-[#FAF8F5] border-r border-[#C5A059]/10 rounded-full hidden sm:block" />
+                    <div className="absolute right-0 top-1/2 -translate-y-1/2 -mr-2.5 w-5 h-5 bg-[#FAF8F5] border-l border-[#C5A059]/10 rounded-full hidden sm:block" />
+
+                    <div className="sm:pl-4 text-center sm:text-left">
+                      <p className="text-[11px] font-black text-black tracking-tight uppercase">{coupon.label}</p>
+                      <p className="text-[8.5px] font-black text-[#C5A059] mt-0.5 uppercase tracking-wide">{coupon.sub} &bull; {coupon.min}</p>
+                    </div>
+                    
+                    <div className="sm:pr-4 flex items-center gap-1.5 w-full sm:w-auto justify-center sm:justify-end">
+                      <span className="font-mono text-[9px] font-black text-white bg-black px-2.5 py-1.5 rounded-lg select-all tracking-wider">
+                        {coupon.code}
+                      </span>
+                      <button 
+                        onClick={() => {
+                          triggerHaptic('light');
+                          navigator.clipboard.writeText(coupon.code);
+                          toast.success(`Coupon "${coupon.code}" copied! Apply at Checkout.`);
+                        }}
+                        className="text-[9px] font-black text-black hover:bg-neutral-100 transition-colors uppercase tracking-widest px-3 py-1.5 rounded-lg border border-black/10 bg-white"
+                      >
+                        Copy
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
           </section>
 
           {/* Dynamic subcategory sections removed as per user request */}
+          <ScrollHighlightText text={siteConfig?.aboutText || DEFAULT_SITE_CONFIG.aboutText || ""} />
         </>
       )}
+
+      {/* High-fidelity full-view Lightbox Modal Portal for Gallery Port lookbook shots */}
+      <AnimatePresence>
+        {lightboxIndex !== null && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-neutral-950/98 z-[100] flex flex-col justify-between items-center p-6 backdrop-blur-lg"
+          >
+            {/* Elegant Header Control Panel */}
+            <div className="w-full max-w-lg flex justify-between items-center text-white/50 select-none pt-4">
+              <span className="text-[9px] font-black tracking-[0.25em] uppercase font-mono text-[#C5A059]">
+                LOOKBOARD PORT FRAME {lightboxIndex + 1} / {Math.max(galleryImages.length, 3)}
+              </span>
+              <button 
+                onClick={() => {
+                  triggerHaptic('light');
+                  setLightboxIndex(null);
+                }}
+                className="w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 active:scale-95 text-white flex items-center justify-center transition-all cursor-pointer border border-white/10"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Viewport Box */}
+            <div className="w-full max-w-lg flex-1 flex items-center justify-center relative my-4">
+              <button 
+                onClick={() => {
+                  triggerHaptic('light');
+                  const count = galleryImages.length > 0 ? galleryImages.length : 3;
+                  setLightboxIndex(prev => prev === null ? 0 : (prev === 0 ? count - 1 : prev - 1));
+                }}
+                className="absolute left-2 z-[110] w-12 h-12 rounded-full bg-white/5 hover:bg-white/15 text-white flex items-center justify-center transition-all hover:scale-105 active:scale-95 border border-white/10"
+              >
+                <ChevronLeft className="w-6 h-6 animate-pulse-slow" />
+              </button>
+
+              <motion.div
+                key={lightboxIndex}
+                initial={{ opacity: 0, scale: 0.94 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.94 }}
+                transition={{ duration: 0.3 }}
+                className="w-full max-h-[55vh] aspect-[4/5] rounded-[36px] overflow-hidden border border-white/10 shadow-2xl relative bg-neutral-900"
+              >
+                <img 
+                  src={
+                    (galleryImages.length > 0 ? galleryImages : [
+                      { url: "https://images.unsplash.com/photo-1620799140408-edc6dcb6d633?auto=format&fit=crop&w=600&q=80" },
+                      { url: "https://images.unsplash.com/photo-1576016770956-debb63d900bb?auto=format&fit=crop&w=600&q=80" },
+                      { url: "https://images.unsplash.com/photo-1441986300917-64674bd600d8?auto=format&fit=crop&w=600&q=80" }
+                    ])[lightboxIndex]?.url
+                  }
+                  alt="Highres perspective frame"
+                  className="w-full h-full object-cover mx-auto select-none rounded-[36px]"
+                  referrerPolicy="no-referrer"
+                />
+              </motion.div>
+
+              <button 
+                onClick={() => {
+                  triggerHaptic('light');
+                  const count = galleryImages.length > 0 ? galleryImages.length : 3;
+                  setLightboxIndex(prev => prev === null ? 0 : (prev + 1) % count);
+                }}
+                className="absolute right-2 z-[110] w-12 h-12 rounded-full bg-white/5 hover:bg-white/15 text-white flex items-center justify-center transition-all hover:scale-105 active:scale-95 border border-white/10"
+              >
+                <ChevronRight className="w-6 h-6 animate-pulse-slow" />
+              </button>
+            </div>
+
+            {/* Bottom Details Drawer */}
+            <div className="w-full max-w-lg text-center pb-4 select-none space-y-1.5 px-4">
+              <span className="text-[8px] font-black uppercase tracking-[0.3em] text-[#C5A059] bg-[#C5A059]/10 px-3.5 py-1 rounded-full border border-[#C5A059]/20 font-brand">
+                {
+                  (galleryImages.length > 0 ? galleryImages : [
+                    { category: "SILHOUETTE 01" },
+                    { category: "STONEWASH 02" },
+                    { category: "TEXTURES 03" }
+                  ])[lightboxIndex]?.category || "CONCEPT DEBUT"
+                }
+              </span>
+              <h3 className="text-white text-sm font-brand font-black uppercase leading-tight mt-2.5">
+                {
+                  (galleryImages.length > 0 ? galleryImages : [
+                    { caption: "Premium Wool Blend Silhouette" },
+                    { caption: "Raw Stonewashed Softness" },
+                    { caption: "Textured Knit Weaves" }
+                  ])[lightboxIndex]?.caption || "Minimalist Frame"
+                }
+              </h3>
+              <p className="text-white/40 text-[8px] uppercase tracking-[0.15em] leading-relaxed">
+                Swipe or drag to explore other live perspective frames
+              </p>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <BrandSignature variant="dark" className="mb-16 opacity-30" />
     </div>
