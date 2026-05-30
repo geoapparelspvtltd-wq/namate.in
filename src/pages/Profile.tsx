@@ -342,16 +342,25 @@ export default function Profile() {
       handleFirestoreError(error, OperationType.LIST, 'orders');
     });
 
+    return () => {
+      unsubscribe();
+    };
+  }, [user]);
+
+  useEffect(() => {
+    if (!user || !showTransactions) return;
+
     const tQ = query(collection(db, 'users', user.uid, 'transactions'), orderBy('createdAt', 'desc'));
     const tUnsubscribe = onSnapshot(tQ, (snapshot) => {
       setTransactions(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data(), createdAt: doc.data().createdAt?.toDate() || new Date() })));
+    }, (error) => {
+      console.error("Error subscribing to transactions:", error);
     });
 
     return () => {
-      unsubscribe();
       tUnsubscribe();
     };
-  }, [user]);
+  }, [user, showTransactions]);
 
   if (loading) {
     return (

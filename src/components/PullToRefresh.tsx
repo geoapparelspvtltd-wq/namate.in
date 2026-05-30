@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, useAnimation } from 'motion/react';
-import { RefreshCw } from 'lucide-react';
 import { triggerHaptic } from '@/lib/haptics';
 import { useAuth } from '@/lib/AuthContext';
 
@@ -106,14 +105,27 @@ export function PullToRefresh({ children }: PullToRefreshProps) {
           transform: `translateY(${Math.min(15, pullDistance * 0.15)}px)`
         }}
       >
-        <div className="bg-white/95 backdrop-blur-md rounded-full shadow-lg border border-neutral-100 p-2.5 flex items-center justify-center pointer-events-none">
-          <RefreshCw 
-            className={`w-5 h-5 text-[#C5A059] ${isRefreshing ? 'animate-spin' : ''}`}
+        <div className="bg-white/95 backdrop-blur-md rounded-full shadow-xl border border-black/[0.04] w-12 h-12 flex items-center justify-center pointer-events-none relative overflow-hidden transition-all duration-200">
+          {/* Elegant luxury outer orbital spinner ring */}
+          <div 
+            className={`absolute inset-1 rounded-full border border-transparent border-t-[#C5A059] border-r-[#C5A059]/30 ${isRefreshing ? 'animate-spin' : ''}`}
             style={{ 
-              transform: isRefreshing ? undefined : `rotate(${rotation}deg) scale(${scale})`,
+              transform: isRefreshing ? undefined : `rotate(${rotation}deg)`,
+              transition: isRefreshing ? undefined : 'transform 75ms linear',
+              borderWidth: '1.75px'
+            }}
+          />
+          
+          {/* Inner Brand Image Logo staying right-side-up and acting premium */}
+          <img 
+            src="https://i.ibb.co/rG66vw6q/Chat-GPT-Image-Apr-10-2026-12-40-57-AM.png"
+            className={`w-6 h-6 object-contain transition-transform duration-300 ${isRefreshing ? 'animate-pulse scale-[0.85]' : ''}`}
+            style={{ 
+              transform: isRefreshing ? undefined : `scale(${scale})`,
               transition: isRefreshing ? undefined : 'transform 75ms linear'
             }}
-            strokeWidth={2.75}
+            alt="Namate Logo"
+            referrerPolicy="no-referrer"
           />
         </div>
       </div>

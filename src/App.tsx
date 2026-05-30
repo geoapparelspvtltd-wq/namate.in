@@ -161,7 +161,13 @@ function PageWrapper({ children }: { children: React.ReactNode }) {
 }
 
 export default function App() {
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(() => {
+    try {
+      return sessionStorage.getItem('has_seen_splash') !== 'true';
+    } catch (e) {
+      return true;
+    }
+  });
 
   useEffect(() => {
     // Immediate and fast app load
@@ -216,7 +222,12 @@ function AppContent({ isLoading, setIsLoading }: { isLoading: boolean, setIsLoad
             <GlobalCartAnimation />
             <ScreenshotWishlistListener />
             <AdminMaintenanceBadge />
-            {showSplash && <SplashScreen onComplete={() => setIsLoading(false)} />}
+            {showSplash && <SplashScreen onComplete={() => {
+              try {
+                sessionStorage.setItem('has_seen_splash', 'true');
+              } catch (e) {}
+              setIsLoading(false);
+            }} />}
             
             {/* Elegant Studio Workspace Backdrop for locking responsive mobile view on Desktop browsers */}
             <div className="min-h-screen w-full bg-[#FAF8F5] md:bg-[#EAE5DF] transition-colors duration-300 flex justify-center">

@@ -70,7 +70,13 @@ export default function ManageCategories() {
           }, {} as Record<string, any>);
 
           // Merge: use config if exists, otherwise default
-          const merged = uniqueNames.map(name => {
+          const allCategoryNamesSet = new Set<string>([
+            ...uniqueNames,
+            ...Object.keys(configs)
+          ]);
+          const allCategoryNames = Array.from(allCategoryNamesSet).filter(Boolean);
+
+          const merged = allCategoryNames.map(name => {
             const config = configs[name as string];
             return {
               id: name as string,
