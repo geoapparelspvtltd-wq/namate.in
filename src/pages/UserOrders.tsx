@@ -739,9 +739,14 @@ export default function UserOrders() {
                       </svg>
                     </div>
 
-                    {/* Centered Palm Tree (perfect copy of the mock-up layout, sitting elegantly under the curve) */}
-                    <div className="absolute top-[52px] left-1/2 -translate-x-1/2">
-                      <PalmTreeLogo className="w-14 h-14 text-neutral-900" />
+                    {/* Centered Brand Logo (sitting elegantly under the curve) */}
+                    <div className="absolute top-[52px] left-1/2 -translate-x-1/2 flex items-center justify-center">
+                      <img 
+                        src="https://i.postimg.cc/wTBMVB6g/Gemini-Generated-Image-22c90822c90822c9-copy.png"
+                        className="w-16 h-16 object-contain mix-blend-multiply"
+                        alt="Namate Logo"
+                        referrerPolicy="no-referrer"
+                      />
                     </div>
                   </div>
 
