@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { User as UserIcon, Settings, ShoppingBag, Heart, LogOut, ChevronRight, Plus, LogIn, Shield, Package, Camera, Wallet, History, ArrowUpRight, ArrowDownLeft, X, Sparkles, Coins, Loader2, Layout, Bell, Trash2, Percent } from 'lucide-react';
+import { User as UserIcon, Settings, ShoppingBag, Heart, LogOut, ChevronRight, Plus, LogIn, Shield, Package, Camera, Wallet, History, ArrowUpRight, ArrowDownLeft, X, Sparkles, Coins, Loader2, Layout, Bell, Trash2, Percent, ChevronLeft, MapPin, CreditCard, HelpCircle, Info, Users } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Button } from '@/components/ui/button';
 import RegalDiamond from '@/components/RegalDiamond';
@@ -7,6 +7,8 @@ import BrandSignature from '@/components/BrandSignature';
 import { useWishlist } from '@/lib/WishlistContext';
 import { useAuth } from '@/lib/AuthContext';
 import { cn } from '@/lib/utils';
+import { PalmTreeLogo } from '@/components/PalmTreeLogo';
+import { triggerHaptic } from '@/lib/haptics';
 
 import { collection, query, where, getDocs, onSnapshot, orderBy, writeBatch, doc, increment, serverTimestamp, updateDoc } from 'firebase/firestore';
 import { db, auth } from '@/lib/firebase';
@@ -96,6 +98,20 @@ export default function Profile() {
   const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
   const [authLoading, setAuthLoading] = useState(false);
   
+  // Custom interactive modal states matching navigation sketch rows
+  const [showAddressModal, setShowAddressModal] = useState(false);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [showStyleModal, setShowStyleModal] = useState(false);
+  const [showSupportModal, setShowSupportModal] = useState(false);
+  const [showAboutModal, setShowAboutModal] = useState(false);
+  const [preferredSize, setPreferredSize] = useState(() => {
+    try {
+      return localStorage.getItem('namate_pref_size') || 'M';
+    } catch {
+      return 'M';
+    }
+  });
+
   // Auth Form State
   const [identifier, setIdentifier] = useState(''); // email or phone
   const [email, setEmail] = useState('');
@@ -525,251 +541,262 @@ export default function Profile() {
   }
 
   return (
-    <div className="min-h-screen bg-background pb-32">
-      {/* Header */}
-      <div className="bg-black/5 py-12 border-b border-black/10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center gap-6">
-          <div className="relative group/avatar">
-            <div 
-              className={cn(
-                "w-24 h-24 bg-black rounded-full flex items-center justify-center border-4 border-white shadow-xl overflow-hidden relative",
-                !isUploading && "cursor-pointer"
-              )}
-              onClick={!isUploading ? handleProfilePictureClick : undefined}
-            >
-              {(userData?.photoURL || user.photoURL) ? (
-                <img src={userData?.photoURL || user.photoURL} alt={user.displayName || ''} className="w-full h-full object-cover" />
-              ) : (
-                <UserIcon className="w-12 h-12 text-white" />
-              )}
-              
-              {isUploading && (
-                <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
-                  <Loader2 className="w-6 h-6 text-white animate-spin" />
-                </div>
-              )}
+    <div className="min-h-screen bg-[#FDFCFB] pb-32">
+      {/* Centered Sticky Top Navigation Row */}
+      <div className="sticky top-0 z-50 bg-[#FDFCFB]/90 backdrop-blur-md border-b border-black/[0.03] px-6 py-4 flex items-center justify-between">
+        <button 
+          onClick={() => {
+            triggerHaptic('light');
+            window.history.back();
+          }}
+          className="p-1 -ml-2 rounded-full hover:bg-black/[0.03] active:scale-95 transition-all text-neutral-400 hover:text-black"
+        >
+          <ChevronLeft className="w-5 h-5" />
+        </button>
+        
+        <h1 className="text-[10px] font-black uppercase tracking-[0.25em] text-neutral-800">
+          Profile
+        </h1>
 
-              {!isUploading && (
-                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/avatar:opacity-100 transition-opacity flex items-center justify-center">
-                  <Camera className="w-6 h-6 text-white" />
-                </div>
-              )}
-            </div>
-            
-            <input 
-              type="file"
-              ref={fileInputRef}
-              onChange={handleProfilePictureChange}
-              accept="image/*"
-              className="hidden"
-            />
-          </div>
-          <div>
-            <div className="flex items-center gap-3">
-              <h1 className="text-3xl font-black uppercase tracking-tighter text-black">{user.displayName || 'Sathya Nexus'}</h1>
-            </div>
-            <p className="text-black/40 font-medium">{user.email}</p>
-            {isTribeMember ? (
-              <div className="mt-2 inline-block bg-black text-[#C5A059] text-[10px] font-black px-2 py-0.5 uppercase tracking-widest">
-                Namate Tribe Member
-              </div>
-            ) : (
-              <Link to="/tribe" className="mt-2 inline-block bg-black/10 text-black/60 text-[10px] font-black px-2 py-0.5 uppercase tracking-widest hover:bg-black hover:text-white transition-colors">
-                Join the Tribe
-              </Link>
-            )}
-          </div>
-        </div>
+        <button 
+          onClick={() => {
+            triggerHaptic('light');
+            setShowStyleModal(true);
+          }}
+          className="p-1 -mr-2 rounded-full hover:bg-black/[0.03] active:scale-95 transition-all hover:rotate-45 duration-300 text-neutral-800"
+        >
+          <Settings className="w-5 h-5" />
+        </button>
       </div>
 
-      {/* Menu */}
-      <div className="max-w-3xl mx-auto px-4 py-12">
-        {/* Wallet Section */}
-        <div className="mb-12">
-          <div className="bg-black text-white rounded-[40px] p-8 shadow-2xl shadow-black/20 overflow-hidden relative group">
-            <div className="relative z-10">
-              <div className="flex items-center justify-between mb-8">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center">
-                    <Wallet className="w-5 h-5 text-[#C5A059]" />
-                  </div>
-                  <span className="text-[10px] font-black uppercase tracking-widest text-white/40">Tribe Wallet</span>
-                </div>
-                <button 
-                  onClick={() => setShowTransactions(true)}
-                  className="w-10 h-10 bg-white/5 rounded-full flex items-center justify-center hover:bg-white/20 transition-all"
-                >
-                  <History className="w-5 h-5" />
-                </button>
+      {/* Centered Premium Editorial Header */}
+      <div className="bg-[#FDFCFB] pt-10 pb-12 text-center px-4 flex flex-col items-center">
+        {/* Avatar Circular Badge */}
+        <div className="relative group/avatar mb-5">
+          <div 
+            className={cn(
+              "w-28 h-28 bg-black rounded-full flex items-center justify-center shadow-xl overflow-hidden relative cursor-pointer border border-black/[0.03]",
+              isUploading && "pointer-events-none"
+            )}
+            onClick={handleProfilePictureClick}
+          >
+            {(userData?.photoURL || user.photoURL) ? (
+              <img src={userData?.photoURL || user.photoURL} alt={user.displayName || ''} className="w-full h-full object-cover animate-fade-in" />
+            ) : (
+              <div className="w-full h-full bg-black flex items-center justify-center p-6 text-white">
+                <PalmTreeLogo className="w-full h-full text-white" />
               </div>
-              
-              <div className="flex flex-col">
-                <span className="text-5xl font-brand font-medium tracking-tighter mb-2">
-                  ₹{userData?.walletBalance || 0}
-                </span>
-                <span className="text-[10px] font-black uppercase tracking-widest text-[#C5A059]">Available Credits</span>
-              </div>
-
-              {/* Namate Points Highlight */}
-              <div className="mt-8 pt-8 border-t border-white/5 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-[#C5A059]/10 rounded-full flex items-center justify-center">
-                    <Sparkles className="w-5 h-5 text-[#C5A059]" />
-                  </div>
-                  <div>
-                    <h4 className="text-sm font-black uppercase tracking-tight text-white">{userData?.namatePoints || 0} Points</h4>
-                    <p className="text-[8px] font-black uppercase tracking-widest text-white/40">Namate Rewards</p>
-                  </div>
-                </div>
-                <Button 
-                  onClick={() => setShowRedemptionModal(true)}
-                  className="bg-[#C5A059] text-black h-10 px-4 rounded-xl font-black text-[9px] uppercase tracking-widest hover:bg-[#D4AF37] transition-all"
-                >
-                  REDEEM
-                </Button>
-              </div>
-
-              <div className="mt-8 flex gap-3">
-                <Button className="flex-1 h-14 bg-white text-black rounded-2xl font-black uppercase tracking-widest text-[10px] hover:bg-white/90 transition-all">
-                  Load Credits
-                </Button>
-                <Button variant="outline" className="flex-1 h-14 border-white/10 text-white rounded-2xl font-black uppercase tracking-widest text-[10px] hover:bg-white/5 transition-all">
-                  Redeem Code
-                </Button>
-              </div>
-            </div>
-
-            {/* Background elements */}
-            <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:opacity-10 transition-opacity">
-              <RegalDiamond className="w-32 h-32" />
-            </div>
-            <div className="absolute -bottom-8 -left-8 w-48 h-48 bg-[#C5A059]/10 rounded-full blur-3xl" />
-          </div>
-        </div>
-
-        {/* Refer & Earn Section */}
-        <div className="mb-12 p-8 bg-gradient-to-br from-black to-gray-900 rounded-[40px] text-white overflow-hidden relative">
-          <div className="relative z-10">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center">
-                <Sparkles className="w-5 h-5 text-[#C5A059]" />
-              </div>
-              <h3 className="text-xl font-black uppercase tracking-tighter">Refer & Earn</h3>
-            </div>
-            <p className="text-white/60 text-sm font-medium mb-8 max-w-[280px]">
-              Earn 100 Namate Points for every friend you refer to the tribe. Automatically earn points when they shop via your link.
-            </p>
+            )}
             
-            <div className="bg-white/5 rounded-2xl p-4 mb-6 flex items-center justify-between border border-white/10">
-              <div className="flex flex-col">
-                <span className="text-[10px] font-black uppercase tracking-widest text-white/40">My Code</span>
-                <span className="text-xl font-black uppercase tracking-tighter text-[#C5A059]">{userData?.referralCode || '...'}</span>
+            {isUploading && (
+              <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
+                <Loader2 className="w-6 h-6 text-white animate-spin" />
               </div>
-              <Button 
-                variant="outline"
-                onClick={() => {
-                  navigator.clipboard.writeText(userData?.referralCode || '');
-                  toast.success("Code copied!");
-                }}
-                className="h-10 px-4 rounded-xl font-black text-[9px] uppercase tracking-widest bg-white/5 border-white/10 hover:bg-white/10 text-white"
-              >
-                Copy
-              </Button>
-            </div>
+            )}
 
-            <Button 
-              onClick={async () => {
-                if (isSharing.current) return;
-                const url = `${window.location.origin}/?ref=${userData?.referralCode}`;
-                
-                if (navigator.share) {
-                  isSharing.current = true;
-                  try {
-                    await navigator.share({
-                      title: 'Join Namate!',
-                      text: 'Use my code to join Namate and get special perks!',
-                      url: url
-                    });
-                  } catch (error: any) {
-                    if (error.name !== 'AbortError') {
-                      console.error("Error sharing:", error);
-                    }
-                  } finally {
-                    isSharing.current = false;
-                  }
-                } else {
-                  try {
-                    await navigator.clipboard.writeText(url);
-                    toast.success("Referral link copied!");
-                  } catch (error) {
-                    console.error("Clipboard error:", error);
-                  }
-                }
-              }}
-              className="w-full h-14 bg-[#C5A059] text-black font-black uppercase tracking-widest text-[10px] rounded-2xl hover:bg-[#D4AF37] transition-all"
-            >
-              SHARE REFERRAL LINK
-            </Button>
+            {!isUploading && (
+              <div className="absolute inset-x-0 bottom-0 bg-black/50 py-1.5 opacity-0 group-hover/avatar:opacity-100 transition-opacity flex items-center justify-center">
+                <Camera className="w-3.5 h-3.5 text-white/90" />
+              </div>
+            )}
           </div>
           
-          <div className="absolute top-0 right-0 p-8 opacity-5">
-            <RegalDiamond className="w-32 h-32" />
-          </div>
+          <input 
+            type="file"
+            ref={fileInputRef}
+            onChange={handleProfilePictureChange}
+            accept="image/*"
+            className="hidden"
+          />
         </div>
 
-        <div className="space-y-4">
-          <Link to="/my-orders" className="w-full flex items-center justify-between p-6 border-2 border-black/5 rounded-2xl hover:border-black/20 transition-all group">
-            <div className="flex items-center gap-4">
-              <div className="w-10 h-10 bg-black/5 rounded-full flex items-center justify-center group-hover:bg-black transition-colors">
-                <ShoppingBag className="w-5 h-5 text-black/40 group-hover:text-white" />
-              </div>
-              <span className="font-black uppercase tracking-tight text-black">My Orders</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-bold text-black/20">{orderCount} Orders</span>
-              <ChevronRight className="w-5 h-5 text-black/10 group-hover:text-black transition-colors" />
-            </div>
+        {/* Brand/User Name and Slogan Typography */}
+        <h2 className="text-xl font-black uppercase tracking-[0.12em] text-black leading-none">
+          {user.displayName || 'Sathya Nexus'}
+        </h2>
+        <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-[0.22em] mt-2.5">
+          Crafted for Presence
+        </p>
+
+        {isTribeMember ? (
+          <div className="mt-4 px-3.5 py-1 bg-black text-[#C5A059] text-[8px] font-black uppercase tracking-[0.25em] rounded-full border border-[#C5A059]/40 shadow-sm leading-none flex items-center gap-1">
+            <Sparkles className="w-2.5 h-2.5 fill-[#C5A059]" />
+            <span>Tribe Member</span>
+          </div>
+        ) : (
+          <Link 
+            to="/tribe" 
+            className="mt-4 px-4 py-1.5 bg-black/[0.04] hover:bg-black text-black/60 hover:text-[#C5A059] text-[8px] font-black uppercase tracking-[0.2em] rounded-full transition-all border border-black/5"
+          >
+            Join the Tribe
           </Link>
+        )}
+      </div>
 
-          <Link to="/wishlist" className="w-full flex items-center justify-between p-6 border-2 border-black/5 rounded-2xl hover:border-black/20 transition-all group">
-            <div className="flex items-center gap-4">
-              <div className="w-10 h-10 bg-black/5 rounded-full flex items-center justify-center group-hover:bg-black transition-colors">
-                <Heart className="w-5 h-5 text-black/40 group-hover:text-white" />
-              </div>
-              <span className="font-black uppercase tracking-tight text-black">Wishlist</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-bold text-black/20">{wishlist.length} Items</span>
-              <ChevronRight className="w-5 h-5 text-black/10 group-hover:text-black transition-colors" />
-            </div>
-          </Link>
-
-          <button className="w-full flex items-center justify-between p-6 border-2 border-black/5 rounded-2xl hover:border-black/20 transition-all group">
-            <div className="flex items-center gap-4">
-              <div className="w-10 h-10 bg-black/5 rounded-full flex items-center justify-center group-hover:bg-black transition-colors">
-                <Settings className="w-5 h-5 text-black/40 group-hover:text-white" />
-              </div>
-              <span className="font-black uppercase tracking-tight text-black">Account Settings</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <ChevronRight className="w-5 h-5 text-black/10 group-hover:text-black transition-colors" />
-            </div>
-          </button>
-
-          <button 
-            onClick={logout}
-            className="w-full flex items-center justify-between p-6 border-2 border-red-900/20 rounded-2xl hover:bg-red-900/10 transition-all group mt-8"
+      {/* Premium Minimal Options List Structure (Sketch-Style dividers) */}
+      <div className="max-w-2xl mx-auto px-6">
+        <div className="border-t border-black/[0.04]">
+          {/* Row 1: ORDERS */}
+          <Link 
+            to="/my-orders" 
+            onClick={() => triggerHaptic('light')}
+            className="w-full flex items-center justify-between py-5 border-b border-black/[0.04] group hover:bg-neutral-50/40 transition-colors"
           >
             <div className="flex items-center gap-4">
-              <div className="w-10 h-10 bg-red-900/20 rounded-full flex items-center justify-center">
-                <LogOut className="w-5 h-5 text-red-500" />
-              </div>
-              <span className="font-black uppercase tracking-tight text-red-500">Logout</span>
+              <ShoppingBag className="w-4 h-4 text-black/60 group-hover:text-[#C5A059] transition-colors" />
+              <span className="text-[10px] font-black uppercase tracking-[0.2em] text-neutral-850">Orders</span>
             </div>
+            <div className="flex items-center gap-2">
+              <span className="text-[9px] font-bold text-neutral-300 uppercase tracking-widest">{orderCount} items</span>
+              <ChevronRight className="w-4 h-4 text-neutral-300 group-hover:text-black transition-colors" />
+            </div>
+          </Link>
+
+          {/* Row 2: WISHLIST */}
+          <Link 
+            to="/wishlist" 
+            onClick={() => triggerHaptic('light')}
+            className="w-full flex items-center justify-between py-5 border-b border-black/[0.04] group hover:bg-neutral-50/40 transition-colors"
+          >
+            <div className="flex items-center gap-4">
+              <Heart className="w-4 h-4 text-black/60 group-hover:text-[#C5A059] transition-colors" />
+              <span className="text-[10px] font-black uppercase tracking-[0.2em] text-neutral-850">Wishlist</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-[9px] font-bold text-neutral-300 uppercase tracking-widest">{wishlist.length} Items</span>
+              <ChevronRight className="w-4 h-4 text-neutral-300 group-hover:text-black transition-colors" />
+            </div>
+          </Link>
+
+          {/* Row 3: ADDRESS INFO */}
+          <button 
+            onClick={() => {
+              triggerHaptic('light');
+              setShowAddressModal(true);
+            }}
+            className="w-full flex items-center justify-between py-5 border-b border-black/[0.04] group hover:bg-neutral-50/40 transition-colors text-left"
+          >
+            <div className="flex items-center gap-4">
+              <MapPin className="w-4 h-4 text-black/60 group-hover:text-[#C5A059] transition-colors" />
+              <span className="text-[10px] font-black uppercase tracking-[0.2em] text-neutral-850">Address Info</span>
+            </div>
+            <ChevronRight className="w-4 h-4 text-neutral-300 group-hover:text-black transition-colors" />
+          </button>
+
+          {/* Row 4: PAYMENT METHOD (Tribe Wallet) */}
+          <button 
+            onClick={() => {
+              triggerHaptic('light');
+              setShowPaymentModal(true);
+            }}
+            className="w-full flex items-center justify-between py-5 border-b border-black/[0.04] group hover:bg-neutral-50/40 transition-colors text-left"
+          >
+            <div className="flex items-center gap-4">
+              <CreditCard className="w-4 h-4 text-black/60 group-hover:text-[#C5A059] transition-colors" />
+              <span className="text-[10px] font-black uppercase tracking-[0.2em] text-neutral-850">Payment Method</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-[9px] font-black uppercase tracking-wider text-[#C5A059]">₹{userData?.walletBalance || 0}</span>
+              <ChevronRight className="w-4 h-4 text-neutral-300 group-hover:text-black transition-colors" />
+            </div>
+          </button>
+
+          {/* Row 5: STYLE PREFERENCES */}
+          <button 
+            onClick={() => {
+              triggerHaptic('light');
+              setShowStyleModal(true);
+            }}
+            className="w-full flex items-center justify-between py-5 border-b border-black/[0.04] group hover:bg-neutral-50/40 transition-colors text-left"
+          >
+            <div className="flex items-center gap-4">
+              <Sparkles className="w-4 h-4 text-black/60 group-hover:text-[#C5A059] transition-colors" />
+              <span className="text-[10px] font-black uppercase tracking-[0.2em] text-neutral-850">Style Preferences</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-[9px] font-bold text-neutral-300 uppercase tracking-widest">Size {preferredSize}</span>
+              <ChevronRight className="w-4 h-4 text-neutral-300 group-hover:text-black transition-colors" />
+            </div>
+          </button>
+
+          {/* Row 6: NAMATE MEMBERSHIP */}
+          <Link 
+            to="/tribe"
+            onClick={() => triggerHaptic('light')}
+            className="w-full flex items-center justify-between py-5 border-b border-black/[0.04] group hover:bg-neutral-50/40 transition-colors text-left"
+          >
+            <div className="flex items-center gap-4">
+              <Shield className="w-4 h-4 text-black/60 group-hover:text-[#C5A059] transition-colors" />
+              <span className="text-[10px] font-black uppercase tracking-[0.2em] text-neutral-850">Namate Membership</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-[8px] font-black uppercase tracking-widest text-[#C5A059]/80">{isTribeMember ? 'Regal Active' : 'Upgrade'}</span>
+              <ChevronRight className="w-4 h-4 text-neutral-300 group-hover:text-black transition-colors" />
+            </div>
+          </Link>
+
+          {/* Row 7: REFER & EARN */}
+          <button 
+            onClick={() => {
+              triggerHaptic('light');
+              setShowRedemptionModal(true);
+            }}
+            className="w-full flex items-center justify-between py-5 border-b border-black/[0.04] group hover:bg-neutral-50/40 transition-colors text-left"
+          >
+            <div className="flex items-center gap-4">
+              <Users className="w-4 h-4 text-black/60 group-hover:text-[#C5A059] transition-colors" />
+              <span className="text-[10px] font-black uppercase tracking-[0.2em] text-neutral-850">Refer & Earn</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-[9px] font-bold text-[#C5A059] uppercase tracking-widest">{userData?.namatePoints || 0} pts</span>
+              <ChevronRight className="w-4 h-4 text-neutral-300 group-hover:text-black transition-colors" />
+            </div>
+          </button>
+
+          {/* Row 8: HELP & SUPPORT */}
+          <button 
+            onClick={() => {
+              triggerHaptic('light');
+              setShowSupportModal(true);
+            }}
+            className="w-full flex items-center justify-between py-5 border-b border-black/[0.04] group hover:bg-neutral-50/40 transition-colors text-left"
+          >
+            <div className="flex items-center gap-4">
+              <HelpCircle className="w-4 h-4 text-black/60 group-hover:text-[#C5A059] transition-colors" />
+              <span className="text-[10px] font-black uppercase tracking-[0.2em] text-neutral-850">Help & Support</span>
+            </div>
+            <ChevronRight className="w-4 h-4 text-neutral-300 group-hover:text-black transition-colors" />
+          </button>
+
+          {/* Row 9: ABOUT US */}
+          <button 
+            onClick={() => {
+              triggerHaptic('light');
+              setShowAboutModal(true);
+            }}
+            className="w-full flex items-center justify-between py-5 border-b border-black/[0.04] group hover:bg-neutral-50/40 transition-colors text-left"
+          >
+            <div className="flex items-center gap-4">
+              <Info className="w-4 h-4 text-black/60 group-hover:text-[#C5A059] transition-colors" />
+              <span className="text-[10px] font-black uppercase tracking-[0.2em] text-neutral-850">About Us</span>
+            </div>
+            <ChevronRight className="w-4 h-4 text-neutral-300 group-hover:text-black transition-colors" />
+          </button>
+
+          {/* Row 10: LOGOUT */}
+          <button 
+            onClick={logout}
+            className="w-full flex items-center justify-between py-5 border-b border-black/[0.04] group hover:bg-red-50/20 transition-all text-left"
+          >
+            <div className="flex items-center gap-4">
+              <LogOut className="w-4 h-4 text-red-500/80 group-hover:text-red-600" />
+              <span className="text-[10px] font-black uppercase tracking-[0.2em] text-red-500/80 group-hover:text-red-600">Logout</span>
+            </div>
+            <ChevronRight className="w-4 h-4 text-neutral-300 group-hover:text-red-500 transition-colors" />
           </button>
         </div>
 
-        {/* Seller Section */}
+      {/* Seller Section */}
         {isAdmin && (
           <div className="mt-12 space-y-6">
             <div className="flex items-center justify-between">
@@ -1243,6 +1270,414 @@ export default function Profile() {
                   className="w-full h-16 bg-black text-white rounded-2xl font-black uppercase tracking-[0.2em] text-[10px]"
                 >
                   CLOSE HISTORY
+                </Button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+
+        {/* Address Info Modal */}
+        {showAddressModal && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-black/45 backdrop-blur-md flex items-end justify-center"
+            onClick={() => setShowAddressModal(false)}
+          >
+            <motion.div 
+              initial={{ y: "100%" }}
+              animate={{ y: 0 }}
+              exit={{ y: "100%" }}
+              transition={{ type: "spring", damping: 30, stiffness: 300 }}
+              className="bg-[#FDFCFB] w-full max-w-xl h-[85vh] rounded-t-[40px] shadow-2xl flex flex-col overflow-hidden border-t border-black/[0.04]"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Header */}
+              <div className="p-8 border-b border-black/[0.04] flex items-center justify-between shrink-0">
+                <div>
+                  <h3 className="text-sm font-black uppercase tracking-[0.2em] text-neutral-800">Address Info</h3>
+                  <p className="text-[9px] font-bold text-neutral-400 uppercase tracking-widest mt-1">Secured in cloud ledger</p>
+                </div>
+                <button 
+                  onClick={() => setShowAddressModal(false)}
+                  className="w-10 h-10 bg-black/[0.03] rounded-full flex items-center justify-center hover:bg-black hover:text-white transition-all active:scale-95"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Body */}
+              <div className="flex-grow overflow-y-auto p-8 space-y-6 no-scrollbar">
+                <div className="space-y-1.5">
+                  <span className="text-[9px] font-black uppercase tracking-widest text-[#C5A059]">Active Delivery Profile</span>
+                  <div className="bg-black/[0.02] border border-black/[0.04] rounded-2xl p-5 space-y-3">
+                    <p className="text-xs font-bold uppercase tracking-wider text-neutral-700">Recipient: <span className="text-black">{user.displayName || 'Default Recipient'}</span></p>
+                    <p className="text-xs font-bold uppercase tracking-wider text-neutral-750">Contact: <span className="text-black">{user.email}</span></p>
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-neutral-400 leading-relaxed">
+                      Delivery logistics are securely mapped on demand upon dispatching luxury parcels. Addresses can be edited instantly during the payment checkout flow.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="space-y-4 pt-4">
+                  <h4 className="text-[9px] font-black uppercase tracking-widest text-[#C5A059]">Registered Billing</h4>
+                  <div className="grid grid-cols-1 gap-3">
+                    <div className="p-4 border border-black/[0.04] rounded-xl flex items-center justify-between">
+                      <div>
+                        <p className="text-xs font-black uppercase tracking-tight text-neutral-800">Email Reference</p>
+                        <p className="text-[10px] font-semibold text-neutral-400 mt-1">{user.email}</p>
+                      </div>
+                      <div className="px-2 py-1 bg-green-500/10 text-green-600 rounded text-[8px] font-black uppercase tracking-wider">VERIFIED</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-8 bg-black/[0.02] border-t border-black/[0.04] shrink-0">
+                <Button 
+                  onClick={() => setShowAddressModal(false)}
+                  className="w-full h-14 bg-black text-white hover:bg-neutral-900 rounded-2xl font-black uppercase tracking-[0.2em] text-[10px]"
+                >
+                  ACKNOWLEDGE
+                </Button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+
+        {/* Payment Method / Tribe Wallet Modal */}
+        {showPaymentModal && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-black/45 backdrop-blur-md flex items-end justify-center"
+            onClick={() => setShowPaymentModal(false)}
+          >
+            <motion.div 
+              initial={{ y: "100%" }}
+              animate={{ y: 0 }}
+              exit={{ y: "100%" }}
+              transition={{ type: "spring", damping: 30, stiffness: 300 }}
+              className="bg-[#FDFCFB] w-full max-w-xl h-[88vh] rounded-t-[40px] shadow-2xl flex flex-col overflow-hidden border-t border-black/[0.04]"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Header */}
+              <div className="p-8 border-b border-black/[0.04] flex items-center justify-between shrink-0">
+                <div>
+                  <h3 className="text-sm font-black uppercase tracking-[0.2em] text-neutral-800">Tribe Wallet & Payment</h3>
+                  <p className="text-[9px] font-bold text-neutral-400 uppercase tracking-widest mt-1">Namate Premium Credits Ledger</p>
+                </div>
+                <button 
+                  onClick={() => {
+                    triggerHaptic('light');
+                    setShowPaymentModal(false);
+                  }}
+                  className="w-10 h-10 bg-black/[0.03] rounded-full flex items-center justify-center hover:bg-black hover:text-white transition-all active:scale-95"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Body */}
+              <div className="flex-grow overflow-y-auto p-8 space-y-8 no-scrollbar">
+                {/* Wallet Total Card */}
+                <div className="bg-black text-white rounded-[32px] p-8 shadow-xl relative overflow-hidden group">
+                  <div className="relative z-10">
+                    <div className="flex items-center justify-between mb-8">
+                      <div className="flex items-center gap-2.5">
+                        <Wallet className="w-5 h-5 text-[#C5A059]" />
+                        <span className="text-[9px] font-black uppercase tracking-[0.2em] text-white/50">Tribe Balance</span>
+                      </div>
+                      <button 
+                        onClick={() => {
+                          setShowTransactions(true);
+                          setShowPaymentModal(false);
+                        }}
+                        className="w-9 h-9 bg-white/5 rounded-full flex items-center justify-center hover:bg-white/25 active:scale-90 transition-all"
+                      >
+                        <History className="w-4.5 h-4.5" />
+                      </button>
+                    </div>
+
+                    <div className="flex flex-col">
+                      <span className="text-4xl font-brand font-medium tracking-tight mb-1">
+                        ₹{userData?.walletBalance || 0}
+                      </span>
+                      <span className="text-[9px] font-black uppercase tracking-[0.2em] text-[#C5A059]">Available Credits</span>
+                    </div>
+
+                    {/* Namate Points Conversion */}
+                    <div className="mt-8 pt-6 border-t border-white/5 flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <Sparkles className="w-4.5 h-4.5 text-[#C5A059] fill-[#C5A059]/20" />
+                        <div>
+                          <h4 className="text-xs font-black uppercase tracking-wide text-white">{userData?.namatePoints || 0} Points</h4>
+                          <p className="text-[8px] font-black uppercase tracking-widest text-white/40">Namate Rewards</p>
+                        </div>
+                      </div>
+                      <Button 
+                        onClick={() => {
+                          setIsRedeeming(true);
+                          setShowRedemptionModal(true);
+                          setShowPaymentModal(false);
+                        }}
+                        className="bg-[#C5A059] text-black h-9 px-4 rounded-xl font-black text-[8px] uppercase tracking-wider hover:bg-[#D4AF37] transition-all"
+                      >
+                        REDEEM POINTS
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="absolute top-0 right-0 p-8 opacity-[0.03]">
+                    <RegalDiamond className="w-32 h-32" />
+                  </div>
+                </div>
+
+                {/* Quick actions inside Payment/Wallet panel */}
+                <div className="space-y-4">
+                  <span className="text-[9px] font-black uppercase tracking-widest text-[#C5A059]">Quick Options</span>
+                  <div className="grid grid-cols-2 gap-3">
+                    <Button 
+                      onClick={() => {
+                        triggerHaptic('light');
+                        toast.info('Credits can be loaded instantly during checkout payments.');
+                      }}
+                      className="h-12 bg-black text-white hover:bg-neutral-950 rounded-xl font-black text-[9px] uppercase tracking-wider transition-all"
+                    >
+                      Load Credits
+                    </Button>
+                    <Button 
+                      variant="outline"
+                      onClick={() => {
+                        triggerHaptic('light');
+                        toast.info('Drop-exclusive redemption code entries are unlocked during specific seasonal drops.');
+                      }}
+                      className="h-12 border-black/10 hover:border-black text-black rounded-xl font-black text-[9px] uppercase tracking-wider transition-all"
+                    >
+                      Redeem Code
+                    </Button>
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-8 bg-black/[0.02] border-t border-black/[0.04] shrink-0">
+                <Button 
+                  onClick={() => setShowPaymentModal(false)}
+                  className="w-full h-14 bg-black text-white hover:bg-neutral-900 rounded-2xl font-black uppercase tracking-[0.2em] text-[10px]"
+                >
+                  CLOSE PANEL
+                </Button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+
+        {/* Style Preferences Modal */}
+        {showStyleModal && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-black/45 backdrop-blur-md flex items-end justify-center"
+            onClick={() => setShowStyleModal(false)}
+          >
+            <motion.div 
+              initial={{ y: "100%" }}
+              animate={{ y: 0 }}
+              exit={{ y: "100%" }}
+              transition={{ type: "spring", damping: 30, stiffness: 300 }}
+              className="bg-[#FDFCFB] w-full max-w-xl h-[82vh] rounded-t-[40px] shadow-2xl flex flex-col overflow-hidden border-t border-black/[0.04]"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Header */}
+              <div className="p-8 border-b border-black/[0.04] flex items-center justify-between shrink-0">
+                <div>
+                  <h3 className="text-sm font-black uppercase tracking-[0.2em] text-neutral-800">Style Preferences</h3>
+                  <p className="text-[9px] font-bold text-neutral-400 uppercase tracking-widest mt-1">Configure profile sizing & curation</p>
+                </div>
+                <button 
+                  onClick={() => setShowStyleModal(false)}
+                  className="w-10 h-10 bg-black/[0.03] rounded-full flex items-center justify-center hover:bg-black hover:text-white transition-all active:scale-95"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Body */}
+              <div className="flex-grow overflow-y-auto p-8 space-y-6 no-scrollbar">
+                <div className="space-y-4">
+                  <span className="text-[9px] font-black uppercase tracking-widest text-[#C5A059]">My Default Fit Size</span>
+                  <p className="text-neutral-400 text-[10px] uppercase font-bold tracking-widest leading-relaxed">
+                    Saves your chosen fit pattern globally for automatic size pre-selections across the boutique list.
+                  </p>
+                  
+                  <div className="grid grid-cols-3 gap-3">
+                    {['XS', 'S', 'M', 'L', 'XL', 'XXL'].map((size) => (
+                      <button
+                        key={size}
+                        onClick={() => {
+                          triggerHaptic('light');
+                          setPreferredSize(size);
+                          try {
+                            localStorage.setItem('namate_pref_size', size);
+                          } catch (_) {}
+                          toast.success(`Default apparel fit set to Size ${size}`);
+                        }}
+                        className={cn(
+                          "h-14 rounded-xl font-bold text-xs flex items-center justify-center transition-all border animate-fade-in",
+                          preferredSize === size 
+                            ? "bg-black text-white border-black" 
+                            : "bg-white text-black border-black/5 hover:border-black/30"
+                        )}
+                      >
+                        {size}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="pt-4 border-t border-black/[0.04] space-y-4">
+                  <span className="text-[9px] font-black uppercase tracking-widest text-[#C5A059]">Namate Aesthetics Registry</span>
+                  <div className="p-4 bg-[#F5F2EE] rounded-2xl flex items-center justify-between">
+                    <div>
+                      <p className="text-[10px] font-black uppercase tracking-wide text-neutral-800">Minimalist & Structural Silhouette</p>
+                      <p className="text-[8px] font-bold text-neutral-400 uppercase tracking-wide mt-1">Curation Mode Active</p>
+                    </div>
+                    <Sparkles className="w-4.5 h-4.5 text-[#C5A059]" />
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-8 bg-black/[0.02] border-t border-black/[0.04] shrink-0">
+                <Button 
+                  onClick={() => setShowStyleModal(false)}
+                  className="w-full h-14 bg-black text-white hover:bg-neutral-900 rounded-2xl font-black uppercase tracking-[0.2em] text-[10px]"
+                >
+                  SAVE PREFERENCES
+                </Button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+
+        {/* Help & Support Modal */}
+        {showSupportModal && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-black/45 backdrop-blur-md flex items-end justify-center"
+            onClick={() => setShowSupportModal(false)}
+          >
+            <motion.div 
+              initial={{ y: "100%" }}
+              animate={{ y: 0 }}
+              exit={{ y: "100%" }}
+              transition={{ type: "spring", damping: 30, stiffness: 300 }}
+              className="bg-[#FDFCFB] w-full max-w-xl h-[75vh] rounded-t-[40px] shadow-2xl flex flex-col overflow-hidden border-t border-black/[0.04]"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Header */}
+              <div className="p-8 border-b border-black/[0.04] flex items-center justify-between shrink-0">
+                <div>
+                  <h3 className="text-sm font-black uppercase tracking-[0.2em] text-neutral-800">Help & Support</h3>
+                  <p className="text-[9px] font-bold text-neutral-400 uppercase tracking-widest mt-1">Caretakers of Presence</p>
+                </div>
+                <button 
+                  onClick={() => setShowSupportModal(false)}
+                  className="w-10 h-10 bg-black/[0.03] rounded-full flex items-center justify-center hover:bg-black hover:text-white transition-all active:scale-95"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Body */}
+              <div className="flex-grow overflow-y-auto p-8 space-y-6 no-scrollbar">
+                <div className="space-y-4">
+                  <span className="text-[9px] font-black uppercase tracking-widest text-[#C5A059]">Direct Support Lines</span>
+                  <div className="bg-black/[0.02] border border-black/[0.04] rounded-2xl p-5 space-y-4">
+                    <div>
+                      <p className="text-[9px] font-black uppercase tracking-widest text-[#C5A059]">EMAIL ADDRESS</p>
+                      <p className="text-sm font-black text-neutral-800 tracking-tight mt-1">support@namate.com</p>
+                    </div>
+                    <div>
+                      <p className="text-[9px] font-black uppercase tracking-widest text-[#C5A059]">HELP DESK HOURS</p>
+                      <p className="text-xs font-bold text-neutral-600 uppercase tracking-widest mt-1">Mon - Sat: 10:00 AM - 07:00 PM IST</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="p-4 border border-black/[0.04] rounded-xl">
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-neutral-400 leading-relaxed text-center">
+                    All boutique parcels undergo structural sanitation and rigorous quality checkpoints. For urgent adjustments, feel welcome to send our helpdesk an email reference.
+                  </p>
+                </div>
+              </div>
+
+              <div className="p-8 bg-black/[0.02] border-t border-black/[0.04] shrink-0">
+                <Button 
+                  onClick={() => setShowSupportModal(false)}
+                  className="w-full h-14 bg-black text-white hover:bg-neutral-900 rounded-2xl font-black uppercase tracking-[0.2em] text-[10px]"
+                >
+                  DISMISS
+                </Button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+
+        {/* About Us Modal */}
+        {showAboutModal && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-black/45 backdrop-blur-md flex items-end justify-center"
+            onClick={() => setShowAboutModal(false)}
+          >
+            <motion.div 
+              initial={{ y: "100%" }}
+              animate={{ y: 0 }}
+              exit={{ y: "100%" }}
+              transition={{ type: "spring", damping: 30, stiffness: 300 }}
+              className="bg-[#FDFCFB] w-full max-w-xl h-[85vh] rounded-t-[40px] shadow-2xl flex flex-col overflow-hidden border-t border-black/[0.03]"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Header */}
+              <div className="p-8 border-b border-black/[0.04] flex items-center justify-between shrink-0">
+                <div>
+                  <h3 className="text-sm font-black uppercase tracking-[0.2em] text-neutral-800">About Us</h3>
+                  <p className="text-[9px] font-bold text-neutral-400 uppercase tracking-widest mt-1">The manifesto of presence</p>
+                </div>
+                <button 
+                  onClick={() => setShowAboutModal(false)}
+                  className="w-10 h-10 bg-black/[0.03] rounded-full flex items-center justify-center hover:bg-black hover:text-white transition-all active:scale-95"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Body */}
+              <div className="flex-grow overflow-y-auto p-8 space-y-6 no-scrollbar text-center flex flex-col items-center justify-center">
+                <div className="w-20 h-20 bg-black rounded-full flex items-center justify-center p-5 mb-4 border border-black/5">
+                  <PalmTreeLogo className="w-full h-full text-white" />
+                </div>
+                <h4 className="text-sm font-black uppercase tracking-[0.25em] text-neutral-850">Namate Brand</h4>
+                <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-[0.2em] -mt-1">Presence over Pace</p>
+                
+                <p className="text-xs font-semibold text-neutral-600 uppercase tracking-wider leading-relaxed max-w-sm pt-4">
+                  Born from slow production, structural elegance, and natural fabrics, Namate honors the space between actions. Every garment is crafted to invite presence, designed to move seamlessly with the mindful spirit.
+                </p>
+              </div>
+
+              <div className="p-8 bg-black/[0.02] border-t border-black/[0.04] shrink-0">
+                <Button 
+                  onClick={() => setShowAboutModal(false)}
+                  className="w-full h-14 bg-black text-white hover:bg-neutral-900 rounded-2xl font-black uppercase tracking-[0.2em] text-[10px]"
+                >
+                  HONOR MOMENTS
                 </Button>
               </div>
             </motion.div>

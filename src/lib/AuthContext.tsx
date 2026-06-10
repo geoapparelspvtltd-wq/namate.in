@@ -150,10 +150,86 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
-  const [userData, setUserData] = useState<any | null>(null);
-  const [role, setRole] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [user, setUserState] = useState<User | null>(() => {
+    try {
+      const cached = localStorage.getItem('namate_cached_auth_user');
+      return cached ? JSON.parse(cached) : null;
+    } catch {
+      return null;
+    }
+  });
+  const [userData, setUserDataState] = useState<any | null>(() => {
+    try {
+      const cached = localStorage.getItem('namate_cached_user_data');
+      return cached ? JSON.parse(cached) : null;
+    } catch {
+      return null;
+    }
+  });
+  const [role, setRoleState] = useState<string | null>(() => {
+    try {
+      return localStorage.getItem('namate_cached_user_role') || null;
+    } catch {
+      return null;
+    }
+  });
+
+  const setUser = (val: User | null | ((prev: User | null) => User | null)) => {
+    setUserState((prev) => {
+      const next = typeof val === 'function' ? val(prev) : val;
+      try {
+        if (next) {
+          const minimalUser = {
+            uid: next.uid,
+            email: next.email,
+            displayName: next.displayName,
+            photoURL: next.photoURL,
+            emailVerified: next.emailVerified
+          };
+          localStorage.setItem('namate_cached_auth_user', JSON.stringify(minimalUser));
+        } else {
+          localStorage.removeItem('namate_cached_auth_user');
+        }
+      } catch (e) {}
+      return next;
+    });
+  };
+
+  const setUserData = (val: any | null | ((prev: any | null) => any | null)) => {
+    setUserDataState((prev) => {
+      const next = typeof val === 'function' ? val(prev) : val;
+      try {
+        if (next) {
+          localStorage.setItem('namate_cached_user_data', JSON.stringify(next));
+        } else {
+          localStorage.removeItem('namate_cached_user_data');
+        }
+      } catch (e) {}
+      return next;
+    });
+  };
+
+  const setRole = (val: string | null | ((prev: string | null) => string | null)) => {
+    setRoleState((prev) => {
+      const next = typeof val === 'function' ? val(prev) : val;
+      try {
+        if (next) {
+          localStorage.setItem('namate_cached_user_role', next);
+        } else {
+          localStorage.removeItem('namate_cached_user_role');
+        }
+      } catch (e) {}
+      return next;
+    });
+  };
+
+  const [loading, setLoading] = useState(() => {
+    try {
+      return !localStorage.getItem('namate_cached_auth_user');
+    } catch {
+      return true;
+    }
+  });
   const [isMaintenanceMode, setIsMaintenanceMode] = useState(false);
   const [maintenanceLoading, setMaintenanceLoading] = useState(true);
   const [isNative, setIsNative] = useState(false);

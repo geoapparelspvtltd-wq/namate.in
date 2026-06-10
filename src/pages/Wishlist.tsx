@@ -15,6 +15,14 @@ export default function Wishlist() {
   const { addToCart } = useCart();
   const navigate = useNavigate();
   const [movingId, setMovingId] = useState<string | null>(null);
+  const [selectedProductForSize, setSelectedProductForSize] = useState<any | null>(null);
+  const [selectedSize, setSelectedSize] = useState<string>('M');
+
+  const initiateMoveToCart = (product: any) => {
+    triggerHaptic('light');
+    setSelectedProductForSize(product);
+    setSelectedSize('M'); // default selection
+  };
 
   const calculateTotalSavings = () => {
     return wishlist.reduce((acc, item) => {
@@ -28,7 +36,7 @@ export default function Wishlist() {
     return wishlist.reduce((acc, item) => acc + item.price, 0);
   };
 
-  const handleMoveToCart = async (product: any) => {
+  const handleMoveToCart = async (product: any, sizeToUse: string = 'M') => {
     triggerHaptic('success');
     setMovingId(product.id);
     
@@ -40,7 +48,7 @@ export default function Wishlist() {
         image: product.image || (product.images && product.images[0]),
         images: product.images || [product.image],
         category: product.category
-      } as any, 'M'); // Default size M for prompt conversion
+      } as any, sizeToUse);
       
       removeFromWishlist(product.id);
       setMovingId(null);
@@ -48,7 +56,7 @@ export default function Wishlist() {
       toast.success(
         <div className="flex items-center gap-2">
           <CheckCircle2 className="w-4 h-4 text-[#C5A059]" />
-          <span>Moved <strong className="font-extrabold">{product.name}</strong> to Cart!</span>
+          <span>Moved <strong className="font-extrabold">{product.name}</strong> ({sizeToUse}) to Cart!</span>
         </div>
       );
     }, 400);
@@ -208,7 +216,7 @@ export default function Wishlist() {
                       <div className="mt-3.5 pt-2 border-t border-black/[0.04] space-y-2">
                         <button
                           disabled={isMoving}
-                          onClick={() => handleMoveToCart(item)}
+                          onClick={() => initiateMoveToCart(item)}
                           className={`w-full py-2.5 rounded-xl font-black text-[9px] uppercase tracking-widest transition-all duration-300 flex items-center justify-center gap-1.5 ${
                             isMoving 
                               ? "bg-neutral-100 text-neutral-400" 
@@ -254,6 +262,86 @@ export default function Wishlist() {
           </div>
         )}
       </div>
+
+      {/* Dynamic Size Selection Modal */}
+      <AnimatePresence>
+        {selectedProductForSize && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[150] bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4"
+          >
+            <motion.div
+              initial={{ y: "100%", opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: "100%", opacity: 0 }}
+              transition={{ type: "spring", damping: 30, stiffness: 300 }}
+              className="bg-white w-full sm:max-w-md rounded-t-[32px] sm:rounded-[32px] p-6 pb-10 sm:pb-6 text-left relative overflow-hidden shadow-2xl"
+            >
+              <div className="flex items-center justify-between mb-4 pb-2 border-b border-black/[0.04]">
+                <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-neutral-400">Select Your Size</h3>
+                <button 
+                  onClick={() => setSelectedProductForSize(null)}
+                  className="p-1 px-3.5 py-1.5 bg-black/[0.03] hover:bg-black/[0.08] active:scale-95 transition-all text-[8px] font-black uppercase tracking-widest rounded-full text-black/60"
+                >
+                  Close
+                </button>
+              </div>
+
+              <div className="flex gap-4 mb-6">
+                <img 
+                  src={selectedProductForSize.image || (selectedProductForSize.images && selectedProductForSize.images[0])} 
+                  alt={selectedProductForSize.name} 
+                  className="w-16 h-20 object-cover rounded-2xl border border-black/[0.03]"
+                  referrerPolicy="no-referrer"
+                />
+                <div className="flex flex-col justify-center">
+                  <span className="text-[8px] font-black text-[#C5A059] uppercase tracking-widest mb-1">{selectedProductForSize.category || "Apparel"}</span>
+                  <h4 className="text-sm font-black text-black leading-tight mb-2 uppercase tracking-tight">{selectedProductForSize.name}</h4>
+                  <span className="text-black font-brand text-xs font-medium">₹{selectedProductForSize.price}</span>
+                </div>
+              </div>
+
+              {/* Size options list */}
+              <div className="space-y-3 mb-6">
+                <span className="text-[8px] font-black uppercase tracking-wider text-black/40 block">Available Sizes:</span>
+                <div className="grid grid-cols-6 gap-2">
+                  {(selectedProductForSize.sizes || ['XS', 'S', 'M', 'L', 'XL', 'XXL']).map((size: string) => (
+                    <button
+                      key={size}
+                      onClick={() => {
+                        triggerHaptic('light');
+                        setSelectedSize(size);
+                      }}
+                      className={`h-11 rounded-xl text-2xs font-black transition-all flex items-center justify-center border ${
+                        selectedSize === size
+                          ? "bg-black text-[#C5A059] border-black scale-105 shadow-md"
+                          : "bg-black/[0.02] text-black/70 border-black/5 hover:border-black/20"
+                      }`}
+                    >
+                      {size}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <button
+                onClick={() => {
+                  if (selectedProductForSize) {
+                    handleMoveToCart(selectedProductForSize, selectedSize);
+                    setSelectedProductForSize(null);
+                  }
+                }}
+                className="w-full py-4 bg-black text-[#C5A059] hover:bg-[#C5A059] hover:text-black font-black text-[10px] uppercase tracking-[0.2em] rounded-2xl transition-all duration-300 shadow-xl flex items-center justify-center gap-2"
+              >
+                <ShoppingBag className="w-4 h-4" />
+                <span>Move to Bag in {selectedSize}</span>
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
